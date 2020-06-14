@@ -17,8 +17,9 @@ class CreateTables extends Migration
             $table->string('hr_cd', 16);
             $table->string('name', 128);
             $table->string('name_kana', 128)->nullable();
-            $table->string('pw', 128)->nullable();
+            $table->string('password');
             $table->integer('is_admin')->default(0);
+            $table->rememberToken();
             $table->string('remarks', 256)->nullable();
             $table->integer('bp_id')->nullable();
             $table->dateTime('created_at')->useCurrent();
@@ -174,5 +175,13 @@ class CreateTables extends Migration
     public function down()
     {
         Schema::dropIfExists('mst_hr');
+        Schema::dropIfExists('mst_bp');
+        Schema::dropIfExists('mst_department');
+        Schema::dropIfExists('mst_department_hr');
+        Schema::dropIfExists('mst_hr_unit_price');
+        Schema::dropIfExists('mst_process');
+        Schema::dropIfExists('trn_project');
+        Schema::dropIfExists('trn_project_detail');
+        Schema::dropIfExists('trn_project_detail_hr');
     }
 }
