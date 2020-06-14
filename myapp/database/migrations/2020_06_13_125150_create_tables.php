@@ -15,7 +15,7 @@ class CreateTables extends Migration
     {
         Schema::create('mst_hr', function (Blueprint $table) {
             $table->string('hr_cd', 16);
-            $table->string('name', 128);
+            $table->string('user_name', 128);
             $table->string('name_kana', 128)->nullable();
             $table->string('password');
             $table->integer('is_admin')->default(0);
@@ -178,6 +178,7 @@ class CreateTables extends Migration
         Schema::dropIfExists('mst_bp');
         Schema::dropIfExists('mst_department');
         Schema::dropIfExists('mst_department_hr');
+        Schema::dropIfExists('mst_role');
         Schema::dropIfExists('mst_hr_unit_price');
         Schema::dropIfExists('mst_process');
         Schema::dropIfExists('trn_project');

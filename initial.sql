@@ -1,6 +1,6 @@
 CREATE TABLE `mst_hr` (
   `hr_cd` varchar(16) COLLATE utf8mb4_bin NOT NULL,
-  `name` varchar(128) COLLATE utf8mb4_bin NOT NULL,
+  `user_name` varchar(128) COLLATE utf8mb4_bin NOT NULL,
   `name_kana` varchar(128) COLLATE utf8mb4_bin DEFAULT NULL,
   `pw` varchar(128) COLLATE utf8mb4_bin DEFAULT NULL,
   `is_admin` int(11) NOT NULL DEFAULT '0',
