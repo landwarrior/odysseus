@@ -2,11 +2,10 @@
 
 namespace App;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class MstHr extends Model
+class MstHr extends Authenticatable
 {
     // 認証に使うテーブルとする
     use Notifiable;
