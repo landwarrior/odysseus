@@ -35,5 +35,8 @@ class ProjectController extends Controller
             return redirect(route('home'))->with('not_admin', '1');
         }
 
+        $project = new TrnProject();
+        return view('project.create', ['project' => $project]);
+
     }
 }

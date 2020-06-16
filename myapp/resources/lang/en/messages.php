@@ -15,7 +15,10 @@ return [
         'from' => 'From',
         'to' => 'To',
         'not_any' => 'no projects',
-        'create' => 'Create',
+        'create' => 'Create Project',
     ],
+    'create' => 'Create',
+    'register' => 'Register',
+    'back' => 'Back',
     'not_admin' => 'not authorized',
 ];

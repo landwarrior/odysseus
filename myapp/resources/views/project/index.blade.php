@@ -31,7 +31,7 @@
                         @endforeach
                     </table>
                     <div>
-                        <a href="/project/create" class="btn btn-outline-primary">{{ __('messages.project.create') }}</a>
+                        <a href="/project/create" class="btn btn-outline-primary">{{ __('messages.create') }}</a>
                     </div>
                     </div>
                 </div>
