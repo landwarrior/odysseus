@@ -12,7 +12,7 @@
                         @csrf
 
                         <div class="form-group row">
-                            <label for="hr_cd" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr_cd') }}</label>
+                            <label for="hr_cd" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.hr_cd') }}</label>
 
                             <div class="col-md-6">
                                 <input id="hr_cd" type="text" class="form-control @error('hr_cd') is-invalid @enderror" name="hr_cd" value="{{ old('hr_cd') }}" required autocomplete="name" autofocus>
@@ -26,7 +26,7 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="user_name" class="col-md-4 col-form-label text-md-right">{{ __('messages.user_name') }}</label>
+                            <label for="user_name" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.user_name') }}</label>
 
                             <div class="col-md-6">
                                 <input id="user_name" type="text" class="form-control @error('user_name') is-invalid @enderror" name="user_name" value="{{ old('user_name') }}" required autocomplete="user_name">
@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="name_kana" class="col-md-4 col-form-label text-md-right">{{ __('messages.name_kana') }}</label>
+                            <label for="name_kana" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.name_kana') }}</label>
 
                             <div class="col-md-6">
                                 <input id="name_kana" type="text" class="form-control @error('name_kana') is-invalid @enderror" name="name_kana" value="{{ old('name_kana') }}" required autocomplete="name_kana">
@@ -76,7 +76,7 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="remarks" class="col-md-4 col-form-label text-md-right">{{ __('messages.remarks') }}</label>
+                            <label for="remarks" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.remarks') }}</label>
 
                             <div class="col-md-6">
                                 <input id="remarks" type="text" class="form-control @error('remarks') is-invalid @enderror" name="remarks" required autocomplete="remarks">

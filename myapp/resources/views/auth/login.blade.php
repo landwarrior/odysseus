@@ -12,7 +12,7 @@
                         @csrf
 
                         <div class="form-group row">
-                            <label for="hr_cd" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr_cd') }}</label>
+                            <label for="hr_cd" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.hr_cd') }}</label>
 
                             <div class="col-md-6">
                                 <input id="hr_cd" type="text" class="form-control @error('hr_cd') is-invalid @enderror" name="hr_cd" value="{{ old('hr_cd') }}" required autocomplete="hr_cd" autofocus>
@@ -26,7 +26,7 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="password" class="col-md-4 col-form-label text-md-right">{{ __('messages.password') }}</label>
+                            <label for="password" class="col-md-4 col-form-label text-md-right">{{ __('messages.hr.password') }}</label>
 
                             <div class="col-md-6">
                                 <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">

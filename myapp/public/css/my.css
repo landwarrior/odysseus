@@ -5,6 +5,18 @@ html, body {
   font-family: 'Nunito', 'Noto Sans JP', sans-serif;
   letter-spacing: .1rem;
 }
+
 .navbar {
   font-weight: 600;
+}
+
+.links a {
+  color: #a3abaf;
+  padding: 0 25px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.links a:hover {
+  color: #233b3f;
 }

@@ -3,7 +3,15 @@
 @section('content')
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-12">
+            @if (session('not_admin'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ __('messages.not_admin') }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            @endif
             <div class="card">
                 <div class="card-header">Dashboard</div>
 
@@ -13,15 +21,11 @@
                             {{ session('status') }}
                         </div>
                     @endif
-
-                    You are logged in!
+                    @if ($is_admin)
+                        @include('admin')
+                    @endif
                 </div>
             </div>
-            @if ($is_admin)
-            <div>
-                {{ $is_admin }}
-            </div>
-            @endif
         </div>
     </div>
 </div>
