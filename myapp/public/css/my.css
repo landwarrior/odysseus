@@ -1,0 +1,10 @@
+/* app.css は行数が多すぎなので、自前のはこちらに定義する */
+html, body {
+  background-color: #f0f0f0;
+  color: #636b6f;
+  font-family: 'Nunito', 'Noto Sans JP', sans-serif;
+  letter-spacing: .1rem;
+}
+.navbar {
+  font-weight: 600;
+}
