@@ -15,7 +15,7 @@
                             <th>{{ __('messages.project.from') }}</th>
                             <th>{{ __('messages.project.to') }}</th>
                         </tr>
-                        @if(empty($projects['projects']))
+                        @if(count($projects) == 0)
                         <tr>
                             <td colspan="5">{{ __('messages.project.not_any') }}</td>
                         </tr>
@@ -30,9 +30,13 @@
                         </tr>
                         @endforeach
                     </table>
-                    <div>
-                        <a href="/project/create" class="btn btn-outline-primary">{{ __('messages.create') }}</a>
-                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="/project/create" class="btn btn-outline-primary">{{ __('messages.create') }}</a>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a href="/" class="btn btn-outline-secondary">{{ __('messages.back') }}</a>
+                        </div>
                     </div>
                 </div>
             </div>

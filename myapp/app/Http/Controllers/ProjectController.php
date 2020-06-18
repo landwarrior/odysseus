@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\TrnProject;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\ProjectRequest;
 
 class ProjectController extends Controller
 {
@@ -37,6 +38,25 @@ class ProjectController extends Controller
 
         $project = new TrnProject();
         return view('project.create', ['project' => $project]);
+    }
 
+    public function store(ProjectRequest $request)
+    {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+        $request->order_amount = str_replace(',', '', $request->order_amount);
+        echo $request->order_amount;
+        $validated = $request->validated();
+        $project = new TrnProject();
+        $project->project_no = $request->project_no;
+        $project->name = $request->project_name;
+        $project->order_amount = $request->order_amount;
+        $project->from_date = $request->from_date;
+        $project->to_date = $request->to_date;
+        $project->save();
+
+        return redirect('/project');
     }
 }
