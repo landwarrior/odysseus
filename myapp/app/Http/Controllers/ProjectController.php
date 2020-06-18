@@ -46,8 +46,6 @@ class ProjectController extends Controller
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
-        $request->order_amount = str_replace(',', '', $request->order_amount);
-        echo $request->order_amount;
         $validated = $request->validated();
         $project = new TrnProject();
         $project->project_no = $request->project_no;

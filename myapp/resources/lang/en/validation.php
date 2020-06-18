@@ -146,6 +146,12 @@ return [
     |
     */
 
-    'attributes' => [],
+    'attributes' => [
+        'project_no' => 'Project No',
+        'project_name' => 'Project Name',
+        'order_amount' => 'Order Amount',
+        'from_date' => 'From',
+        'to_date' => 'To',
+    ],
 
 ];

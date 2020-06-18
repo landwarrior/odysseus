@@ -26,9 +26,16 @@ class ProjectRequest extends FormRequest
         return [
             'project_no' => 'required|unique:trn_project|max:32',
             'project_name' => 'required|max:64',
-            'order_amount' => 'string',
+            'order_amount' => 'numeric',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date',
         ];
+    }
+
+    public function prepareForValidation()
+    {
+        $this->merge([
+            'order_amount' => str_replace(',', '', $this->order_amount)
+        ]);
     }
 }
