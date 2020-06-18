@@ -12,7 +12,7 @@
                         @csrf
                         <div class="form-group">
                             <div class="form-label-group">
-                                <input id="hr_cd" type="text" class="form-control @error('hr_cd') is-invalid @enderror" name="hr_cd" value="{{ old('hr_cd') }}" required autocomplete="hr_cd" autofocus placeholder="user code">
+                                <input id="hr_cd" type="text" class="form-control @error('hr_cd') is-invalid @enderror" name="hr_cd" value="{{ old('hr_cd') }}" required autocomplete="username" autofocus placeholder="user code">
                                 <label for="hr_cd">{{ __('messages.hr.hr_cd') }}</label>
                                 @error('hr_cd')
                                 <span class="invalid-feedback" role="alert">
