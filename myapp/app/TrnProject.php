@@ -10,4 +10,6 @@ class TrnProject extends Model
     protected $table = 'trn_project';
     /** プライマリキー */
     protected $primaryKey = 'project_no';
+    /** 日付データ */
+    protected $dates = ['from_date', 'to_date'];
 }
