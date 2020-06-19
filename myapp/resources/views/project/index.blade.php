@@ -7,7 +7,7 @@
       <div class="card">
         <div class="card-header">{{ __('messages.project.list') }}</div>
         <div class="card-body">
-          <table class="table">
+          <table class="table table-hover">
             <thead class="thead-light">
               <tr class="text-center">
                 <th scope="col" style="width: 154px">{{ __('messages.project.no') }}</th>
@@ -24,7 +24,7 @@
               </tr>
               @endif
               @foreach($projects as $project)
-              <tr class="text-center">
+              <tr class="text-center" data-href="/project/{{ $project->project_no }}">
                 <td>{{ $project->project_no }}</td>
                 <td>{{ $project->name }}</td>
                 <td>￥ {{ number_format($project->order_amount) }}</td>

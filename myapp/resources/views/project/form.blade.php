@@ -22,7 +22,7 @@
                   </div>
                   @else
                   <div class="form-label-group">
-                    <input type="text" id="project_no" class="form-control" name="project_no" value="{{ $project->project_no }}" readonly placeholder="{{ __('messages.project.no') }}">
+                    <input type="text" id="project_no" class="form-control" name="project_no" value="{{ $project->project_no }}" disabled placeholder="{{ __('messages.project.no') }}">
                     <label for="project_no">{{ __('messages.project.no') }}</label>
                   </div>
                   @endif

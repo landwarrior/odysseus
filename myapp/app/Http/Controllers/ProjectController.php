@@ -68,4 +68,16 @@ class ProjectController extends Controller
         $project = TrnProject::findOrFail($project_no);
         return view('project.edit', compact('project'));
     }
+
+    public function update(ProjectRequest $request, $project_no)
+    {
+        $project = TrnProject::findOrFail($project_no);
+        $project->name = $request->project_name;
+        $project->order_amount = $request->order_amount;
+        $project->from_date = $request->from_date;
+        $project->to_date = $request->to_date;
+        $project->save();
+
+        return redirect('/project');
+    }
 }

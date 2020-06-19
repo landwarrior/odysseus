@@ -21,6 +21,11 @@ html, body {
   color: #233b3f;
 }
 
+.table-hover tbody tr:hover td {
+  background-color: #eafcf7;
+}
+
+/* ここから下はフローティングラベル用 */
 :root {
   --input-padding-x: 1.125rem;
   --input-padding-y: 1.125rem;
@@ -106,3 +111,4 @@ html, body {
     color: #777;
   }
 }
+/* ここまでフローティングラベル用 */
