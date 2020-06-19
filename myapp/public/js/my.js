@@ -25,4 +25,8 @@ $(function() {
   $('table.table-hover tbody tr[data-href]').click(function() {
     window.location = $(this).attr('data-href');
   });
+  // フラッシュメッセージはフェードアウトしてDOMも消す
+  $('.flash-msg').fadeOut(3000, function() {
+    $(this).remove();
+  });
 });

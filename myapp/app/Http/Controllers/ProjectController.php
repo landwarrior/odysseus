@@ -55,7 +55,7 @@ class ProjectController extends Controller
         $project->to_date = $request->to_date;
         $project->save();
 
-        return redirect('/project');
+        return redirect('/project')->with('registered', '1');
     }
 
     public function edit($project_no)
@@ -78,6 +78,6 @@ class ProjectController extends Controller
         $project->to_date = $request->to_date;
         $project->save();
 
-        return redirect('/project');
+        return redirect('/project')->with('registered', '1');
     }
 }

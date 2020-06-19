@@ -25,6 +25,14 @@ html, body {
   background-color: #eafcf7;
 }
 
+.flash-msg {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9;
+}
+
 /* ここから下はフローティングラベル用 */
 :root {
   --input-padding-x: 1.125rem;

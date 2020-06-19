@@ -2,8 +2,13 @@
 
 @section('content')
 <div class="container">
+  @if(session('registered'))
+  <div class="flash-msg alert alert-success fade show" role="alert">
+    {{ __('messages.registered') }}
+  </div>
+  @endif
   <div class="row">
-    <div class="col-md-12">
+    <div class="col-12">
       <div class="card">
         <div class="card-header">{{ __('messages.project.list') }}</div>
         <div class="card-body">
@@ -27,7 +32,7 @@
               <tr class="text-center" data-href="/project/{{ $project->project_no }}">
                 <td>{{ $project->project_no }}</td>
                 <td>{{ $project->name }}</td>
-                <td>￥ {{ number_format($project->order_amount) }}</td>
+                <td class="text-right">￥ {{ number_format($project->order_amount) }}</td>
                 <td>@if($project->from_date){{ $project->from_date->format('Y/m/d') }}@endif</td>
                 <td>@if($project->to_date){{ $project->to_date->format('Y/m/d') }}@endif</td>
               </tr>
@@ -35,10 +40,10 @@
             </tbody>
           </table>
           <div class="row">
-            <div class="col-md-6">
+            <div class="col-6">
               <a href="/project/create" class="btn btn-outline-primary" role="button">{{ __('messages.create') }}</a>
             </div>
-            <div class="col-md-6 text-right">
+            <div class="col-6 text-right">
               <a href="/" class="btn btn-outline-secondary" role="button">{{ __('messages.back') }}</a>
             </div>
           </div>

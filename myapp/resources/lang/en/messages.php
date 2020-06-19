@@ -9,6 +9,7 @@ return [
         'remarks' => 'remarks',
     ],
     'project' => [
+        'list' => 'List of Projects',
         'no' => 'Project No',
         'name' => 'Project Name',
         'order_amount' => 'Order Amount',
@@ -21,4 +22,5 @@ return [
     'register' => 'Register',
     'back' => 'Back',
     'not_admin' => 'not authorized',
+    'registered' => 'Registered!',
 ];

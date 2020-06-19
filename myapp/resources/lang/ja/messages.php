@@ -22,4 +22,5 @@ return [
     'register' => '登録',
     'back' => '戻る',
     'not_admin' => '管理者権限がありません',
+    'registered' => '登録しました',
 ];
