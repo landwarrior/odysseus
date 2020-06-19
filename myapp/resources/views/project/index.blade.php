@@ -28,8 +28,8 @@
                 <td>{{ $project->project_no }}</td>
                 <td>{{ $project->name }}</td>
                 <td>￥ {{ number_format($project->order_amount) }}</td>
-                <td>{{ $project->from_date->format('Y/m/d') }}</td>
-                <td>{{ $project->to_date->format('Y/m/d') }}</td>
+                <td>@if($project->from_date){{ $project->from_date->format('Y/m/d') }}@endif</td>
+                <td>@if($project->to_date){{ $project->to_date->format('Y/m/d') }}@endif</td>
               </tr>
               @endforeach
             </tbody>

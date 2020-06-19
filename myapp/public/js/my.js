@@ -4,8 +4,6 @@ $('.numFmt').on('focus', function() {
 $('.numFmt').on('blur', function() {
   let num = Number.parseInt($(this).val());
   if (!isNaN(num)) {
-    $(this).val(num.toLocaleString());
-  } else {
-    $(this).val(0);
+    $(this).val( '￥ ' + num.toLocaleString());
   }
 });

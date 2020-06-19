@@ -57,4 +57,15 @@ class ProjectController extends Controller
 
         return redirect('/project');
     }
+
+    public function edit($project_no)
+    {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+
+        $project = TrnProject::findOrFail($project_no);
+        return view('project.edit', compact('project'));
+    }
 }

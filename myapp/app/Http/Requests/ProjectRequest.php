@@ -35,7 +35,7 @@ class ProjectRequest extends FormRequest
     public function prepareForValidation()
     {
         $this->merge([
-            'order_amount' => str_replace(',', '', $this->order_amount)
+            'order_amount' => preg_replace('/[￥ ,]/', '', $this->order_amount)
         ]);
     }
 }
