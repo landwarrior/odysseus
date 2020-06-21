@@ -9,6 +9,8 @@ return [
         'password' => 'Password',
         'name_kana' => 'User Kana',
         'remarks' => 'remarks',
+        'bp_name' => 'Partner Name',
+        'create' => 'Create',
     ],
     'project' => [
         'list' => 'List of Projects',

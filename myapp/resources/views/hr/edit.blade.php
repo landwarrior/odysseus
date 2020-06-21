@@ -1,4 +1,4 @@
 @extends('layouts.app')
 @section('content')
-@include('project.form', ['target' => 'update'])
+@include('hr.form', ['target' => 'update'])
 @endsection

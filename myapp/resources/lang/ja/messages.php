@@ -10,6 +10,7 @@ return [
         'name_kana' => 'ユーザー名（カナ）',
         'remarks' => '備考',
         'bp_name' => '協力会社名',
+        'create' => 'ユーザー作成',
     ],
     'project' => [
         'list' => 'プロジェクト一覧',
