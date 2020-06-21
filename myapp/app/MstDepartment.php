@@ -10,4 +10,6 @@ class MstDepartment extends Model
     protected $table = 'mst_department';
     /** プライマリキー */
     protected $primaryKey = 'department_id';
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }

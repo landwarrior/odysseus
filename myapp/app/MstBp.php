@@ -10,4 +10,6 @@ class MstBp extends Model
     protected $table = 'mst_bp';
     /** プライマリキー */
     protected $primaryKey = 'bp_id';
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }

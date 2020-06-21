@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\TrnProject;
+use App\MstProcess;
+use App\TrnProjectDetail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Http\Requests\ProjectRequest;
 
 class ProjectController extends Controller
@@ -37,7 +40,12 @@ class ProjectController extends Controller
         }
 
         $project = new TrnProject();
-        return view('project.create', ['project' => $project]);
+        $processes = MstProcess::all();
+        $projectDetail = new TrnProjectDetail();
+        return view(
+            'project.create',
+            ['project' => $project, 'processes' => $processes, 'details' => [$projectDetail]]
+        );
     }
 
     public function store(ProjectRequest $request)
@@ -46,14 +54,27 @@ class ProjectController extends Controller
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
-        $validated = $request->validated();
-        $project = new TrnProject();
-        $project->project_no = $request->project_no;
-        $project->name = $request->project_name;
-        $project->order_amount = $request->order_amount;
-        $project->from_date = $request->from_date;
-        $project->to_date = $request->to_date;
-        $project->save();
+        DB::transaction(function () use ($request) {
+            $project = new TrnProject();
+            $project->project_no = $request->project_no;
+            $project->name = $request->project_name;
+            $project->order_amount = (int)$request->order_amount;
+            $project->from_date = $request->from_date;
+            $project->to_date = $request->to_date;
+            $project->save();
+            if ($request->details) {
+                foreach ($request->details as $detail) {
+                    $projectDetail = new TrnProjectDetail();
+                    $projectDetail->project_no = $request['project_no'];
+                    $projectDetail->process_id = $detail['process_id'];
+                    $projectDetail->from_date = $detail['from_date'];
+                    $projectDetail->to_date = $detail['to_date'];
+                    $projectDetail->man_per_day = $detail['man_per_day'];
+                    $projectDetail->pre_cost = $detail['pre_cost'];
+                    $projectDetail->save();
+                }
+            }
+        });
 
         return redirect('/project')->with('registered', '1');
     }
@@ -66,17 +87,37 @@ class ProjectController extends Controller
         }
 
         $project = TrnProject::findOrFail($project_no);
-        return view('project.edit', compact('project'));
+        $processes = MstProcess::all();
+        $projectDetails = TrnProjectDetail::where('project_no', $project_no)->get();
+        return view(
+            'project.edit',
+            ['project' => $project, 'processes' => $processes, 'details' => $projectDetails]
+        );
     }
 
     public function update(ProjectRequest $request, $project_no)
     {
-        $project = TrnProject::findOrFail($project_no);
-        $project->name = $request->project_name;
-        $project->order_amount = $request->order_amount;
-        $project->from_date = $request->from_date;
-        $project->to_date = $request->to_date;
-        $project->save();
+        DB::transaction(function () use ($request, $project_no) {
+            $project = TrnProject::findOrFail($project_no);
+            $project->name = $request->project_name;
+            $project->order_amount = $request->order_amount;
+            $project->from_date = $request->from_date;
+            $project->to_date = $request->to_date;
+            $project->save();
+            $projectDetails = TrnProjectDetail::where('project_no', $project_no)->delete();
+            if ($request->details) {
+                foreach ($request->details as $detail) {
+                    $projectDetail = new TrnProjectDetail();
+                    $projectDetail->project_no = $project_no;
+                    $projectDetail->process_id = $detail['process_id'];
+                    $projectDetail->from_date = $detail['from_date'];
+                    $projectDetail->to_date = $detail['to_date'];
+                    $projectDetail->man_per_day = (int)$detail['man_per_day'];
+                    $projectDetail->pre_cost = (int)$detail['pre_cost'];
+                    $projectDetail->save();
+                }
+            }
+        });
 
         return redirect('/project')->with('registered', '1');
     }

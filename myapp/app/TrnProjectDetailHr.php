@@ -10,4 +10,6 @@ class TrnProjectDetailHr extends Model
     protected $table = 'trn_project_detail_hr';
     /** プライマリキー */
     protected $primaryKey = ['project_no', 'process_id', 'hr_cd'];
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }

@@ -59,7 +59,7 @@ return [
     'image' => 'The :attribute must be an image.',
     'in' => 'The selected :attribute is invalid.',
     'in_array' => 'The :attribute field does not exist in :other.',
-    'integer' => 'The :attribute must be an integer.',
+    'integer' => ':attribute は整数で入力してください',
     'ip' => 'The :attribute must be a valid IP address.',
     'ipv4' => 'The :attribute must be a valid IPv4 address.',
     'ipv6' => 'The :attribute must be a valid IPv6 address.',
@@ -152,6 +152,11 @@ return [
         'order_amount' => '受注金額',
         'from_date' => '開始日',
         'to_date' => '終了日',
+        'details.*.process_id' => '工程',
+        'details.*.from_date' => '開始日',
+        'details.*.to_date' => '終了日',
+        'details.*.man_per_day' => '人日',
+        'details.*.pre_cost' => '予算',
     ],
 
 ];

@@ -10,6 +10,8 @@ class MstHrUnitPrice extends Model
     protected $table = 'mst_hr_unit_price';
     /** プライマリキー */
     protected $primaryKey = ['hr_cd', 'from_date', 'role_id'];
+    /** IDが自動増分されるか */
+    public $incrementing = false;
     /** 日付データ */
     protected $dates = ['from_date'];
 }

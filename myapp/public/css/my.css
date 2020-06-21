@@ -23,6 +23,7 @@ html, body {
 
 .table-hover tbody tr:hover td {
   background-color: #eafcf7;
+  cursor: pointer;
 }
 
 .flash-msg {
@@ -31,6 +32,9 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 9;
+}
+th, td {
+  vertical-align: middle !important;
 }
 
 /* ここから下はフローティングラベル用 */

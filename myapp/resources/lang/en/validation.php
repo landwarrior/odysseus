@@ -152,6 +152,11 @@ return [
         'order_amount' => 'Order Amount',
         'from_date' => 'From',
         'to_date' => 'To',
+        'details.*.process_id' => 'Process',
+        'details.*.from_date' => 'From',
+        'details.*.to_date' => 'To',
+        'details.*.man_per_day' => 'Man / Day',
+        'details.*.pre_cost' => 'Cost',
     ],
 
 ];

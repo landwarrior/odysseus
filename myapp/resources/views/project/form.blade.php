@@ -64,6 +64,78 @@
               </div>
             </div>
             <div class="row">
+              <div class="col-12">
+                <table id="project-details" class="table">
+                  <thead>
+                    <tr class="text-center">
+                      <th scope="col" style="width:150px">{{ __('messages.project.process') }}</th>
+                      <th scope="col">{{ __('messages.project.from') }}</th>
+                      <th scope="col">{{ __('messages.project.to') }}</th>
+                      <th scope="col">{{ __('messages.project.manperday') }}</th>
+                      <th scope="col">{{ __('messages.project.precost') }}</th>
+                      <th scope="col" style="width:65px">{{ __('messages.delete') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @foreach(old('details', $details) as $detail)
+                    <tr>
+                      <td class="form-group">
+                        <select class="form-control" name="details[{{ $loop->index }}][process_id]">
+                          @for($i = 0; $i < count($processes); $i++)
+                          <option value="{{ $processes[$i]->process_id }}"
+                                  @if ($processes[$i]->process_id == old('details.'.$loop->index.'.process_id', !empty($detail->process_id) ? $detail->process_id : 0)) selected @endif>{{ $processes[$i]->name }}</option>
+                          @endfor
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" class="form-control text-center from_date datepicker @error('details.'.$loop->index.'.from_date') is-invalid @enderror"
+                               name="details[{{ $loop->index }}][from_date]"
+                               value="{{ old('details.'.$loop->index.'.from_date', !empty($detail->from_date) ? $detail->from_date->format('Y/m/d') : '') }}">
+                      </td>
+                      <td>
+                        <input type="text" class="form-control text-center to_date datepicker @error('details.'.$loop->index.'.to_date') is-invalid @enderror"
+                               name="details[{{ $loop->index }}][to_date]"
+                               value="{{ old('details.'.$loop->index.'.to_date', !empty($detail->to_date) ? $detail->to_date->format('Y/m/d') : '') }}">
+                      </td>
+                      <td>
+                        <input type="number" class="form-control text-right man_per_day @error('details.'.$loop->index.'.man_per_day') is-invalid @enderror"
+                               name="details[{{ $loop->index }}][man_per_day]"
+                               value="{{ old('details.'.$loop->index.'.man_per_day', !empty($detail->man_per_day) ? $detail->man_per_day : '') }}">
+                      </td>
+                      <td>
+                        <input type="text" class="form-control text-right pre_cost numFmt @error('details.'.$loop->index.'.pre_cost') is-invalid @enderror"
+                               value="{{ old('details.'.$loop->index.'.pre_cost', !empty($detail->pre_cost) ? $detail->pre_cost : '') }}">
+                        <input type="hidden" class="pre_cost" name="details[{{ $loop->index }}][pre_cost]"
+                               value="{{ old('details.'.$loop->index.'.pre_cost', !empty($detail->pre_cost) ? $detail->pre_cost : '') }}">
+                      </td>
+                      <td>
+                        <button type="button" class="btn btn-danger row-delete">
+                          <svg class="bi bi-trash" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                            <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                    @endforeach
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colspan="4" class="text-right">{{ __('messages.project.total_cost') }}</th>
+                      <th class="text-right"><span class="total-pre-cost" style="padding-right: 13px"></span></th>
+                      <th></th>
+                    </tr>
+                    <tr>
+                      <td colspan="6" class="text-right">
+                        <button type="button" class="btn btn-primary" onclick="addRow()">{{ __('messages.add_row') }}</button>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <div class="row">
               <div class="col-6">
                 <button type="submit" class="btn btn-lg btn-outline-primary">{{ __('messages.register') }}</button>
               </div>
@@ -77,4 +149,36 @@
     </div>
   </div>
 </div>
+<table id="cloneTr" style="display: none">
+  <tr>
+    <td class="form-group">
+      <select class="form-control">
+        @foreach($processes as $process)
+        <option value="{{ $process->process_id }}">{{ $process->name }}</option>
+        @endforeach
+      </select>
+    </td>
+    <td>
+      <input type="text" class="form-control text-center from_date datepicker">
+    </td>
+    <td>
+      <input type="text" class="form-control text-center to_date datepicker">
+    </td>
+    <td>
+      <input type="number" class="form-control text-right man_per_day">
+    </td>
+    <td>
+      <input type="text" class="form-control text-right pre_cost numFmt">
+      <input type="hidden" class="pre_cost">
+    </td>
+    <td>
+      <button type="button" class="btn btn-danger row-delete">
+        <svg class="bi bi-trash" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+          <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+        </svg>
+      </button>
+    </td>
+  </tr>
+</table>
 @include('layouts.datepicker')

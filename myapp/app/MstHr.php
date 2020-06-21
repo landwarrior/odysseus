@@ -13,6 +13,8 @@ class MstHr extends Authenticatable
     protected $table = 'mst_hr';
     /** プライマリキー */
     protected $primaryKey = 'hr_cd';
+    /** IDが自動増分されるか */
+    public $incrementing = false;
     /** 任意に更新可能とする属性を指定 */
     protected $fillable = [
         'hr_cd',

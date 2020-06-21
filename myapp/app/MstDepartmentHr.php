@@ -10,4 +10,6 @@ class MstDepartmentHr extends Model
     protected $table = 'mst_department_hr';
     /** プライマリキー */
     protected $primaryKey = ['department_id', 'hr_cd'];
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }

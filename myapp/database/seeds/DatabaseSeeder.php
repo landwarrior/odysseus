@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MstHrSeeder::class,
             MstRoleSeeder::class,
+            MstProcessSeeder::class,
         ]);
     }
 }

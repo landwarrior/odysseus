@@ -10,4 +10,6 @@ class MstProcess extends Model
     protected $table = 'mst_process';
     /** プライマリキー */
     protected $primaryKey = 'process_id';
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }

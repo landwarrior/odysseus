@@ -10,4 +10,6 @@ class MstRole extends Model
     protected $table = 'mst_role';
     /** プライマリキー */
     protected $primaryKey = 'role_id';
+    /** IDが自動増分されるか */
+    public $incrementing = false;
 }
