@@ -46,3 +46,13 @@ function sumPreCost() {
   });
   $('.total-pre-cost').text('￥ ' + total.toLocaleString());
 }
+
+$('#conform-delete').on('input', function() {
+  let inputText = $(this).val();
+  let projectNo = $('#project_no').val();
+  if (projectNo == inputText) {
+    $('#delete-execute').attr('disabled', false);
+  } else {
+    $('#delete-execute').attr('disabled', true);
+  }
+});

@@ -145,6 +145,16 @@
             </div>
           </form>
         </div>
+        @if($target == 'update')
+        <div class="card-header alert-danger text-center">{{ __('messages.danger_zone') }}</div>
+        <div class="card-body">
+          <form action="/project/{{ $project->project_no }}" method="post" name="delete">
+            @csrf
+            <input type="hidden" name="_method" value="DELETE">
+            <button type="button" id="delete-btn" class="btn btn-lg btn-block btn-danger" data-toggle="modal" data-target="#delete-modal">{{ __('messages.delete') }}</button>
+          </form>
+        </div>
+        @endif
       </div>
     </div>
   </div>
@@ -181,4 +191,29 @@
     </td>
   </tr>
 </table>
+<div class="modal fade" id="delete-modal" tabindex="-1" role="dialog" aria-labelledby="delete-modal-label" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header alert-danger">
+        <h5 class="modal-title" id="exampleModalLabel">{{ __('messages.delete') }}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {{ __('messages.project.del_confirm') }}
+        <div class="form-group">
+          <div class="form-label-group">
+            <input type="text" class="form-control" id="conform-delete" placeholder="{{ __('messages.project.no') }}">
+            <label for="conform-delete">{{ __('messages.project.no') }}</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('messages.close') }}</button>
+        <button type="button" id="delete-execute" class="btn btn-danger" disabled onclick="document.delete.submit();">{{ __('messages.delete') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
 @include('layouts.datepicker')

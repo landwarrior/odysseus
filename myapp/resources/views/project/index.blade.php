@@ -7,6 +7,11 @@
     {{ __('messages.registered') }}
   </div>
   @endif
+  @if(session('deleted'))
+  <div class="flash-msg alert alert-danger fade show" role="alert">
+    {{ __('messages.deleted') }}
+  </div>
+  @endif
   <div class="row">
     <div class="col-12">
       <div class="card">

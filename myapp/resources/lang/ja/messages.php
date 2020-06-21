@@ -21,6 +21,8 @@ return [
         'manperday' => '人日',
         'precost' => '予算',
         'total_cost' => '予算計',
+        'title' => 'プロジェクト',
+        'del_confirm' => '削除するプロジェクトNoを入力してください',
     ],
     'create' => '新規作成',
     'register' => '登録',
@@ -28,5 +30,8 @@ return [
     'delete' => '削除',
     'not_admin' => '管理者権限がありません',
     'registered' => '登録しました',
+    'deleted' => '削除しました',
     'add_row' => '行追加',
+    'danger_zone' => '危険領域',
+    'close' => '閉じる',
 ];

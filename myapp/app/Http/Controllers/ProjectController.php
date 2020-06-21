@@ -121,4 +121,13 @@ class ProjectController extends Controller
 
         return redirect('/project')->with('registered', '1');
     }
+
+    public function delete(Request $request, $project_no)
+    {
+        DB::transaction(function () use ($project_no) {
+            TrnProjectDetail::where('project_no', $project_no)->delete();
+            TrnProject::find($project_no)->delete();
+        });
+        return redirect('/project')->with('deleted', '1');
+    }
 }

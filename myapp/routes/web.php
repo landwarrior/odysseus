@@ -21,3 +21,4 @@ Route::get('/project/create', 'ProjectController@create');
 Route::post('/project', 'ProjectController@store');
 Route::get('/project/{project_no}', 'ProjectController@edit');
 Route::put('/project/{project_no}', 'ProjectController@update');
+Route::delete('/project/{project_no}', 'ProjectController@delete');
