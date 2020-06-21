@@ -76,19 +76,17 @@ class HrController extends Controller
         return redirect('/project')->with('registered', '1');
     }
 
-    public function edit($project_no)
+    public function edit($hr_cd)
     {
         $user = Auth::user();
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
 
-        $project = TrnProject::findOrFail($project_no);
-        $processes = MstProcess::all();
-        $projectDetails = TrnProjectDetail::where('project_no', $project_no)->get();
+        $human = MstHr::findOrFail($hr_cd);
         return view(
-            'project.edit',
-            ['project' => $project, 'processes' => $processes, 'details' => $projectDetails]
+            'hr.edit',
+            ['human' => $human]
         );
     }
 

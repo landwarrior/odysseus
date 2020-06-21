@@ -1,7 +1,7 @@
 <div class="container">
   <div class="row">
     <div class="col-md-12">
-      @include('project.message')
+      @include('message')
       <div class="card">
         <div class="card-header">{{ __('messages.project.create') }}</div>
         <div class="card-body">
