@@ -2,11 +2,14 @@
 
 return [
     'hr' => [
+        'list' => 'ユーザー一覧',
         'hr_cd' => 'ユーザーコード',
         'user_name' => 'ユーザー名',
+        'is_admin' => '管理権限',
         'password' => 'パスワード',
         'name_kana' => 'ユーザー名（カナ）',
         'remarks' => '備考',
+        'bp_name' => '協力会社名',
     ],
     'project' => [
         'list' => 'プロジェクト一覧',

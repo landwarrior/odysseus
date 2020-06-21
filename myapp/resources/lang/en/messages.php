@@ -2,8 +2,10 @@
 
 return [
     'hr' => [
+        'list' => 'List of Users',
         'hr_cd' => 'User Code',
         'user_name' => 'User Name',
+        'is_admin' => 'Auth',
         'password' => 'Password',
         'name_kana' => 'User Kana',
         'remarks' => 'remarks',
