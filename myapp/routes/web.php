@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 */
 Auth::routes();
 
+Route::get('/password', 'Auth\ResetPasswordController@reset');
+Route::put('/password/{hr_cd}', 'Auth\ResetPasswordController@done');
+
 Route::get('/', 'HomeController@index')->name('home');
 
 Route::get('/project', 'ProjectController@index');
