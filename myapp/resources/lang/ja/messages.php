@@ -11,6 +11,8 @@ return [
         'remarks' => '備考',
         'bp_name' => '協力会社名',
         'create' => 'ユーザー作成',
+        'title' => 'ユーザー',
+        'del_confirm' => '削除するユーザーコードを入力してください',
     ],
     'project' => [
         'list' => 'プロジェクト一覧',

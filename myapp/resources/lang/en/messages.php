@@ -11,6 +11,8 @@ return [
         'remarks' => 'remarks',
         'bp_name' => 'Partner Name',
         'create' => 'Create',
+        'title' => 'User',
+        'del_confirm' => 'Enter User Code to delete.',
     ],
     'project' => [
         'list' => 'List of Projects',

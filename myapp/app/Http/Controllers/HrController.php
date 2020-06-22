@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\MstHr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use App\Http\Requests\HrRequest;
 
 class HrController extends Controller
 {
@@ -36,44 +38,31 @@ class HrController extends Controller
             return redirect(route('home'))->with('not_admin', '1');
         }
 
-        $project = new TrnProject();
-        $processes = MstProcess::all();
-        $projectDetail = new TrnProjectDetail();
+        $human = new MstHr();
         return view(
-            'project.create',
-            ['project' => $project, 'processes' => $processes, 'details' => [$projectDetail]]
+            'hr.create',
+            ['human' => $human]
         );
     }
 
-    public function store(ProjectRequest $request)
+    public function store(HrRequest $request)
     {
         $user = Auth::user();
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
         DB::transaction(function () use ($request) {
-            $project = new TrnProject();
-            $project->project_no = $request->project_no;
-            $project->name = $request->project_name;
-            $project->order_amount = (int)$request->order_amount;
-            $project->from_date = $request->from_date;
-            $project->to_date = $request->to_date;
-            $project->save();
-            if ($request->details) {
-                foreach ($request->details as $detail) {
-                    $projectDetail = new TrnProjectDetail();
-                    $projectDetail->project_no = $request['project_no'];
-                    $projectDetail->process_id = $detail['process_id'];
-                    $projectDetail->from_date = $detail['from_date'];
-                    $projectDetail->to_date = $detail['to_date'];
-                    $projectDetail->man_per_day = $detail['man_per_day'];
-                    $projectDetail->pre_cost = $detail['pre_cost'];
-                    $projectDetail->save();
-                }
-            }
+            $human = new MstHr();
+            $human->hr_cd = $request->hr_cd;
+            $human->user_name = $request->user_name;
+            $human->name_kana = $request->name_kana;
+            $human->password = Hash::make('12345678');
+            $humna->is_admin = $request->is_admin;
+            $human->remarks = $request->remarks;
+            $human->save();
         });
 
-        return redirect('/project')->with('registered', '1');
+        return redirect('/hr')->with('registered', '1');
     }
 
     public function edit($hr_cd)
@@ -90,39 +79,25 @@ class HrController extends Controller
         );
     }
 
-    public function update(ProjectRequest $request, $project_no)
+    public function update(HrRequest $request, $hr_cd)
     {
-        DB::transaction(function () use ($request, $project_no) {
-            $project = TrnProject::findOrFail($project_no);
-            $project->name = $request->project_name;
-            $project->order_amount = $request->order_amount;
-            $project->from_date = $request->from_date;
-            $project->to_date = $request->to_date;
-            $project->save();
-            $projectDetails = TrnProjectDetail::where('project_no', $project_no)->delete();
-            if ($request->details) {
-                foreach ($request->details as $detail) {
-                    $projectDetail = new TrnProjectDetail();
-                    $projectDetail->project_no = $project_no;
-                    $projectDetail->process_id = $detail['process_id'];
-                    $projectDetail->from_date = $detail['from_date'];
-                    $projectDetail->to_date = $detail['to_date'];
-                    $projectDetail->man_per_day = (int)$detail['man_per_day'];
-                    $projectDetail->pre_cost = (int)$detail['pre_cost'];
-                    $projectDetail->save();
-                }
-            }
+        DB::transaction(function () use ($request, $hr_cd) {
+            $human = MstHr::findOrFail($hr_cd);
+            $human->user_name = $request->user_name;
+            $human->name_kana = $request->name_kana;
+            $human->is_admin = $request->is_admin;
+            $human->remarks = $request->remarks;
+            $human->save();
         });
 
-        return redirect('/project')->with('registered', '1');
+        return redirect('/hr')->with('registered', '1');
     }
 
-    public function delete(Request $request, $project_no)
+    public function delete(Request $request, $hr_cd)
     {
-        DB::transaction(function () use ($project_no) {
-            TrnProjectDetail::where('project_no', $project_no)->delete();
-            TrnProject::find($project_no)->delete();
+        DB::transaction(function () use ($hr_cd) {
+            MstHr::find($hr_cd)->delete();
         });
-        return redirect('/project')->with('deleted', '1');
+        return redirect('/hr')->with('deleted', '1');
     }
 }

@@ -53,6 +53,11 @@
               </div>
             </div>
             <div class="row">
+              <div class="col-12" style="padding-bottom: 20px">
+                <textarea class="form-control" name="remarks" placeholder="{{ __('messages.hr.remarks') }}">{{ old('remarks', $human->remarks) }}</textarea>
+              </div>
+            </div>
+            <div class="row">
               <div class="col-6">
                 <button type="submit" class="btn btn-lg btn-outline-primary">{{ __('messages.register') }}</button>
               </div>
@@ -101,4 +106,4 @@
     </div>
   </div>
 </div>
-@include('layouts.datepicker')
+<script src="{{ asset('js/hr.js') }}" defer></script>

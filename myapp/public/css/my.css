@@ -37,6 +37,10 @@ th, td {
   vertical-align: middle !important;
 }
 
+textarea {
+  font-size: 16px !important;
+}
+
 /* ここから下はフローティングラベル用 */
 :root {
   --input-padding-x: 1.125rem;
