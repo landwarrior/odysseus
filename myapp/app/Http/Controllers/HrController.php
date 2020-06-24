@@ -57,7 +57,7 @@ class HrController extends Controller
             $human->user_name = $request->user_name;
             $human->name_kana = $request->name_kana;
             $human->password = Hash::make('12345678');
-            $humna->is_admin = $request->is_admin;
+            $human->is_admin = $request->is_admin;
             $human->remarks = $request->remarks;
             $human->save();
         });

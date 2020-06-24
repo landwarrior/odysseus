@@ -27,7 +27,8 @@ class HrRequest extends FormRequest
             'hr_cd' => 'unique:mst_hr|max:16',
             'user_name' => 'required|string|max:128',
             'name_kana' => 'string|max:128',
-            'remarks' => 'string|max:256',
+            'is_admin' => 'required|integer',
+            'remarks' => 'max:256',
         ];
     }
 }
