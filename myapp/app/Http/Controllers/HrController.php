@@ -42,9 +42,10 @@ class HrController extends Controller
 
         $human = new MstHr();
         $roles = MstRole::all();
+        $hrPrices = new MstHrUnitPrice();
         return view(
             'hr.create',
-            ['human' => $human, 'roles' => $roles]
+            ['human' => $human, 'roles' => $roles, 'prices' => [$hrPrices]]
         );
     }
 
@@ -63,6 +64,17 @@ class HrController extends Controller
             $human->is_admin = $request->is_admin;
             $human->remarks = $request->remarks;
             $human->save();
+            MstHrUnitPrice::where('hr_cd', $request->hr_cd)->delete();
+            if ($request->prices) {
+                foreach ($request->prices as $price) {
+                    $hrPrice = new MstHrUnitPrice();
+                    $hrPrice->hr_cd = $request->hr_cd;
+                    $hrPrice->role_id = $price['role_id'];
+                    $hrPrice->price = $price['price'];
+                    $hrPrice->from_date = $price['from_date'];
+                    $hrPrice->save();
+                }
+            }
         });
 
         return redirect('/hr')->with('registered', '1');
@@ -93,6 +105,17 @@ class HrController extends Controller
             $human->is_admin = $request->is_admin;
             $human->remarks = $request->remarks;
             $human->save();
+            MstHrUnitPrice::where('hr_cd', $hr_cd)->delete();
+            if ($request->prices) {
+                foreach ($request->prices as $price) {
+                    $hrPrice = new MstHrUnitPrice();
+                    $hrPrice->hr_cd = $hr_cd;
+                    $hrPrice->role_id = $price['role_id'];
+                    $hrPrice->price = $price['price'];
+                    $hrPrice->from_date = $price['from_date'];
+                    $hrPrice->save();
+                }
+            }
         });
 
         return redirect('/hr')->with('registered', '1');
@@ -101,6 +124,7 @@ class HrController extends Controller
     public function delete(Request $request, $hr_cd)
     {
         DB::transaction(function () use ($hr_cd) {
+            MstHrUnitPrice::where('hr_cd', $hr_cd)->delete();
             MstHr::find($hr_cd)->delete();
         });
         return redirect('/hr')->with('deleted', '1');

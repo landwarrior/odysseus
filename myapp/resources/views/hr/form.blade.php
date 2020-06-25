@@ -60,7 +60,7 @@
 
             <div class="row">
               <div class="col-12">
-                <table id="table-details" class="table">
+                <table id="hr-prices" class="table">
                   <thead>
                     <tr class="text-center">
                       <th scope="col" style="width:150px">{{ __('messages.hr.role') }}</th>
@@ -73,7 +73,7 @@
                     @foreach(old('prices', $prices) as $price)
                     <tr>
                       <td class="form-group">
-                        <select class="form-control" name="prices[{{ $loop->index }}][role_id]">
+                        <select class="form-control @error('prices.'.$loop->index.'.role_id') is-invalid @enderror" name="prices[{{ $loop->index }}][role_id]">
                           @for($i = 0; $i < count($roles); $i++)
                           <option value="{{ $roles[$i]->role_id }}"
                                   @if ($roles[$i]->role_id == old('prices.'.$loop->index.'.role_id', !empty($price->role_id) ? $price->role_id : 0)) selected @endif>{{ $roles[$i]->name }}</option>
@@ -188,5 +188,4 @@
     </div>
   </div>
 </div>
-<script src="{{ asset('js/hr.js') }}" defer></script>
-@include('layouts.datepicker')
+@include('hr.datepicker')

@@ -157,6 +157,9 @@ return [
         'details.*.to_date' => '終了日',
         'details.*.man_per_day' => '人日',
         'details.*.pre_cost' => '予算',
+        'prices.*.role_id' => '役割',
+        'prices.*.price' => '時間単価',
+        'prices.*.from_date' => '適用開始日',
     ],
 
 ];

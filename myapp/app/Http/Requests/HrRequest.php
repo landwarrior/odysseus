@@ -29,6 +29,9 @@ class HrRequest extends FormRequest
             'name_kana' => 'string|max:128',
             'is_admin' => 'required|integer',
             'remarks' => 'max:256',
+            'prices.*.role_id' => 'required',
+            'prices.*.price' => 'required|integer|max:2000000000|min:0',
+            'prices.*.from_date' => 'required|date',
         ];
     }
 }
