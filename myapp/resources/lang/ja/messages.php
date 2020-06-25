@@ -12,6 +12,9 @@ return [
         'bp_name' => '協力会社名',
         'create' => 'ユーザー作成',
         'title' => 'ユーザー',
+        'role' => '役割',
+        'price' => '単価',
+        'from' => '適用開始日',
         'del_confirm' => '削除するユーザーコードを入力してください',
     ],
     'project' => [

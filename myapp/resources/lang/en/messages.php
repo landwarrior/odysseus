@@ -12,6 +12,9 @@ return [
         'bp_name' => 'Partner Name',
         'create' => 'Create',
         'title' => 'User',
+        'role' => 'Role',
+        'price' => 'Unit Price',
+        'from' => 'From Date',
         'del_confirm' => 'Enter User Code to delete.',
     ],
     'project' => [

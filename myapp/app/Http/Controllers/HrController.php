@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\MstHr;
+use App\MstRole;
+use App\MstHrUnitPrice;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -39,9 +41,10 @@ class HrController extends Controller
         }
 
         $human = new MstHr();
+        $roles = MstRole::all();
         return view(
             'hr.create',
-            ['human' => $human]
+            ['human' => $human, 'roles' => $roles]
         );
     }
 
@@ -73,9 +76,11 @@ class HrController extends Controller
         }
 
         $human = MstHr::findOrFail($hr_cd);
+        $roles = MstRole::all();
+        $prices = MstHrUnitPrice::where('hr_cd', $hr_cd)->get();
         return view(
             'hr.edit',
-            ['human' => $human]
+            ['human' => $human, 'roles' => $roles, 'prices' => $prices]
         );
     }
 
