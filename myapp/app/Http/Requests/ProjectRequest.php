@@ -29,7 +29,7 @@ class ProjectRequest extends FormRequest
             'order_amount' => 'integer|max:2000000000|min:0',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date',
-            'details.*.process_id' => 'required|integer',
+            'details.*.process_id' => 'required|integer|distinct',
             'details.*.from_date' => 'nullable|date',
             'details.*.to_date' => 'nullable|date',
             'details.*.man_per_day' => 'nullable|integer|max:2000000000|min:1',
@@ -42,7 +42,7 @@ class ProjectRequest extends FormRequest
         $this->merge([
             'order_amount' => preg_replace('/[￥ ,]/', '', $this->order_amount),
         ]);
-        // これは正しく動かないようだ...
+        // これは正しく動かないようなので、今は hidden を使っている
         for ($i = 0; $i < count($this->details); $i++ ) {
             $this->merge([
                 'details.'.$i.'.pre_cost' => preg_replace('/[￥ ,]/', '', $this->details[$i]['pre_cost']),

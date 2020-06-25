@@ -80,7 +80,7 @@
                     @foreach(old('details', $details) as $detail)
                     <tr>
                       <td class="form-group">
-                        <select class="form-control" name="details[{{ $loop->index }}][process_id]">
+                        <select class="form-control @error('details.'.$loop->index.'.process_id') is-invalid @enderror" name="details[{{ $loop->index }}][process_id]">
                           @for($i = 0; $i < count($processes); $i++)
                           <option value="{{ $processes[$i]->process_id }}"
                                   @if ($processes[$i]->process_id == old('details.'.$loop->index.'.process_id', !empty($detail->process_id) ? $detail->process_id : 0)) selected @endif>{{ $processes[$i]->name }}</option>
