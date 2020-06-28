@@ -33,6 +33,10 @@ return [
         'title' => 'Project',
         'del_confirm' => 'Enter project No to delete.',
     ],
+    'projecthr' => [
+        'create' => 'Assignment Resources',
+        'resource' => 'Resources',
+    ],
     'create' => 'New',
     'register' => 'Register',
     'back' => 'Back',

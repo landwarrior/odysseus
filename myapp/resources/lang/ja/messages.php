@@ -33,6 +33,10 @@ return [
         'title' => 'プロジェクト',
         'del_confirm' => '削除するプロジェクトNoを入力してください',
     ],
+    'projecthr' => [
+        'create' => '人材割り当て',
+        'resource' => '人材',
+    ],
     'create' => '新規作成',
     'register' => '登録',
     'back' => '戻る',

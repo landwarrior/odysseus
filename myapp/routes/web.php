@@ -32,3 +32,5 @@ Route::post('/hr', 'HrController@store');
 Route::get('/hr/{hr_cd}', 'HrController@edit');
 Route::put('/hr/{hr_cd}', 'HrController@update');
 Route::delete('/hr/{hr_cd}', 'HrController@delete');
+
+Route::get('/projecthr/{project_no}', 'ProjectHrController@edit');
