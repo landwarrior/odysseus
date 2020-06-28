@@ -99,3 +99,13 @@ CREATE TABLE `trn_project_detail_hr` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`project_no`,`process_id`,`hr_cd`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE `trn_hr_result` (
+  `project_no` varchar(32) COLLATE utf8mb4_bin NOT NULL,
+  `process_id` int(11) NOT NULL,
+  `hr_cd` varchar(16) COLLATE utf8mb4_bin NOT NULL,
+  `target_date` date NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`project_no`,`process_id`,`hr_cd`,`target_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
