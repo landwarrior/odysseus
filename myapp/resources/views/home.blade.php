@@ -16,14 +16,21 @@
         <div class="card-header">Dashboard</div>
         <div class="card-body">
           @if (session('status'))
-            <div class="alert alert-success" role="alert">
-              {{ session('status') }}
+          <div class="alert alert-success" role="alert">
+            {{ session('status') }}
+          </div>
+          @endif
+          <div class="container">
+            <div class="row justify-content-center links text-center">
+              <div class="col-md-3">
+                <a href="/result">{{ __('messages.result.index') }}</a>
+              </div>
             </div>
-          @endif
-          @if ($is_admin)
-            @include('admin')
-          @endif
+          </div>
         </div>
+        @if ($is_admin)
+        @include('admin')
+        @endif
       </div>
     </div>
   </div>

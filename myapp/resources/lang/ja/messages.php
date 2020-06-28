@@ -38,6 +38,10 @@ return [
         'create' => '人材割り当て',
         'resource' => '人材',
     ],
+    'result' => [
+        'index' => '実績登録',
+    ],
+    'admin' => '管理者機能',
     'create' => '新規作成',
     'register' => '登録',
     'back' => '戻る',

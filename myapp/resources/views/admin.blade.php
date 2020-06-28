@@ -1,4 +1,5 @@
-<div class="container">
+<div class="card-header">{{ __('messages.admin') }}</div>
+<div class="card-body">
   <!-- <div class="alert alert-danger" role="alert">
     進捗の芳しくないプロジェクトがあります！
   </div> -->

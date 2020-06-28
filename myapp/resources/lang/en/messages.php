@@ -16,7 +16,6 @@ return [
         'price' => 'Unit Price',
         'from' => 'From Date',
         'del_confirm' => 'Enter User Code to delete.',
-        'assign' => 'Assign',
     ],
     'project' => [
         'list' => 'List of Projects',
@@ -33,11 +32,16 @@ return [
         'total_cost' => 'Budget Total',
         'title' => 'Project',
         'del_confirm' => 'Enter project No to delete.',
+        'assign' => 'Assign',
     ],
     'projecthr' => [
         'create' => 'Assignment Resources',
         'resource' => 'Resources',
     ],
+    'result' => [
+        'index' => '実績登録',
+    ],
+    'admin' => 'For Admin',
     'create' => 'New',
     'register' => 'Register',
     'back' => 'Back',
