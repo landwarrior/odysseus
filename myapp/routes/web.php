@@ -34,3 +34,4 @@ Route::put('/hr/{hr_cd}', 'HrController@update');
 Route::delete('/hr/{hr_cd}', 'HrController@delete');
 
 Route::get('/projecthr/{project_no}', 'ProjectHrController@edit');
+Route::put('/projecthr/{project_no}', 'ProjectHrController@update');

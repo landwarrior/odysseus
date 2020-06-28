@@ -54,19 +54,22 @@
             </div>
             <div class="row">
               <div class="col-12">
-                <table id="project-details" class="table">
+                <table class="table">
                   <thead>
                     <tr class="text-center">
                       <th scope="col">{{ __('messages.project.process') }}</th>
                       <th scope="col">{{ __('messages.project.manperday') }}</th>
                       <th scope="col">{{ __('messages.project.precost') }}</th>
-                      <th scope="col" style="width: 40%">{{ __('messages.projecthr.resource') }}</th>
+                      @foreach($roles as $role)
+                      <th scope="col">{{ $role->name }}</th>
+                      @endforeach
                     </tr>
                   </thead>
                   <tbody>
                     @foreach($details as $detail)
                     <tr>
                       <td class="form-group">
+                        <input type="hidden" name="selects[{{ $loop->index }}][process_id]" value="{{ $detail['process_id'] }}">
                         <span>{{ $detail['process_name'] }}</span>
                       </td>
                       <td class="text-right">
@@ -75,13 +78,19 @@
                       <td class="text-right">
                         <span>￥ {{ number_format($detail['pre_cost']) }}</span>
                       </td>
+                      @for($i = 0; $i < count($roles); $i++)
                       <td>
-                        <select class="selectpicker form-control" multiple>
+                        <select class="selectpicker form-control" name="selects[{{ $loop->index }}][{{ $roles[$i]->name }}][hrs][]" multiple>
                           @foreach ($hrs as $hr)
-                          <option value="{{ $hr->hr_cd }}">{{ $hr->user_name }}</option>
+                          <option value="{{ $hr->hr_cd }}"
+                            @if(isset($detail['selected'][$hr->hr_cd])
+                            && $roles[$i]->role_id == $detail['selected'][$hr->hr_cd])
+                            selected
+                            @endif >{{ $hr->user_name }}</option>
                           @endforeach
                         </select>
                       </td>
+                      @endfor
                     </tr>
                     @endforeach
                   </tbody>
