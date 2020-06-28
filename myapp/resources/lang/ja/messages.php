@@ -32,6 +32,7 @@ return [
         'total_cost' => '予算計',
         'title' => 'プロジェクト',
         'del_confirm' => '削除するプロジェクトNoを入力してください',
+        'assign' => '人材割当',
     ],
     'projecthr' => [
         'create' => '人材割り当て',

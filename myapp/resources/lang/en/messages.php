@@ -16,6 +16,7 @@ return [
         'price' => 'Unit Price',
         'from' => 'From Date',
         'del_confirm' => 'Enter User Code to delete.',
+        'assign' => 'Assign',
     ],
     'project' => [
         'list' => 'List of Projects',
