@@ -98,6 +98,11 @@ class HrController extends Controller
 
     public function update(HrRequest $request, $hr_cd)
     {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+
         DB::transaction(function () use ($request, $hr_cd) {
             $human = MstHr::findOrFail($hr_cd);
             $human->user_name = $request->user_name;
@@ -123,6 +128,11 @@ class HrController extends Controller
 
     public function delete(Request $request, $hr_cd)
     {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+
         DB::transaction(function () use ($hr_cd) {
             MstHrUnitPrice::where('hr_cd', $hr_cd)->delete();
             MstHr::find($hr_cd)->delete();

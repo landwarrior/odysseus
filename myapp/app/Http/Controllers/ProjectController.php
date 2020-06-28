@@ -97,6 +97,11 @@ class ProjectController extends Controller
 
     public function update(ProjectRequest $request, $project_no)
     {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+
         DB::transaction(function () use ($request, $project_no) {
             $project = TrnProject::findOrFail($project_no);
             $project->name = $request->project_name;
@@ -124,6 +129,11 @@ class ProjectController extends Controller
 
     public function delete(Request $request, $project_no)
     {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect(route('home'))->with('not_admin', '1');
+        }
+
         DB::transaction(function () use ($project_no) {
             TrnProjectDetail::where('project_no', $project_no)->delete();
             TrnProject::find($project_no)->delete();
