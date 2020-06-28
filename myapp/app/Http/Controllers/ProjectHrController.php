@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\MstHr;
 use App\MstProcess;
 use App\MstRole;
+use App\MstHrUnitPrice;
 use App\TrnProject;
 use App\TrnProjectDetail;
 use App\TrnProjectDetailHr;
@@ -31,6 +32,7 @@ class ProjectHrController extends Controller
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
+        $project = TrnProject::findOrFail($project_no);
         $processes = MstProcess::all();
         $roles = MstRole::all();
         $projectDetail = TrnProjectDetail::where('project_no', $project_no)->get();
@@ -60,8 +62,12 @@ class ProjectHrController extends Controller
                 ]
             );
         }
-        $hrs = MstHr::all();
-        $project = TrnProject::findOrFail($project_no);
+        $hrPrices = MstHrUnitPrice::where('from_date', '<=', $project->from_date)->get();
+        $in = [];
+        foreach ($hrPrices as $hr) {
+            $in[] = $hr->hr_cd;
+        }
+        $hrs = MstHr::whereIn('hr_cd', $in)->get();
         return view(
             'projecthr.edit',
             ['project' => $project, 'details' => $pd, 'hrs' => $hrs, 'roles' => $roles]
