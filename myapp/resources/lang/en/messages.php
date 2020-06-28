@@ -2,7 +2,7 @@
 
 return [
     'hr' => [
-        'list' => 'List of Users',
+        'list' => 'User Management',
         'hr_cd' => 'User Code',
         'user_name' => 'User Name',
         'is_admin' => 'Auth',
