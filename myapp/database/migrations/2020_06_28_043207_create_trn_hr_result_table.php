@@ -18,6 +18,7 @@ class CreateTrnHrResultTable extends Migration
             $table->integer('process_id');
             $table->string('hr_cd', 16);
             $table->date('target_date');
+            $table->integer('result_hour');
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('updated_at')->useCurrent();
 

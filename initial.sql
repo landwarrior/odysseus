@@ -105,6 +105,7 @@ CREATE TABLE `trn_hr_result` (
   `process_id` int(11) NOT NULL,
   `hr_cd` varchar(16) COLLATE utf8mb4_bin NOT NULL,
   `target_date` date NOT NULL,
+  `result_hour` int(11) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`project_no`,`process_id`,`hr_cd`,`target_date`)
