@@ -2,6 +2,8 @@ sumPreCost();
 $('.datepicker').datepicker({
     format: 'yyyy/mm/dd',
     language: 'ja',
+    todayBtn: 'linked',
+    todayHighlight: true,
 });
 $('#hr-prices').on('click', '.row-delete', function() {
   $(this).parent().parent().remove();
@@ -11,6 +13,8 @@ $('#hr-prices').on('click', '.row-delete', function() {
 $('.datepicker').datepicker({
     format: 'yyyy/mm/dd',
     language: 'ja',
+    todayBtn: 'linked',
+    todayHighlight: true,
 });
 $('#hr-prices').on('blur', '.price', function() {
   let price = $(this).val().replace(/[^0-9-.]/g, '');
@@ -32,6 +36,8 @@ function addRow() {
   $('.datepicker').datepicker({
       format: 'yyyy/mm/dd',
       language: 'ja',
+      todayBtn: 'linked',
+      todayHighlight: true,
   });
 }
 function sumPreCost() {

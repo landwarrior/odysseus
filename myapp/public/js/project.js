@@ -2,6 +2,8 @@ sumPreCost();
 $('.datepicker').datepicker({
     format: 'yyyy/mm/dd',
     language: 'ja',
+    todayBtn: 'linked',
+    todayHighlight: true,
 });
 $('#project-details').on('click', '.row-delete', function() {
   $(this).parent().parent().remove();
@@ -30,6 +32,8 @@ function addRow() {
   $('.datepicker').datepicker({
       format: 'yyyy/mm/dd',
       language: 'ja',
+      todayBtn: 'linked',
+      todayHighlight: true,
   });
 }
 function sumPreCost() {
