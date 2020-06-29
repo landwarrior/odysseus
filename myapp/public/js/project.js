@@ -8,10 +8,6 @@ $('#project-details').on('click', '.row-delete', function() {
   updateName();
   sumPreCost();
 });
-$('.datepicker').datepicker({
-    format: 'yyyy/mm/dd',
-    language: 'ja',
-});
 $('#project-details').on('blur', '.pre_cost', function() {
   let pre_cost = $(this).val().replace(/[^0-9-.]/g, '');
   $(this).parent().find('input[type=hidden].pre_cost').val(pre_cost);
