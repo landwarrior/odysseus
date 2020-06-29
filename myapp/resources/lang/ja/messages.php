@@ -40,6 +40,10 @@ return [
     ],
     'result' => [
         'index' => '実績登録',
+        'last' => '先月',
+        'next' => '翌月',
+        'target_date' => '登録日付',
+        'hour' => '時間',
     ],
     'admin' => '管理者機能',
     'create' => '新規作成',

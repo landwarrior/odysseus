@@ -37,3 +37,5 @@ Route::get('/projecthr/{project_no}', 'ProjectHrController@edit');
 Route::put('/projecthr/{project_no}', 'ProjectHrController@update');
 
 Route::get('/result', 'ResultController@index');
+Route::get('/result/{project_no}', 'ResultController@edit');
+Route::put('/result/{project_no}', 'ResultController@update');

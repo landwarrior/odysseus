@@ -39,7 +39,11 @@ return [
         'resource' => 'Resources',
     ],
     'result' => [
-        'index' => '実績登録',
+        'index' => 'Register Result',
+        'last' => 'Previous',
+        'next' => 'Next',
+        'target_date' => 'Target Date',
+        'hour' => 'Hour',
     ],
     'admin' => 'For Admin',
     'create' => 'New',

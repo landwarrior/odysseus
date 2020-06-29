@@ -12,4 +12,6 @@ class TrnHrResult extends Model
     protected $primaryKey = ['project_no', 'process_id', 'hr_cd', 'target_date'];
     /** IDが自動増分されるか */
     public $incrementing = false;
+    /** 日付データ */
+    protected $dates = ['target_date'];
 }
