@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\TrnProject;
 use App\MstProcess;
 use App\TrnProjectDetail;
+use App\TrnProjectDetailHr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\ProjectRequest;
@@ -137,6 +138,7 @@ class ProjectController extends Controller
         DB::transaction(function () use ($project_no) {
             TrnProjectDetail::where('project_no', $project_no)->delete();
             TrnProject::find($project_no)->delete();
+            TrnProjectDetailHr::where('project_no', $project_no)->delete();
         });
         return redirect('/project')->with('deleted', '1');
     }
