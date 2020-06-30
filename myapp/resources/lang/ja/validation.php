@@ -160,6 +160,7 @@ return [
         'prices.*.role_id' => '役割',
         'prices.*.price' => '時間単価',
         'prices.*.from_date' => '適用開始日',
+        'result.*' => '時間',
     ],
 
 ];

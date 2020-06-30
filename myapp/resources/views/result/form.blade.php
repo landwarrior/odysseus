@@ -37,10 +37,10 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><input type="text" name="target_date" class="datepicker form-control text-center" value=""></td>
+                  <td><input type="text" name="target_date" class="datepicker form-control text-center" value="{{ old('target_date') }}"></td>
                   @foreach($targets as $target)
                   <td>
-                    <input type="text" name="result[{{ $target->process_id }}]" class="form-control text-right" value="" placeholder="{{ __('messages.result.hour') }}">
+                    <input type="text" name="result[{{ $target->process_id }}]" class="form-control text-right @error('result.'.$target->process_id) is-invalid @enderror" value="{{ old('result.'.$target->process_id) }}" placeholder="{{ __('messages.result.hour') }}">
                   </td>
                   @endforeach
                 </tr>

@@ -157,6 +157,10 @@ return [
         'details.*.to_date' => 'To',
         'details.*.man_per_day' => 'Man / Day',
         'details.*.pre_cost' => 'Cost',
+        'prices.*.role_id' => 'Role',
+        'prices.*.price' => 'Unit Cost',
+        'prices.*.from_date' => 'From Date',
+        'result.*' => 'Hours',
     ],
 
 ];

@@ -9,6 +9,7 @@ use App\TrnProjectDetailHr;
 use App\TrnHrResult;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\ResultRequest;
 
 class ResultController extends Controller
 {
@@ -77,7 +78,7 @@ class ResultController extends Controller
         );
     }
 
-    public function update(Request $request, $project_no)
+    public function update(ResultRequest $request, $project_no)
     {
         $user = Auth::user();
         $processes = MstProcess::all();
