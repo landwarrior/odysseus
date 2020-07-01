@@ -25,6 +25,17 @@
               <div class="col-md-3">
                 <a href="/result">{{ __('messages.result.index') }}</a>
               </div>
+              @if ($is_admin)
+              <div class="col-md-3">
+                <a href="/project">{{ __('messages.project.list') }}</a>
+              </div>
+              <div class="col-md-3">
+                <a href="/hr">{{ __('messages.hr.list') }}</a>
+              </div>
+              {{-- <div class="col-md-3">
+                <a href="/actual">{{ __('messages.actual.check') }}</a>
+              </div> --}}
+              @endif
             </div>
           </div>
         </div>
