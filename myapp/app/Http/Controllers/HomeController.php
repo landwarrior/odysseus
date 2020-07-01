@@ -37,7 +37,6 @@ class HomeController extends Controller
                 'project_no' => $value->project_no,
                 'name' => $value->name,
                 'order_amount' => $value->order_amount,
-                'from_date' => str_replace('-', '/', $value->from_date),
                 'to_date' => str_replace('-', '/', $value->to_date),
                 'man_day' => $value->man_per_day_sum,
                 'result_day' => round($value->result_hour_sum/8*10)/10
