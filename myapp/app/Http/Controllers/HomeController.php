@@ -100,7 +100,7 @@ from
     and h.process_id = r.process_id
     and h.hr_cd = r.hr_cd
 where
-  r.project_no = {$project_no}
+  r.project_no = '{$project_no}'
 group by
   r.project_no
   , r.hr_cd
