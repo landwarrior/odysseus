@@ -18,7 +18,7 @@ return [
         'del_confirm' => 'Enter User Code to delete.',
     ],
     'project' => [
-        'list' => 'List of Projects',
+        'list' => 'Projects Management',
         'no' => 'Project No',
         'name' => 'Project Name',
         'order_amount' => 'Order Amount',
