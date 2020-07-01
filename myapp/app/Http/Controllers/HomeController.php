@@ -58,7 +58,6 @@ select
   p.project_no
   , p.name
   , ifnull(p.order_amount, 0) as order_amount
-  , p.from_date
   , p.to_date
   , ifnull(sum(d.man_per_day), 0) as man_per_day_sum
   , ifnull(sum(r.result_hour), 0) as result_hour_sum
@@ -74,10 +73,9 @@ group by
   p.project_no
   , p.name
   , p.order_amount
-  , p.from_date
   , p.to_date
 order by
-  p.from_date
+  p.to_date
 SQL;
         $results = DB::select($sql);
 

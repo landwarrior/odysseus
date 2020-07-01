@@ -124,6 +124,7 @@ class CreateTables extends Migration
             $table->integer('order_amount')->nullable();
             $table->date('from_date')->nullable();
             $table->date('to_date')->nullable();
+            $table->integer('is_finished')->default(0);
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('updated_at')->useCurrent();
 
