@@ -40,7 +40,9 @@ th, td {
 textarea {
   font-size: 16px !important;
 }
-
+.break {
+  word-break: break-all;
+}
 /* ここから下はフローティングラベル用 */
 :root {
   --input-padding-x: 1.125rem;

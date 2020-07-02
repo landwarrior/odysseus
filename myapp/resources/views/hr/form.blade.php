@@ -29,7 +29,7 @@
                 </div>
               </div>
               <div class="col-lg-auto">
-                <label for="is_admin" style="margin: 0">{{ __('messages.hr.is_admin') }}</label>
+                <div class="text-center" style="margin: 0">{{ __('messages.hr.is_admin') }}</div>
                 <input type="hidden" name="is_admin" value="0">
                 <input type="checkbox" class="form-control" id="is_admin" name="is_admin" value="1" style="margin: 0 auto" @if(old('is_admin', $human->is_admin)) checked @endif>
               </div>
