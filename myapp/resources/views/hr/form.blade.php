@@ -46,7 +46,7 @@
               <div class="col-lg-6">
                 <div class="form-group">
                   <div class="form-label-group">
-                    <input type="text" id="name_kana" class="form-control @error('from_date') is-invalid @enderror" name="name_kana" value="{{ old('name_kana', $human->name_kana) }}" placeholder="{{ __('messages.hr.name_kana') }}">
+                    <input type="text" id="name_kana" class="form-control @error('name_kana') is-invalid @enderror" name="name_kana" value="{{ old('name_kana', $human->name_kana) }}" placeholder="{{ __('messages.hr.name_kana') }}">
                     <label for="name_kana">{{ __('messages.hr.name_kana') }}</label>
                   </div>
                 </div>
