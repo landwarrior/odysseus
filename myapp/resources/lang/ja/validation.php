@@ -162,5 +162,9 @@ return [
         'prices.*.from_date' => '適用開始日',
         'result.*' => '時間',
     ],
+    'duplicates' => [
+        'role_id' => '役割が重複しています',
+        'p_f_d' => '適用開始日が重複しています',
+    ],
 
 ];

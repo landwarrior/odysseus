@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\MessageBag;
 use Illuminate\Http\Request;
 use App\MstHr;
 use App\MstRole;
@@ -55,6 +56,19 @@ class HrController extends Controller
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
         }
+        $duplicate_check_list = [];
+        $i = 0;
+        foreach ($request->prices as $price) {
+            $d = (string)$price['role_id'].(string)$price['from_date'];
+            if (in_array($d, $duplicate_check_list)) {
+                $msg = new MessageBag();
+                $msg->add("prices.{$i}.role_id", __('validation.duplicates.role_id'));
+                $msg->add("prices.{$i}.from_date", __('validation.duplicates.p_f_d'));
+                return redirect("/hr/create")->withErrors($msg)->withInput();
+            }
+            $duplicate_check_list[] = $d;
+            $i++;
+        }
         DB::transaction(function () use ($request) {
             $human = new MstHr();
             $human->hr_cd = $request->hr_cd;
@@ -101,6 +115,19 @@ class HrController extends Controller
         $user = Auth::user();
         if (!$user->is_admin) {
             return redirect(route('home'))->with('not_admin', '1');
+        }
+        $duplicate_check_list = [];
+        $i = 0;
+        foreach ($request->prices as $price) {
+            $d = (string)$price['role_id'].(string)$price['from_date'];
+            if (in_array($d, $duplicate_check_list)) {
+                $msg = new MessageBag();
+                $msg->add("prices.{$i}.role_id", __('validation.duplicates.role_id'));
+                $msg->add("prices.{$i}.from_date", __('validation.duplicates.p_f_d'));
+                return redirect("/hr/{$hr_cd}")->withErrors($msg)->withInput();
+            }
+            $duplicate_check_list[] = $d;
+            $i++;
         }
 
         DB::transaction(function () use ($request, $hr_cd) {

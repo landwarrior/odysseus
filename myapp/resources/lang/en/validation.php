@@ -162,5 +162,9 @@ return [
         'prices.*.from_date' => 'From Date',
         'result.*' => 'Hours',
     ],
+    'duplicates' => [
+        'role_id' => 'duplicate Role',
+        'p_f_d' => 'duplicate From',
+    ],
 
 ];
