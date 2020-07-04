@@ -59,7 +59,6 @@
                     <tr class="text-center">
                       <th scope="col">{{ __('messages.project.process') }}</th>
                       <th scope="col">{{ __('messages.project.manperday') }}</th>
-                      <th scope="col">{{ __('messages.project.precost') }}</th>
                       @foreach($roles as $role)
                       <th scope="col">{{ $role->name }}</th>
                       @endforeach
@@ -75,19 +74,15 @@
                       <td class="text-right">
                         <span>{{ $detail['man_per_day'] }}</span>
                       </td>
-                      <td class="text-right">
-                        <span>￥ {{ number_format($detail['pre_cost']) }}</span>
-                      </td>
                       @for($i = 0; $i < count($roles); $i++)
                       <td>
-                        <select class="selectpicker form-control" name="selects[{{ $loop->index }}][{{ $roles[$i]->name }}][hrs][]" multiple>
-                          @foreach ($hrs as $hr)
-                          <option value="{{ $hr->hr_cd }}"
-                            @if(isset($detail['selected'][$hr->hr_cd])
-                            && $roles[$i]->role_id == $detail['selected'][$hr->hr_cd])
+                        <select class="selectpicker form-control @error('selects.'.$loop->index.'.'.$roles[$i]->name.'.hrs') is-invalid @enderror" name="selects[{{ $loop->index }}][{{ $roles[$i]->name }}][hrs][]" multiple>
+                          @for ($a = 0; $a < count($hrs); $a++)
+                          <option value="{{ $hrs[$a]->hr_cd }}"
+                            @if(in_array($hrs[$a]->hr_cd, old('selects.'.$loop->index.'.'.$roles[$i]->name.'.hrs', $detail['selected'][$roles[$i]->name])))
                             selected
-                            @endif >{{ $hr->user_name }}</option>
-                          @endforeach
+                            @endif >{{ $hrs[$a]->user_name }}</option>
+                          @endfor
                         </select>
                       </td>
                       @endfor

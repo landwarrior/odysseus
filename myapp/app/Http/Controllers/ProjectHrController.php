@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\MessageBag;
 use Illuminate\Http\Request;
 use App\MstHr;
 use App\MstProcess;
@@ -41,23 +42,35 @@ class ProjectHrController extends Controller
         foreach ($projectDetail as $detail) {
             $process_name = '';
             $selected_hr = [];
+            // 工程名の取得
             foreach ($processes as $process) {
                 if ($process->process_id == $detail->process_id) {
                     $process_name = $process->name;
                     break;
                 }
             }
+            // 箱を用意
+            foreach ($roles as $role) {
+                $selected_hr[$role->name] = [];
+            }
+            // ユーザーコードの取得
             foreach ($projectDetailHrs as $selected) {
                 if ($selected->process_id == $detail->process_id) {
-                    $selected_hr[$selected->hr_cd] = $selected->role_id;
+                    $role_name = "";
+                    foreach ($roles as $role) {
+                        if ($role->role_id == $selected->role_id) {
+                            $role_name = $role->name;
+                        }
+                    }
+                    $selected_hr[$role_name][] = $selected->hr_cd;
                 }
             }
             array_push(
-                $pd, [
+                $pd,
+                [
                     'process_id' => $detail->process_id,
                     'process_name' => $process_name,
                     'man_per_day' => $detail->man_per_day,
-                    'pre_cost' => $detail->pre_cost,
                     'selected' => $selected_hr,
                 ]
             );
@@ -82,6 +95,29 @@ class ProjectHrController extends Controller
         }
 
         $roles = MstRole::all();
+        $msg = null;
+        $c = 0;
+        foreach ($request->selects as $select) {
+            $checklist = [];
+            for ($i = 0; $i < count($roles); $i++) {
+                if (isset($select[$roles[$i]->name]['hrs'])) {
+                    for ($a = 0; $a < count($select[$roles[$i]->name]['hrs']); $a++) {
+                        if (in_array($select[$roles[$i]->name]['hrs'][$a], $checklist)) {
+                            if ($msg == null) {
+                                $msg = new MessageBag();
+                            }
+                            $msg->add("selects.{$c}.{$roles[$i]->name}.hrs", "複数の役割を1工程の中で割り当てる事は出来ません");
+                        }
+                        $checklist[] = $select[$roles[$i]->name]['hrs'][$a];
+                    }
+                }
+            }
+            $c++;
+        }
+        if ($msg != null) {
+            return redirect("/projecthr/{$project_no}")->withErrors($msg)->withInput();
+        }
+
 
         DB::transaction(function () use ($request, $project_no, $roles) {
             TrnProjectDetailHr::where('project_no', $project_no)->delete();
