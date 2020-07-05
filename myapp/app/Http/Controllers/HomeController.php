@@ -60,13 +60,20 @@ select
   , ifnull(p.order_amount, 0) as order_amount
   , p.to_date
   , ifnull(sum(d.man_per_day), 0) as man_per_day_sum
-  , ifnull(sum(r.result_hour), 0) as result_hour_sum
+  , (
+    select distinct
+      sum(r.result_hour) as result_hour_sum
+    from
+      trn_hr_result r
+    where
+      r.project_no = p.project_no
+    group by
+      r.project_no
+  ) as result_hour_sum
 from
   trn_project p
-  inner join trn_project_detail d
-    on d.project_no = d.project_no
-  left outer join trn_hr_result r
-    on r.project_no = p.project_no
+  left outer join trn_project_detail d
+    on d.project_no = p.project_no
 where
   p.is_finished = 0
 group by
@@ -75,7 +82,7 @@ group by
   , p.order_amount
   , p.to_date
 order by
-  p.to_date
+  ifnull(p.to_date, '9999-12-31')
 SQL;
         $results = DB::select($sql);
 
