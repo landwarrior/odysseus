@@ -77,11 +77,11 @@
                       @for($i = 0; $i < count($roles); $i++)
                       <td>
                         <select class="selectpicker form-control @error('selects.'.$loop->index.'.'.$roles[$i]->name.'.hrs') is-invalid @enderror" name="selects[{{ $loop->index }}][{{ $roles[$i]->name }}][hrs][]" multiple>
-                          @for ($a = 0; $a < count($hrs); $a++)
-                          <option value="{{ $hrs[$a]->hr_cd }}"
-                            @if(in_array($hrs[$a]->hr_cd, old('selects.'.$loop->index.'.'.$roles[$i]->name.'.hrs', $detail['selected'][$roles[$i]->name])))
+                          @for ($a = 0; $a < count($hrs[$roles[$i]->name]); $a++)
+                          <option value="{{ $hrs[$roles[$i]->name][$a]['hr_cd'] }}"
+                            @if(in_array($hrs[$roles[$i]->name][$a]['hr_cd'], old('selects.'.$loop->index.'.'.$roles[$i]->name.'.hrs', $detail['selected'][$roles[$i]->name])))
                             selected
-                            @endif >{{ $hrs[$a]->user_name }}</option>
+                          @endif >{{ $hrs[$roles[$i]->name][$a]['user_name'] }}</option>
                           @endfor
                         </select>
                       </td>

@@ -76,11 +76,19 @@ class ProjectHrController extends Controller
             );
         }
         $hrPrices = MstHrUnitPrice::where('from_date', '<=', $project->from_date)->get();
-        $in = [];
-        foreach ($hrPrices as $hr) {
-            $in[] = $hr->hr_cd;
+        $hrs = [];
+        foreach ($roles as $role) {
+            if (!isset($hrs[$role->name])) {
+                $hrs[$role->name] = [];
+            }
+            $data = ProjectHrService::getEnableHrs($project->from_date->format('Y-m-d'), $role->role_id);
+            foreach ($data as $key=>$value) {
+                $hrs[$role->name][] = [
+                  'hr_cd'=>$value->hr_cd,
+                  'user_name'=>$value->user_name,
+                ];
+            }
         }
-        $hrs = MstHr::whereIn('hr_cd', $in)->get();
         return view(
             'projecthr.edit',
             ['project' => $project, 'details' => $pd, 'hrs' => $hrs, 'roles' => $roles]
@@ -138,5 +146,30 @@ class ProjectHrController extends Controller
         });
 
         return redirect('/project')->with('registered', '1');
+    }
+}
+
+class ProjectHrService
+{
+    public static function getEnableHrs($project_from, $role_id)
+    {
+        $sql = <<<SQL
+select
+  u.hr_cd
+  , h.user_name
+from
+  mst_hr_unit_price u
+  inner join mst_hr h
+    on h.hr_cd = u.hr_cd
+where
+  u.role_id = {$role_id}
+  and u.from_date <= '{$project_from}'
+group by
+  u.hr_cd
+  , h.user_name
+SQL;
+        $results = DB::select($sql);
+
+        return $results;
     }
 }
