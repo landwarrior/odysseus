@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\MessageBag;
 use Illuminate\Http\Request;
-use App\MstHr;
 use App\MstProcess;
 use App\MstRole;
-use App\MstHrUnitPrice;
 use App\TrnProject;
 use App\TrnProjectDetail;
 use App\TrnProjectDetailHr;
@@ -75,7 +73,6 @@ class ProjectHrController extends Controller
                 ]
             );
         }
-        $hrPrices = MstHrUnitPrice::where('from_date', '<=', $project->from_date)->get();
         $hrs = [];
         foreach ($roles as $role) {
             if (!isset($hrs[$role->name])) {
