@@ -53,6 +53,7 @@ return [
     'not_admin' => 'not authorized',
     'registered' => 'Registered!',
     'deleted' => 'Deleted!',
+    'no_regist' => 'No Data Registered',
     'add_row' => 'Add Row',
     'danger_zone' => 'Danger Zone',
     'close' => 'Close',

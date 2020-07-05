@@ -29,7 +29,7 @@
                 <div class="form-group">
                   <div class="form-label-group">
                     <input type="text" id="from_date" class="form-control text-center" name="from_date"
-                           value="{{ $project->from_date->format('Y/m/d') }}" disabled placeholder="{{ __('messages.project.from') }}">
+                           value="{{ $project->from_date ? $project->from_date->format('Y/m/d') : '' }}" disabled placeholder="{{ __('messages.project.from') }}">
                     <label for="from_date">{{ __('messages.project.from') }}</label>
                   </div>
                 </div>
@@ -38,7 +38,7 @@
                 <div class="form-group">
                   <div class="form-label-group">
                     <input type="text" id="to_date" class="form-control text-center" name="to_date"
-                           value="{{ $project->to_date->format('Y/m/d') }}" disabled placeholder="{{ __('messages.project.to') }}">
+                           value="{{ $project->to_date ? $project->to_date->format('Y/m/d') : '' }}" disabled placeholder="{{ __('messages.project.to') }}">
                     <label for="to_date">{{ __('messages.project.to') }}</label>
                   </div>
                 </div>
@@ -95,7 +95,7 @@
 
             <div class="row">
               <div class="col-6">
-                <button type="submit" class="btn btn-lg btn-outline-primary">{{ __('messages.register') }}</button>
+                <button type="submit" class="btn btn-lg btn-primary">{{ __('messages.register') }}</button>
               </div>
               <div class="col-6 text-right">
                 <a href="/project" class="btn btn-lg btn-outline-secondary">{{ __('messages.back') }}</a>

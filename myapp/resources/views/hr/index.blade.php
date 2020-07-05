@@ -41,7 +41,7 @@
           </table>
           <div class="row">
             <div class="col-6">
-              <a href="/hr/create" class="btn btn-outline-primary" role="button">{{ __('messages.create') }}</a>
+              <a href="/hr/create" class="btn btn-primary" role="button">{{ __('messages.create') }}</a>
             </div>
             <div class="col-6 text-right">
               <a href="/" class="btn btn-outline-secondary" role="button">{{ __('messages.back') }}</a>

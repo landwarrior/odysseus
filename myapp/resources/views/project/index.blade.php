@@ -12,6 +12,11 @@
     {{ __('messages.deleted') }}
   </div>
   @endif
+  @if(session('no_regist'))
+  <div class="flash-msg alert alert-info fade show" role="alert">
+    {{ __('messages.no_regist') }}
+  </div>
+  @endif
   <div class="row">
     <div class="col-12">
       <div class="card">
@@ -55,7 +60,7 @@
           </table>
           <div class="row">
             <div class="col-6">
-              <a href="/project/create" class="btn btn-outline-primary" role="button">{{ __('messages.create') }}</a>
+              <a href="/project/create" class="btn btn-primary" role="button">{{ __('messages.create') }}</a>
             </div>
             <div class="col-6 text-right">
               <a href="/" class="btn btn-outline-secondary" role="button">{{ __('messages.back') }}</a>

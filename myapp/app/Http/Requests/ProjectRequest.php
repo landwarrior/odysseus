@@ -43,10 +43,10 @@ class ProjectRequest extends FormRequest
             'order_amount' => preg_replace('/[￥ ,]/', '', $this->order_amount),
         ]);
         // これは正しく動かないようなので、今は hidden を使っている
-        for ($i = 0; $i < count($this->details); $i++ ) {
-            $this->merge([
-                'details.'.$i.'.pre_cost' => preg_replace('/[￥ ,]/', '', $this->details[$i]['pre_cost']),
-            ]);
-        }
+        // for ($i = 0; $i < count($this->details); $i++ ) {
+        //     $this->merge([
+        //         'details.'.$i.'.pre_cost' => preg_replace('/[￥ ,]/', '', $this->details[$i]['pre_cost']),
+        //     ]);
+        // }
     }
 }

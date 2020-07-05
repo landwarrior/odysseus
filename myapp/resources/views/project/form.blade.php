@@ -126,8 +126,8 @@
                       <th></th>
                     </tr>
                     <tr>
-                      <td colspan="6" class="text-right">
-                        <button type="button" class="btn btn-primary" onclick="addRow()">{{ __('messages.add_row') }}</button>
+                      <td colspan="6">
+                        <button type="button" class="btn btn-outline-primary" onclick="addRow()">{{ __('messages.add_row') }}</button>
                       </td>
                     </tr>
                   </tfoot>
@@ -137,7 +137,7 @@
 
             <div class="row">
               <div class="col-6">
-                <button type="submit" class="btn btn-lg btn-outline-primary">{{ __('messages.register') }}</button>
+                <button type="submit" class="btn btn-lg btn-primary">{{ __('messages.register') }}</button>
               </div>
               <div class="col-6 text-right">
                 <a href="/project" class="btn btn-lg btn-outline-secondary">{{ __('messages.back') }}</a>

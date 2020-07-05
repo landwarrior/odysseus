@@ -53,6 +53,7 @@ return [
     'not_admin' => '管理者権限がありません',
     'registered' => '登録しました',
     'deleted' => '削除しました',
+    'no_regist' => '登録するデータがありません',
     'add_row' => '行追加',
     'danger_zone' => '危険領域',
     'close' => '閉じる',

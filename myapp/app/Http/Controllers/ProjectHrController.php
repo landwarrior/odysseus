@@ -78,7 +78,11 @@ class ProjectHrController extends Controller
             if (!isset($hrs[$role->name])) {
                 $hrs[$role->name] = [];
             }
-            $data = ProjectHrService::getEnableHrs($project->from_date->format('Y-m-d'), $role->role_id);
+            $from = date('Y-m-d');
+            if (!empty($project->from_date)) {
+              $from = $project->from_date->format('Y-m-d');
+            }
+            $data = ProjectHrService::getEnableHrs($from, $role->role_id);
             foreach ($data as $key=>$value) {
                 $hrs[$role->name][] = [
                   'hr_cd'=>$value->hr_cd,
@@ -102,6 +106,9 @@ class ProjectHrController extends Controller
         $roles = MstRole::all();
         $msg = null;
         $c = 0;
+        if (empty($request->selects)) {
+          return redirect('/project')->with('no_regist', '1');
+        }
         foreach ($request->selects as $select) {
             $checklist = [];
             for ($i = 0; $i < count($roles); $i++) {
