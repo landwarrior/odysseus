@@ -30,13 +30,15 @@ class HomeController extends Controller
         $results = [];
         foreach ($data as $key => $value) {
             $persons = ProjectService::getPersonResult($value->project_no);
-            // foreach ($persons as $k => $val) {
-            //
-            // }
+            $sum_price = 0;
+            foreach ($persons as $k => $val) {
+              $sum_price += $val->result_hour * $val->price;
+            }
             $results[] = [
                 'project_no' => $value->project_no,
                 'name' => $value->name,
                 'order_amount' => $value->order_amount,
+                'sum_result' => $sum_price,
                 'to_date' => str_replace('-', '/', $value->to_date),
                 'man_day' => $value->man_per_day_sum,
                 'result_day' => round($value->result_hour_sum/8*10)/10
@@ -95,8 +97,21 @@ SQL;
 select
   r.project_no
   , r.hr_cd
-  , h.role_id
-  , sum(r.result_hour)
+  , r.target_date
+  , r.result_hour
+  , (
+    select
+      min(price)
+    from
+      mst_hr_unit_price
+    where
+      hr_cd = r.hr_cd
+      and role_id = h.role_id
+      and from_date <= r.target_date
+    group by
+      hr_cd
+      , role_id
+  ) as price
 from
   trn_hr_result r
   inner join trn_project_detail_hr h
@@ -104,11 +119,7 @@ from
     and h.process_id = r.process_id
     and h.hr_cd = r.hr_cd
 where
-  r.project_no = '{$project_no}'
-group by
-  r.project_no
-  , r.hr_cd
-  , h.role_id
+ r.project_no = '{$project_no}'
 SQL;
         $results = DB::select($sql);
 
