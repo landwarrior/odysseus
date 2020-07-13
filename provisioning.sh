@@ -33,7 +33,7 @@ if ! find / -name composer 2>/dev/null ; then
   mv composer.phar /usr/local/bin/composer
 fi
 
-if ! rpm -qa | grep nginx ; then
+if ! rpm -qa | grep nginx | grep -v filesystem ; then
     echo "  - install nginx"
     dnf install -y nginx
 fi
