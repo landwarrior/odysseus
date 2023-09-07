@@ -45,6 +45,9 @@ return [
         'target_date' => '登録日付',
         'hour' => '時間',
     ],
+    'actual' => [
+        'check' => '予実確認',
+    ],
     'admin' => '管理者機能',
     'create' => '新規作成',
     'register' => '登録',

@@ -45,6 +45,9 @@ return [
         'target_date' => 'Target Date',
         'hour' => 'Hour',
     ],
+    'actual' => [
+        'check' => 'Actual Check',
+    ],
     'admin' => 'For Admin',
     'create' => 'New',
     'register' => 'Register',
