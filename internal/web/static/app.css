@@ -159,7 +159,21 @@ section.danger { border-color: #e7c1c1; }
 .cost { margin: 0; align-self: end; }
 .assign-row { margin-bottom: 0.4rem; }
 
-main.process-page { width: min(100%, 1100px); }
+main.process-page {
+  width: min(100%, 1100px);
+  padding-left: 24px;
+  padding-right: 24px;
+  font-size: 16px;
+}
+main.process-page label { font-size: 16px; }
+main.process-page .card { padding: 16px 20px; }
+main.process-page label.check { gap: 8px; min-height: 44px; }
+main.process-page label.check input {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+}
 .process-add, .process-edit {
   display: flex;
   flex-wrap: nowrap;
@@ -208,8 +222,8 @@ input.process-name {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 0.75rem 1rem;
-  padding: 0.85rem 1rem;
+  gap: 12px 16px;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg);
@@ -217,15 +231,15 @@ input.process-name {
 .process-index {
   display: inline-grid;
   place-items: center;
-  min-width: 2rem;
-  height: 2rem;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   background: var(--ink);
   color: #f6f1e8;
   font-weight: 700;
 }
-.move-col { display: flex; flex-wrap: nowrap; gap: 0.35rem; align-items: center; flex: 0 0 auto; }
-.move-col button { min-width: 4.5rem; }
+.move-col { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; flex: 0 0 auto; }
+.move-col button { width: 72px; min-width: 72px; max-width: 72px; flex: 0 0 72px; }
 
 @media (max-width: 720px) {
   header.top { align-items: flex-start; }
