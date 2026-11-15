@@ -159,30 +159,36 @@ section.danger { border-color: #e7c1c1; }
 .cost { margin: 0; align-self: end; }
 .assign-row { margin-bottom: 0.4rem; }
 
-main.process-page { width: min(100%, 46rem); }
+main.process-page { width: min(100%, 76rem); }
 .process-add, .process-edit {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto auto;
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
+  gap: 0.75rem 1rem;
+}
+.process-add > label:first-child,
+.process-edit > label:first-child {
+  flex: 1 1 16rem;
+  min-width: 12rem;
 }
 .process-add > button,
 .process-edit > button,
 .process-item > form:last-child > button {
   width: 6.5rem;
-  justify-self: start;
+  flex: 0 0 6.5rem;
 }
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
-  display: grid;
-  grid-template-columns: auto minmax(16rem, 1fr) auto;
-  gap: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
+  gap: 0.75rem 1rem;
   padding: 0.85rem 1rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg);
 }
+.process-edit { flex: 1 1 32rem; min-width: min(100%, 32rem); }
 .process-index {
   display: inline-grid;
   place-items: center;
@@ -205,5 +211,5 @@ main.process-page { width: min(100%, 46rem); }
   .inline { align-items: stretch; }
   .inline > * { flex: 1 1 12rem; }
   h1 { font-size: 1.35rem; }
-  .process-add, .process-edit, .process-item { grid-template-columns: 1fr; }
+  .process-edit { min-width: 0; flex-basis: 100%; }
 }
