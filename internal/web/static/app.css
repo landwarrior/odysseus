@@ -162,16 +162,25 @@ section.danger { border-color: #e7c1c1; }
 main.process-page { width: min(100%, 76rem); }
 .process-add, .process-edit {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: end;
-  gap: 12px 16px;
+  gap: 16px;
 }
-.process-add > label:first-child,
-.process-edit > label:first-child {
+.process-edit {
+  flex: 1 1 320px;
+  min-width: max-content;
+  max-width: 420px;
+}
+.process-name {
   flex: 1 1 225px;
-  width: 100%;
+  width: auto;
   min-width: 225px;
   max-width: 300px;
+}
+.process-name input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 .process-add > button,
 .button-pair > button,
@@ -200,7 +209,6 @@ main.process-page { width: min(100%, 76rem); }
   border-radius: 8px;
   background: var(--bg);
 }
-.process-edit { flex: 1 1 225px; min-width: 0; }
 .process-index {
   display: inline-grid;
   place-items: center;
@@ -211,7 +219,7 @@ main.process-page { width: min(100%, 76rem); }
   color: #f6f1e8;
   font-weight: 700;
 }
-.move-col { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.move-col { display: flex; flex-wrap: nowrap; gap: 0.35rem; align-items: center; flex: 0 0 auto; }
 .move-col button { min-width: 4.5rem; }
 
 @media (max-width: 720px) {

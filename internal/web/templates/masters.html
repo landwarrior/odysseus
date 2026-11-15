@@ -138,7 +138,7 @@
     <p class="note">追加した工程は、一覧の一番下に入ります。</p>
     <form method="post" action="/processes" class="process-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label>名前<input name="name" required></label>
+      <label class="process-name">名前<input name="name" required></label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
       <button type="submit">追加</button>
     </form>
@@ -166,7 +166,7 @@
         </div>
         <form id="process-{{.ID}}" method="post" action="/processes/{{.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <label>名前<input name="name" value="{{.Name}}" required></label>
+          <label class="process-name">名前<input name="name" value="{{.Name}}" required></label>
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">
