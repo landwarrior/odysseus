@@ -180,6 +180,14 @@ label.check input:checked {
   gap: 0.75rem 1rem;
   align-items: end;
 }
+.grid.rates-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 56rem) {
+  .grid.rates-form {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+}
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .title-row h1, .title-row h2 { margin-right: auto; }
 .filters a.current { font-weight: 700; }
@@ -196,7 +204,7 @@ th, td { border-bottom: 1px solid var(--line); padding: 0.55rem 0.7rem; text-ali
   background: var(--paper);
   z-index: 1;
 }
-th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-align: center; }
+th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
 td.num { text-align: right; white-space: nowrap; }
 td.clip {
   max-width: 14rem;
@@ -205,6 +213,13 @@ td.clip {
   white-space: nowrap;
 }
 th.mark, td.mark { text-align: center; width: 4.5rem; }
+table.rates {
+  table-layout: fixed;
+  width: 100%;
+}
+table.rates th {
+  text-align: right;
+}
 .mark-check {
   display: inline-block;
   width: 1.15rem;

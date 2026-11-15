@@ -72,7 +72,7 @@
     <h2>時間単価</h2>
     {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
     {{if .Rates}}
-    <table>
+    <table class="rates">
       <thead><tr><th>役割</th><th>適用開始日</th><th>円 / 時</th><th></th></tr></thead>
       <tbody>
         {{range .Rates}}
@@ -91,7 +91,7 @@
       </tbody>
     </table>
     {{end}}
-    <form method="post" action="/people/{{.Person.ID}}/rates" class="grid">
+    <form method="post" action="/people/{{.Person.ID}}/rates" class="grid rates-form">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <label>役割
         <select name="role_id" required>
