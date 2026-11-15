@@ -32,7 +32,7 @@
 {{define "person_form"}}
 {{template "head" .}}
 {{template "nav" .}}
-<main>
+<main class="person-page">
   <h1>{{if .IsNew}}人材の追加{{else}}人材の編集{{end}}</h1>
   {{template "alerts" .}}
   <form method="post" action="{{if .IsNew}}/people{{else}}/people/{{.Person.ID}}{{end}}" class="stack">

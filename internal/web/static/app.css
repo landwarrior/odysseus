@@ -242,14 +242,16 @@ section.danger { border-color: #e7c1c1; }
 .assign-row { margin-bottom: 0.4rem; }
 
 main.process-page,
-main.role-page {
+main.role-page,
+main.person-page {
   width: min(100%, 1100px);
   padding-left: 24px;
   padding-right: 24px;
   font-size: 16px;
 }
 main.process-page label,
-main.role-page label { font-size: 16px; }
+main.role-page label,
+main.person-page label { font-size: 16px; }
 main.process-page .card,
 main.role-page .card { padding: 16px 20px; }
 main.process-page label.check,
