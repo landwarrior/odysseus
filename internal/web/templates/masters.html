@@ -44,12 +44,10 @@
       <label>
         <span class="label-row">
           パスワード
-          {{if not .IsNew}}
           <details class="help">
             <summary aria-label="パスワードの説明">?</summary>
-            <p class="help-tip">空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。</p>
+            <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
           </details>
-          {{end}}
         </span>
         <input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{end}}>
       </label>
@@ -59,10 +57,8 @@
       <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
     </div>
     <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
-    {{if .IsNew}}<p class="note">初期パスワードは、本人が最初のログインで変更します。</p>{{end}}
     <button type="submit">登録</button>
   </form>
-  {{if not .IsNew}}
   <script>
     document.addEventListener("click", function (event) {
       document.querySelectorAll("details.help[open]").forEach(function (help) {
@@ -70,6 +66,7 @@
       });
     });
   </script>
+  {{if not .IsNew}}
   <section class="card">
     <h2>時間単価</h2>
     {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
