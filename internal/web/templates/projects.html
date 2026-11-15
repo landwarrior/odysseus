@@ -1,0 +1,147 @@
+{{define "projects"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <div class="title-row">
+    <h1>プロジェクト</h1>
+    <a class="button" href="/projects/new">新規作成</a>
+  </div>
+  {{template "alerts" .}}
+  <p class="filters">
+    <a href="/projects" {{if eq .Status ""}}class="current"{{end}}>すべて</a>
+    <a href="/projects?status=planning" {{if eq .Status "planning"}}class="current"{{end}}>計画中</a>
+    <a href="/projects?status=active" {{if eq .Status "active"}}class="current"{{end}}>進行中</a>
+    <a href="/projects?status=closed" {{if eq .Status "closed"}}class="current"{{end}}>完了</a>
+  </p>
+  {{if not .Projects}}<p>プロジェクトはありません。</p>{{end}}
+  {{if .Projects}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>番号</th><th>名称</th><th>状態</th><th>受注金額</th><th>開始</th><th>終了</th><th></th></tr>
+      </thead>
+      <tbody>
+        {{range .Projects}}
+        <tr>
+          <td>{{.Code}}</td>
+          <td>{{.Name}}</td>
+          <td>{{status .Status}}</td>
+          <td class="num">{{yenp .OrderAmount}}</td>
+          <td>{{day .StartDate}}</td>
+          <td>{{day .EndDate}}</td>
+          <td class="actions">
+            <a href="/projects/{{.ID}}">編集</a>
+            <a href="/projects/{{.ID}}/assign">アサイン</a>
+            <a href="/projects/{{.ID}}/forecast">予実</a>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "project_form"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <h1>{{if .IsNew}}プロジェクト作成{{else}}プロジェクト編集{{end}}</h1>
+  {{template "alerts" .}}
+  {{if not .IsNew}}
+  <p class="actions">
+    <a href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
+    <a href="/projects/{{.Project.ID}}/forecast">予実</a>
+  </p>
+  {{end}}
+  <form method="post" action="{{if .IsNew}}/projects{{else}}/projects/{{.Project.ID}}{{end}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="grid">
+      <label>プロジェクト番号<input name="code" value="{{.Project.Code}}" required></label>
+      <label>プロジェクト名<input name="name" value="{{.Project.Name}}" required></label>
+      <label>受注金額<input name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
+      <label>状態
+        <select name="status">
+          <option value="planning" {{if eq .Project.Status "planning"}}selected{{end}}>計画中</option>
+          <option value="active" {{if eq .Project.Status "active"}}selected{{end}}>進行中</option>
+          <option value="closed" {{if eq .Project.Status "closed"}}selected{{end}}>完了</option>
+        </select>
+      </label>
+      <label>開始日<input type="date" name="start_date" value="{{.Project.StartDate}}"></label>
+      <label>終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
+    </div>
+    <h2>工程</h2>
+    <div class="table-wrap">
+      <table id="lines">
+        <thead>
+          <tr><th>工程</th><th>開始</th><th>終了</th><th>予定時間</th><th>予算</th><th></th></tr>
+        </thead>
+        <tbody>
+          {{range .Lines}}
+          {{$line := .}}
+          <tr>
+            <td>
+              <select name="process_id">
+                <option value="">選択</option>
+                {{range $.Processes}}
+                <option value="{{.ID}}" {{if eq .ID $line.ProcessID}}selected{{end}}>{{.Name}}{{if not .Active}}（無効）{{end}}</option>
+                {{end}}
+              </select>
+            </td>
+            <td><input type="date" name="line_start" value="{{$line.Start}}"></td>
+            <td><input type="date" name="line_end" value="{{$line.End}}"></td>
+            <td><input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></td>
+            <td><input name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></td>
+            <td><button type="button" class="remove-line secondary">行削除</button></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <p><button type="button" id="add-line" class="secondary">行を追加</button></p>
+    <p class="note">予定時間は時間単位です。1.5 は 1 時間 30 分です。予算を空にすると、予実画面ではアサインの予定原価を予算として表示します。</p>
+    <button type="submit">登録</button>
+  </form>
+  <template id="line-row">
+    <tr>
+      <td>
+        <select name="process_id">
+          <option value="">選択</option>
+          {{range .Processes}}
+          {{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+          {{end}}
+        </select>
+      </td>
+      <td><input type="date" name="line_start"></td>
+      <td><input type="date" name="line_end"></td>
+      <td><input name="line_hours" inputmode="decimal"></td>
+      <td><input name="line_budget" inputmode="numeric"></td>
+      <td><button type="button" class="remove-line secondary">行削除</button></td>
+    </tr>
+  </template>
+  <script>
+    document.getElementById("add-line").addEventListener("click", function () {
+      document.querySelector("#lines tbody").appendChild(document.getElementById("line-row").content.cloneNode(true));
+    });
+    document.getElementById("lines").addEventListener("click", function (event) {
+      if (event.target.classList.contains("remove-line")) {
+        event.target.closest("tr").remove();
+      }
+    });
+  </script>
+  {{if not .IsNew}}
+  <section class="danger">
+    <h2>削除</h2>
+    <p>プロジェクト番号を入力すると、工程、アサイン、実績も削除します。</p>
+    <form method="post" action="/projects/{{.Project.ID}}/delete" class="inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input name="confirm_code" placeholder="プロジェクト番号" required>
+      <button type="submit" class="danger">削除する</button>
+    </form>
+  </section>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}

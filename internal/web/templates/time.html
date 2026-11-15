@@ -1,0 +1,70 @@
+{{define "time_list"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <h1>実績</h1>
+  {{template "alerts" .}}
+  <p>自分がアサインされている、完了前のプロジェクトです。</p>
+  {{if not .Projects}}<p>入力できるプロジェクトはありません。</p>{{end}}
+  <ul>
+    {{range .Projects}}
+    <li><a href="/time/{{.ID}}">{{.Code}} {{.Name}}</a>（{{status .Status}}）</li>
+    {{end}}
+  </ul>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "time_form"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <div class="title-row">
+    <h1>実績登録</h1>
+    <a href="/time">一覧へ</a>
+  </div>
+  <p>{{.Project.Code}} {{.Project.Name}}</p>
+  {{template "alerts" .}}
+  <p class="filters">
+    <a href="/time/{{.Project.ID}}?month={{.Prev}}">前月</a>
+    <strong>{{.Month}}</strong>
+    <a href="/time/{{.Project.ID}}?month={{.Next}}">翌月</a>
+  </p>
+  <form method="post" action="/time/{{.Project.ID}}?month={{.Month}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label>日付<input type="date" name="work_date" value="{{.Date}}" required></label>
+    <div class="grid">
+      {{range .Columns}}
+      <label>{{.ProcessName}}（{{.StartDate}} 〜 {{.EndDate}}）
+        <input name="minutes_{{.ID}}" inputmode="decimal" value="{{index $.Cells .ID}}" placeholder="時間">
+      </label>
+      {{end}}
+    </div>
+    <p class="note">空欄または 0 にすると、その日の実績を消します。入力できるのは、各アサインの期間内です。</p>
+    <button type="submit">登録</button>
+  </form>
+  <h2>この月の実績</h2>
+  {{if not .Saved}}<p>まだありません。</p>{{end}}
+  {{if .Saved}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          {{range .Columns}}<th>{{.ProcessName}}</th>{{end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Saved}}
+        <tr>
+          <td><a href="/time/{{$.Project.ID}}?month={{$.Month}}&date={{.Date}}">{{.Date}}</a></td>
+          {{range .Hours}}<td class="num">{{if .}}{{.}} 時間{{end}}</td>{{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}

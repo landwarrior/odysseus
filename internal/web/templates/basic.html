@@ -1,0 +1,89 @@
+{{define "login"}}
+{{template "head" .}}
+<main class="narrow">
+  <h1>ログイン</h1>
+  {{template "alerts" .}}
+  {{if .Hint}}<p class="banner">{{.Hint}}</p>{{end}}
+  <form method="post" action="/login" class="stack">
+    <label>ユーザーコード<input name="code" value="{{.Code}}" autocomplete="username" required></label>
+    <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">ログイン</button>
+  </form>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "password"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main class="narrow">
+  <h1>パスワード変更</h1>
+  {{template "alerts" .}}
+  {{if .Me.MustChangePassword}}<p class="banner">続ける前にパスワードを変更してください。</p>{{end}}
+  <form method="post" action="/password" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label>現在のパスワード<input type="password" name="current_password" autocomplete="current-password" required></label>
+    <label>新しいパスワード<input type="password" name="new_password" autocomplete="new-password" required></label>
+    <label>新しいパスワード（確認）<input type="password" name="confirm_password" autocomplete="new-password" required></label>
+    <button type="submit">変更する</button>
+  </form>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "home"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <h1>ホーム</h1>
+  {{template "alerts" .}}
+  {{if .Me.IsAdmin}}
+  <p class="note">進行中のプロジェクトです。自分の実績は「実績」から入力します。</p>
+  {{if not .Rows}}<p>進行中のプロジェクトはありません。</p>{{end}}
+  {{if .Rows}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>プロジェクト</th>
+          <th>受注金額</th>
+          <th>予算合計</th>
+          <th>予定原価</th>
+          <th>実績原価</th>
+          <th>粗利見込み</th>
+          <th>予定工数</th>
+          <th>実績工数</th>
+          <th>終了日</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td><a href="/projects/{{.Project.ID}}/forecast">{{.Project.Code}} {{.Project.Name}}</a></td>
+          <td class="num">{{yenp .Project.OrderAmount}}</td>
+          <td class="num">{{yen .Report.BudgetYen}}</td>
+          <td class="num">{{yen .Report.PlannedCostYen}}</td>
+          <td class="num">{{yen .Report.ActualCostYen}}{{if not .Report.ActualKnown}} ※{{end}}</td>
+          <td class="num">{{yenp .Report.GrossMargin}}</td>
+          <td class="num">{{hours .Report.PlannedMinutes}} 時間</td>
+          <td class="num">{{hours .Report.ActualMinutes}} 時間</td>
+          <td>{{day .Project.EndDate}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">※ は単価未設定の実績があり、その分を金額に含めていません。</p>
+  {{end}}
+  {{else}}
+  <p>実績を入力する案件です。</p>
+  {{if not .Assigned}}<p>アサインされている案件はありません。</p>{{end}}
+  <ul>
+    {{range .Assigned}}
+    <li><a href="/time/{{.ID}}">{{.Code}} {{.Name}}</a></li>
+    {{end}}
+  </ul>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}

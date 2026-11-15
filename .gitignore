@@ -1,3 +1,7 @@
 local-mode-cache
 chef_guid
 localhost.json
+/data/
+/odysseus.exe
+/odysseus
+*.db

@@ -1,0 +1,49 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} - Odysseus</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+{{end}}
+
+{{define "nav"}}
+<header class="top">
+  <a class="brand" href="/">Odysseus</a>
+  {{if .Me}}
+  {{if not .Me.MustChangePassword}}
+  <nav>
+    <a href="/">ホーム</a>
+    <a href="/time">実績</a>
+    {{if .Me.IsAdmin}}
+    <a href="/projects">プロジェクト</a>
+    <a href="/people">人材</a>
+    <a href="/roles">役割</a>
+    <a href="/processes">工程</a>
+    {{end}}
+  </nav>
+  {{end}}
+  <div class="user">
+    <span>{{.Me.Name}}</span>
+    <a href="/password">パスワード</a>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit">ログアウト</button>
+    </form>
+  </div>
+  {{end}}
+</header>
+{{end}}
+
+{{define "alerts"}}
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+{{end}}
+
+{{define "foot"}}
+</body>
+</html>
+{{end}}
