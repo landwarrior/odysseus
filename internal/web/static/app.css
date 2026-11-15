@@ -79,6 +79,57 @@ button.danger, .danger button {
 }
 
 label { display: flex; flex-direction: column; gap: 0.25rem; color: var(--muted); font-size: 0.92rem; }
+.label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.help {
+  position: relative;
+  display: inline-block;
+  color: var(--ink);
+}
+.help > summary {
+  list-style: none;
+  cursor: pointer;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  user-select: none;
+}
+.help > summary::-webkit-details-marker { display: none; }
+.help > summary::marker { content: ""; }
+.help[open] > summary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.help-tip {
+  position: absolute;
+  z-index: 8;
+  left: 0;
+  top: calc(100% + 0.4rem);
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 3rem));
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: normal;
+}
 label.check {
   flex-direction: row;
   align-items: center;

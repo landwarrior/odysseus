@@ -41,7 +41,18 @@
       <label>ユーザーコード<input name="code" value="{{.Person.Code}}" required></label>
       <label>氏名<input name="name" value="{{.Person.Name}}" required></label>
       <label>カナ<input name="name_kana" value="{{.Person.NameKana}}"></label>
-      <label>パスワード<input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{else}}placeholder="空なら今のパスワードのまま。入力すると、本人が次回ログインで変更します。"{{end}}></label>
+      <label>
+        <span class="label-row">
+          パスワード
+          {{if not .IsNew}}
+          <details class="help">
+            <summary aria-label="パスワードの説明">?</summary>
+            <p class="help-tip">パスワードを空のままにすると、今のパスワードを変えません。入力した場合は、次回ログイン時に本人が変更します。</p>
+          </details>
+          {{end}}
+        </span>
+        <input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{end}}>
+      </label>
     </div>
     <div class="inline checks">
       <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
@@ -52,6 +63,13 @@
     <button type="submit">登録</button>
   </form>
   {{if not .IsNew}}
+  <script>
+    document.addEventListener("click", function (event) {
+      document.querySelectorAll("details.help[open]").forEach(function (help) {
+        if (!help.contains(event.target)) help.removeAttribute("open");
+      });
+    });
+  </script>
   <section class="card">
     <h2>時間単価</h2>
     {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
