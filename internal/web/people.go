@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"odysseus/internal/calc"
 	"odysseus/internal/store"
@@ -11,7 +12,13 @@ import (
 // personListPage は人材の一覧です。
 type personListPage struct {
 	base
-	People []store.Person
+	People []personView
+}
+
+// personView は一覧の1行です。RoleName は表示日時点で有効な、いちばん新しい単価の役割です。
+type personView struct {
+	store.Person
+	RoleName string
 }
 
 // personPage は人材の登録と編集です。IsNew が真のときは単価欄を出しません。
@@ -23,14 +30,23 @@ type personPage struct {
 	IsNew  bool
 }
 
-// handlePeople は人材の一覧を出します。
+// handlePeople は人材の一覧を出します。役割は、表示日時点で有効な最新の単価から付けます。
 func (s *Server) handlePeople(w http.ResponseWriter, r *http.Request) {
 	people, err := s.store.ListPeople(r.Context())
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, http.StatusOK, "people", personListPage{base: s.page(w, r, "人材"), People: people})
+	roles, err := s.store.LatestRoleNames(r.Context(), time.Now().Format("2006-01-02"))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	views := make([]personView, len(people))
+	for i, person := range people {
+		views[i] = personView{Person: person, RoleName: roles[person.ID]}
+	}
+	s.render(w, http.StatusOK, "people", personListPage{base: s.page(w, r, "人材"), People: views})
 }
 
 // handlePersonNew は空の人材登録画面を出します。初期状態は有効です。

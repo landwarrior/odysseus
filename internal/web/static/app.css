@@ -142,6 +142,12 @@ th, td { border-bottom: 1px solid var(--line); padding: 0.55rem 0.7rem; text-ali
 }
 th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
 td.num, th.num { text-align: right; white-space: nowrap; }
+td.clip {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 tr.over, tr.over td:first-child { background: #fff1ef; }
 
 .flash, .error, .banner, .note, .card, .summary div, section.danger {

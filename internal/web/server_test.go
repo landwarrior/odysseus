@@ -232,6 +232,76 @@ func projectByCode(t *testing.T, st *store.Store, code string) store.Project {
 	return store.Project{}
 }
 
+func TestPeopleListShowsLatestRoleAndEditButton(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	database, err := db.Open("sqlite", filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { database.SQL.Close() })
+	if err := db.Migrate(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	st := store.New(database)
+	adminPassword, _, err := st.Seed(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewServer(st, config.Config{
+		DataDir: dir, Driver: "sqlite", StandardMinutes: 480,
+		SessionKey: bytes.Repeat([]byte("k"), 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	admin := newClient(t, ts.URL)
+	body := admin.submit(t, "/login", url.Values{"code": {"admin"}, "password": {adminPassword}})
+	body = admin.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {adminPassword},
+		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
+	})
+	body = admin.submit(t, "/people", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"},
+		"password": {"memberpass"}, "active": {"1"},
+		"remarks": {"長い備考テキストを一覧でも見えるようにする"},
+	})
+	roles, err := st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pg, se string
+	for _, role := range roles {
+		switch role.Name {
+		case "PG":
+			pg = role.ID
+		case "SE":
+			se = role.ID
+		}
+	}
+	admin.submit(t, "/people/"+personID(t, st, "m01")+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2020-01-01"}, "hourly_yen": {"3000"},
+	})
+	body = admin.submit(t, "/people/"+personID(t, st, "m01")+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {se}, "from_date": {"2020-06-01"}, "hourly_yen": {"4000"},
+	})
+	page := admin.getBody(t, "/people")
+	for _, want := range []string{
+		"<th>役割</th>", "<th>備考</th>", "SE", "長い備考テキストを一覧でも見えるようにする",
+		`class="button" href="/people/` + personID(t, st, "m01") + `">編集</a>`,
+		`class="clip"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("people page missing %s\n%s", want, page)
+		}
+	}
+	if strings.Contains(page, "<td>PG</td>") {
+		t.Fatal("people list should show the latest role, not an older one")
+	}
+}
+
 func TestRolePageSeparatesAddAndReorder(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()

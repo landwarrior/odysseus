@@ -104,6 +104,49 @@ func TestSeedRateAndCascade(t *testing.T) {
 	}
 }
 
+func TestLatestRoleNames(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if _, _, err := st.Seed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	roles, err := st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roleID := map[string]string{}
+	for _, role := range roles {
+		roleID[role.Name] = role.ID
+	}
+	person, err := st.InsertPerson(ctx, NewPerson{Code: "m01", Name: "山田", Password: "memberpass", Active: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: 3000}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["SE"], FromDate: "2026-03-01", HourlyYen: 4000}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PL"], FromDate: "2026-06-01", HourlyYen: 5000}); err != nil {
+		t.Fatal(err)
+	}
+	names, err := st.LatestRoleNames(ctx, "2026-04-15")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names[person.ID] != "SE" {
+		t.Fatalf("latest role = %q", names[person.ID])
+	}
+	names, err = st.LatestRoleNames(ctx, "2025-12-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := names[person.ID]; ok {
+		t.Fatal("future-only rates should stay empty")
+	}
+}
+
 func TestMoveRole(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
