@@ -5,8 +5,11 @@
   --muted: #655e54;
   --line: #e3d8c8;
   --accent: #1f4e3d;
+  --accent-hover: #2a6a52;
   --warn: #8a3b12;
   --danger: #8d1d1d;
+  --danger-hover: #a42828;
+  --secondary-hover: #ebe4d8;
   --header-bg: #1d1a16;
   --header-fg: #f6f1e8;
   --field: #ffffff;
@@ -28,9 +31,12 @@ html[data-theme="dark"] {
   --ink: #f3efe6;
   --muted: #a8a093;
   --line: #3f3a32;
-  --accent: #6fbf9a;
+  --accent: #3f7d64;
+  --accent-hover: #346853;
   --warn: #e0a06a;
-  --danger: #e88888;
+  --danger: #b85c5c;
+  --danger-hover: #9e4a4a;
+  --secondary-hover: #2c2822;
   --header-bg: #0e0c0a;
   --header-fg: #f6f1e8;
   --field: #2a2620;
@@ -110,6 +116,10 @@ header.top .nav-toggle {
   border: 1px solid rgba(255,255,255,.35);
   border-radius: 6px;
   cursor: pointer;
+}
+header.top .nav-toggle:hover {
+  background: transparent;
+  border-color: rgba(255,255,255,.7);
 }
 header.top .hamburger {
   display: block;
@@ -222,12 +232,22 @@ header.top .theme-option[aria-pressed="true"] {
   color: white;
   border-color: var(--accent);
 }
+header.top .theme-option[aria-pressed="true"]:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+header.top .theme-option:hover:not([aria-pressed="true"]) {
+  background: var(--secondary-hover);
+}
 header.top .user-panel > form button {
   width: 100%;
   background: transparent;
   color: var(--ink);
   border: 1px solid var(--line);
   padding: 0.4rem 0.7rem;
+}
+header.top .user-panel > form button:hover {
+  background: var(--secondary-hover);
 }
 
 button, .button {
@@ -241,17 +261,29 @@ button, .button {
   font: inherit;
   cursor: pointer;
 }
+button:hover:not(:disabled):not(.secondary):not(.danger):not(header.top button),
+a.button:hover {
+  background: var(--accent-hover);
+}
 
 button.secondary, .secondary {
   background: transparent;
   color: var(--ink);
   border: 1px solid var(--line);
 }
+button.secondary:hover:not(:disabled),
+a.secondary:hover {
+  background: var(--secondary-hover);
+}
 
 button.danger, .danger button {
   background: var(--danger);
   color: white;
   border: 0;
+}
+button.danger:hover:not(:disabled),
+.danger button:hover:not(:disabled) {
+  background: var(--danger-hover);
 }
 
 label { display: flex; flex-direction: column; gap: 0.25rem; color: var(--muted); font-size: 0.92rem; }
