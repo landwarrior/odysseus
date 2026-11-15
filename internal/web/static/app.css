@@ -239,7 +239,28 @@ section.danger { border-color: #e7c1c1; }
 .summary div { background: var(--paper); border: 1px solid var(--line); padding: 0.65rem 0.75rem; }
 .summary span { display: block; color: var(--muted); font-size: 0.8rem; }
 .cost { margin: 0; align-self: end; }
-.assign-row { margin-bottom: 0.4rem; }
+.assign-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.assign-item {
+  display: grid;
+  gap: 0.75rem;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.assign-row { margin: 0; }
+.assign-item .button-pair {
+  justify-self: start;
+}
+.assign-add {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.assign-add h3 { margin-top: 0; }
 
 .project-lines {
   display: grid;

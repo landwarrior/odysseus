@@ -12,54 +12,66 @@
   <section class="card">
     <h2>{{.Line.ProcessName}}</h2>
     <p class="note">工程の予定 {{hours .Line.PlannedMinutes}} 時間。期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
-    {{range .Rows}}
-    {{$row := .}}
-    <form method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
-      <input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <label>人材
-        <select name="person_id">
-          {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-      </label>
-      <label>役割
-        <select name="role_id">
-          {{range .Roles}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.RoleID}}selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-      </label>
-      <label>開始<input type="date" name="start_date" value="{{.Assignment.StartDate}}" required></label>
-      <label>終了<input type="date" name="end_date" value="{{.Assignment.EndDate}}" required></label>
-      <label>予定時間<input name="hours" value="{{.Hours}}" required></label>
-      <p class="cost">予定原価 {{yen .Assignment.PlannedCostYen}}</p>
-      <button type="submit">保存</button>
-    </form>
-    <form method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}/delete" onsubmit="return confirm('このアサインと、その実績を削除します。よろしいですか？')">
-      <input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <button type="submit" class="secondary">アサインを削除</button>
-    </form>
+    <h3>登録済みのアサイン</h3>
+    {{if not .Rows}}<p>アサインはありません。</p>{{end}}
+    {{if .Rows}}
+    <div class="assign-list">
+      {{range .Rows}}
+      {{$row := .}}
+      <div class="assign-item">
+        <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <label>人材
+            <select name="person_id">
+              {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+          </label>
+          <label>役割
+            <select name="role_id">
+              {{range .Roles}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.RoleID}}selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+          </label>
+          <label>開始<input type="date" name="start_date" value="{{.Assignment.StartDate}}" required></label>
+          <label>終了<input type="date" name="end_date" value="{{.Assignment.EndDate}}" required></label>
+          <label>予定時間<input name="hours" value="{{.Hours}}" required></label>
+          <p class="cost">予定原価 {{yen .Assignment.PlannedCostYen}}</p>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="assign-{{.Assignment.ID}}">保存</button>
+          <form method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}/delete" onsubmit="return confirm('このアサインと、その実績を削除します。よろしいですか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
     {{end}}
-    <h3>追加</h3>
-    {{if not $.People}}<p>有効な人材がいません。</p>{{end}}
-    {{if $.People}}
-    <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
-      <input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
-      <label>人材
-        <select name="person_id" required>
-          {{range $.People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
-        </select>
-      </label>
-      <label>役割
-        <select name="role_id" required>
-          {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
-        </select>
-      </label>
-      <label>開始<input type="date" name="start_date" value="{{.Line.StartDate}}" required></label>
-      <label>終了<input type="date" name="end_date" value="{{.Line.EndDate}}" required></label>
-      <label>予定時間<input name="hours" required></label>
-      <button type="submit">追加</button>
-    </form>
-    <p class="note">選べるのは、開始日時点でその役割の時間単価がある人材です。予定原価は、その開始日の単価で計算して保存します。</p>
-    {{end}}
+    <div class="assign-add">
+      <h3>アサインを追加</h3>
+      {{if not $.People}}<p>有効な人材がいません。</p>{{end}}
+      {{if $.People}}
+      <p class="note">追加したアサインは、上の登録済み一覧に入ります。選べるのは、開始日時点でその役割の時間単価がある人材です。予定原価は、その開始日の単価で計算して保存します。</p>
+      <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
+        <label>人材
+          <select name="person_id" required>
+            {{range $.People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+          </select>
+        </label>
+        <label>役割
+          <select name="role_id" required>
+            {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+          </select>
+        </label>
+        <label>開始<input type="date" name="start_date" value="{{.Line.StartDate}}" required></label>
+        <label>終了<input type="date" name="end_date" value="{{.Line.EndDate}}" required></label>
+        <label>予定時間<input name="hours" required></label>
+        <button type="submit">追加</button>
+      </form>
+      {{end}}
+    </div>
   </section>
   {{end}}
 </main>
