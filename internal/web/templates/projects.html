@@ -144,10 +144,10 @@
   <section class="danger">
     <h2>削除</h2>
     <p>プロジェクト番号を入力すると、工程、アサイン、実績も削除します。</p>
-    <form method="post" action="/projects/{{.Project.ID}}/delete" class="inline">
+    <form method="post" action="/projects/{{.Project.ID}}/delete" class="person-delete">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <input name="confirm_code" placeholder="プロジェクト番号" required>
-      <button type="submit" class="danger">削除する</button>
+      <button type="submit" class="danger">削除</button>
     </form>
   </section>
   {{end}}
