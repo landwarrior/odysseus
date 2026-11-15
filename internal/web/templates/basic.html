@@ -45,17 +45,22 @@
 {{template "head" .}}
 {{template "nav" .}}
 <main>
-  <h1>ホーム</h1>
-  {{template "alerts" .}}
   {{if .Me.IsAdmin}}
-  <p class="note">進行中のプロジェクトです。自分の実績は「実績」から入力します。</p>
+  <div class="title-row">
+    <h1>ホーム</h1>
+    <a class="button" href="/projects/new">新規作成</a>
+  </div>
+  {{template "alerts" .}}
+  <h2>進行中のプロジェクト{{if .Rows}}（{{len .Rows}} 件）{{end}}</h2>
+  <p class="note">状態が進行中の案件をすべて表示しています。自分の実績は「実績」から入力します。計画中や完了はプロジェクト一覧で絞り込めます。</p>
   {{if not .Rows}}<p>進行中のプロジェクトはありません。</p>{{end}}
   {{if .Rows}}
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>プロジェクト</th>
+          <th>番号</th>
+          <th>名称</th>
           <th>受注金額</th>
           <th>予算合計</th>
           <th>予定原価</th>
@@ -63,13 +68,16 @@
           <th>粗利見込み</th>
           <th>予定工数</th>
           <th>実績工数</th>
-          <th>終了日</th>
+          <th>開始</th>
+          <th>終了</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {{range .Rows}}
-        <tr>
-          <td><a href="/projects/{{.Project.ID}}/forecast">{{.Project.Code}} {{.Project.Name}}</a></td>
+        <tr {{if .OverBudget}}class="over"{{end}}>
+          <td>{{.Project.Code}}</td>
+          <td>{{.Project.Name}}</td>
           <td class="num">{{yenp .Project.OrderAmount}}</td>
           <td class="num">{{yen .Report.BudgetYen}}</td>
           <td class="num">{{yen .Report.PlannedCostYen}}</td>
@@ -77,15 +85,23 @@
           <td class="num">{{yenp .Report.GrossMargin}}</td>
           <td class="num">{{hours .Report.PlannedMinutes}} 時間</td>
           <td class="num">{{hours .Report.ActualMinutes}} 時間</td>
+          <td>{{day .Project.StartDate}}</td>
           <td>{{day .Project.EndDate}}</td>
+          <td class="actions">
+            <a class="button" href="/projects/{{.Project.ID}}">編集</a>
+            <a class="button" href="/projects/{{.Project.ID}}/assign">アサイン</a>
+            <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
+          </td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
-  <p class="note">※ は単価未設定の実績があり、その分を金額に含めていません。</p>
+  <p class="note">※ は単価未設定の実績があり、その分を金額に含めていません。赤い行は予算超過の工程があります。</p>
   {{end}}
   {{else}}
+  <h1>ホーム</h1>
+  {{template "alerts" .}}
   <p>実績を入力する案件です。</p>
   {{if not .Assigned}}<p>アサインされている案件はありません。</p>{{end}}
   <ul>

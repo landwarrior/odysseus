@@ -131,8 +131,10 @@ func TestForecastFlow(t *testing.T) {
 		}
 	}
 	home := admin.getBody(t, "/")
-	if !strings.Contains(home, "¥600,000") {
-		t.Fatalf("home missing gross:\n%s", home)
+	for _, want := range []string{"進行中のプロジェクト", "P1", "¥600,000", "編集", "アサイン", "予実"} {
+		if !strings.Contains(home, want) {
+			t.Fatalf("home missing %s:\n%s", want, home)
+		}
 	}
 }
 
