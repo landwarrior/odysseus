@@ -104,6 +104,34 @@ func TestSeedRateAndCascade(t *testing.T) {
 	}
 }
 
+func TestMoveRole(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if _, _, err := st.Seed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	roles, err := st.ListRoles(ctx)
+	if err != nil || len(roles) < 2 {
+		t.Fatal(err)
+	}
+	first, second := roles[0].Name, roles[1].Name
+	moved, err := st.MoveRole(ctx, roles[0].ID, "up")
+	if err != nil || moved {
+		t.Fatalf("top item should stay: moved=%v err=%v", moved, err)
+	}
+	moved, err = st.MoveRole(ctx, roles[1].ID, "up")
+	if err != nil || !moved {
+		t.Fatal(err)
+	}
+	roles, err = st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if roles[0].Name != second || roles[1].Name != first {
+		t.Fatalf("order = %s, %s", roles[0].Name, roles[1].Name)
+	}
+}
+
 func TestMoveProcess(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)

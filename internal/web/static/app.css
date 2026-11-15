@@ -159,16 +159,21 @@ section.danger { border-color: #e7c1c1; }
 .cost { margin: 0; align-self: end; }
 .assign-row { margin-bottom: 0.4rem; }
 
-main.process-page {
+main.process-page,
+main.role-page {
   width: min(100%, 1100px);
   padding-left: 24px;
   padding-right: 24px;
   font-size: 16px;
 }
-main.process-page label { font-size: 16px; }
-main.process-page .card { padding: 16px 20px; }
-main.process-page label.check { gap: 8px; min-height: 44px; }
-main.process-page label.check input {
+main.process-page label,
+main.role-page label { font-size: 16px; }
+main.process-page .card,
+main.role-page .card { padding: 16px 20px; }
+main.process-page label.check,
+main.role-page label.check { gap: 8px; min-height: 44px; }
+main.process-page label.check input,
+main.role-page label.check input {
   width: 22px;
   height: 22px;
   min-width: 22px;

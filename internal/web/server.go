@@ -130,6 +130,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /roles", s.requireAdmin(s.handleRoles))
 	mux.HandleFunc("POST /roles", s.requireAdmin(s.handleRoleCreate))
+	mux.HandleFunc("POST /roles/{id}/move", s.requireAdmin(s.handleRoleMove))
 	mux.HandleFunc("POST /roles/{id}", s.requireAdmin(s.handleRoleUpdate))
 	mux.HandleFunc("POST /roles/{id}/delete", s.requireAdmin(s.handleRoleDelete))
 	mux.HandleFunc("GET /processes", s.requireAdmin(s.handleProcesses))

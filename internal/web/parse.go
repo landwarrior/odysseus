@@ -3,7 +3,6 @@ package web
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -87,19 +86,6 @@ func parseRequiredHours(raw string) (int64, string) {
 		return 0, "予定時間が大きすぎます。"
 	}
 	return minutes, ""
-}
-
-// parseSort は raw を並び順の整数にします。空なら 0 です。
-func parseSort(raw string) (int64, string) {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return 0, ""
-	}
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0, "並び順は整数で入力してください。"
-	}
-	return n, ""
 }
 
 // passwordIssue は password の長さを見ます。required が偽で空なら問題なしです。

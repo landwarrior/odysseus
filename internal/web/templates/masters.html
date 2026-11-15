@@ -100,29 +100,57 @@
 {{define "roles"}}
 {{template "head" .}}
 {{template "nav" .}}
-<main>
+<main class="role-page">
   <h1>役割</h1>
   {{template "alerts" .}}
-  <form method="post" action="/roles" class="grid">
-    <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <label>名前<input name="name" required></label>
-    <label>並び順<input name="sort_order" inputmode="numeric" value="0"></label>
-    <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
-    <button type="submit">追加</button>
-  </form>
-  {{range .Roles}}
-  <form method="post" action="/roles/{{.ID}}" class="grid master-row">
-    <input type="hidden" name="csrf" value="{{$.CSRF}}">
-    <label>名前<input name="name" value="{{.Name}}" required></label>
-    <label>並び順<input name="sort_order" value="{{.SortOrder}}"></label>
-    <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
-    <button type="submit">保存</button>
-  </form>
-  <form method="post" action="/roles/{{.ID}}/delete" onsubmit="return confirm('この役割を削除しますか？')">
-    <input type="hidden" name="csrf" value="{{$.CSRF}}">
-    <button type="submit" class="secondary">削除</button>
-  </form>
-  {{end}}
+  <section class="card">
+    <h2>役割を追加</h2>
+    <p class="note">追加した役割は、一覧の一番下に入ります。</p>
+    <form method="post" action="/roles" class="process-add">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="process-name">名前<input name="name" required></label>
+      <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
+      <button type="submit">追加</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>登録済みの役割</h2>
+    <p class="note">上にある役割ほど、人材の単価とアサインの画面で先に表示されます。上へ、下へで隣と入れ替わります。</p>
+    {{if not .Roles}}<p>登録済みの役割はありません。</p>{{end}}
+    {{if .Roles}}
+    <ol class="process-list">
+      {{range .Roles}}
+      <li class="process-item">
+        <div class="move-col">
+          <span class="process-index">{{.Position}}</span>
+          <form method="post" action="/roles/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="up">
+            <button type="submit" class="secondary" {{if .First}}disabled{{end}}>上へ</button>
+          </form>
+          <form method="post" action="/roles/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="down">
+            <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
+          </form>
+        </div>
+        <form id="role-{{.ID}}" method="post" action="/roles/{{.ID}}" class="process-edit">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
+          <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="role-{{.ID}}">保存</button>
+          <form method="post" action="/roles/{{.ID}}/delete" onsubmit="return confirm('この役割を削除しますか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </li>
+      {{end}}
+    </ol>
+    {{end}}
+  </section>
 </main>
 {{template "foot" .}}
 {{end}}

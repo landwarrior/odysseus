@@ -446,6 +446,53 @@ func (s *Store) InsertRole(ctx context.Context, role Role) (Role, error) {
 	return role, nil
 }
 
+// MoveRole は id の役割を、direction が up なら一つ上、down なら一つ下へ動かします。
+// 端にあるときは moved が false で、並びは変えません。
+func (s *Store) MoveRole(ctx context.Context, id, direction string) (bool, error) {
+	list, err := s.ListRoles(ctx)
+	if err != nil {
+		return false, err
+	}
+	index := -1
+	for i, role := range list {
+		if role.ID == id {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return false, ErrNotFound
+	}
+	swap := index
+	switch direction {
+	case "up":
+		swap = index - 1
+	case "down":
+		swap = index + 1
+	default:
+		return false, nil
+	}
+	if swap < 0 || swap >= len(list) {
+		return false, nil
+	}
+	list[index], list[swap] = list[swap], list[index]
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	stamp := now()
+	for i, role := range list {
+		if _, err := tx.Exec(ctx, `UPDATE role SET sort_order = ?, updated_at = ? WHERE id = ?`, int64(i+1)*10, stamp, role.ID); err != nil {
+			return false, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // UpdateRole は role.ID の役割を、role の名前、並び順、有効フラグで更新します。
 func (s *Store) UpdateRole(ctx context.Context, role Role) error {
 	res, err := s.db.Exec(ctx, `

@@ -232,6 +232,73 @@ func projectByCode(t *testing.T, st *store.Store, code string) store.Project {
 	return store.Project{}
 }
 
+func TestRolePageSeparatesAddAndReorder(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	database, err := db.Open("sqlite", filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { database.SQL.Close() })
+	if err := db.Migrate(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	st := store.New(database)
+	adminPassword, _, err := st.Seed(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewServer(st, config.Config{
+		DataDir: dir, Driver: "sqlite", StandardMinutes: 480,
+		SessionKey: bytes.Repeat([]byte("k"), 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	admin := newClient(t, ts.URL)
+	body := admin.submit(t, "/login", url.Values{"code": {"admin"}, "password": {adminPassword}})
+	admin.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {adminPassword},
+		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
+	})
+	page := admin.getBody(t, "/roles")
+	for _, want := range []string{"役割を追加", "登録済みの役割", "上へ", "下へ", "disabled>上へ", `class="role-page"`} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("roles page missing %s", want)
+		}
+	}
+	if strings.Contains(page, "並び順") && strings.Contains(page, `name="sort_order"`) {
+		t.Fatal("roles page should not ask for a sort number")
+	}
+	if strings.Index(page, `value="PG"`) > strings.Index(page, `value="SE"`) {
+		t.Fatal("PG should be listed before SE")
+	}
+	roles, err := st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seID string
+	for _, role := range roles {
+		if role.Name == "SE" {
+			seID = role.ID
+		}
+	}
+	moved := admin.submit(t, "/roles/"+seID+"/move", url.Values{
+		"csrf": {csrfOf(t, page)}, "direction": {"up"},
+	})
+	if strings.Index(moved, `value="SE"`) > strings.Index(moved, `value="PG"`) {
+		t.Fatal("SE should move above PG")
+	}
+	added := admin.submit(t, "/roles", url.Values{
+		"csrf": {csrfOf(t, moved)}, "name": {"顧問"}, "active": {"1"},
+	})
+	if strings.Index(added, `value="PM"`) > strings.Index(added, `value="顧問"`) {
+		t.Fatal("new role should be listed last")
+	}
+}
+
 func TestProcessPageSeparatesAddAndReorder(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()

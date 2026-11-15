@@ -7,10 +7,18 @@ import (
 	"odysseus/internal/store"
 )
 
-// rolePage は役割の一覧と編集です。
+// rolePage は役割の追加と、登録済み役割の編集です。
 type rolePage struct {
 	base
-	Roles []store.Role
+	Roles []roleView
+}
+
+// roleView は一覧の1行です。Position は上から数えた位置です。
+type roleView struct {
+	store.Role
+	Position int
+	First    bool
+	Last     bool
 }
 
 // processPage は工程の追加と、登録済み工程の編集です。
@@ -27,23 +35,42 @@ type processView struct {
 	Last     bool
 }
 
-// handleRoles は役割の一覧を出します。
+// handleRoles は役割の追加欄と、上から順に並んだ登録済み役割を出します。
 func (s *Server) handleRoles(w http.ResponseWriter, r *http.Request) {
 	roles, err := s.store.ListRoles(r.Context())
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.render(w, http.StatusOK, "roles", rolePage{base: s.page(w, r, "役割"), Roles: roles})
+	views := make([]roleView, len(roles))
+	for i, role := range roles {
+		views[i] = roleView{
+			Role: role, Position: i + 1,
+			First: i == 0, Last: i == len(roles)-1,
+		}
+	}
+	s.render(w, http.StatusOK, "roles", rolePage{base: s.page(w, r, "役割"), Roles: views})
 }
 
-// handleRoleCreate はフォームの役割を追加します。
+// handleRoleCreate はフォームの役割を、一覧の一番下に追加します。
 func (s *Server) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 	role, msg := readRole(r)
 	if msg != "" {
 		s.redirect(w, r, "/roles", msg)
 		return
 	}
+	existing, err := s.store.ListRoles(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	var maxOrder int64
+	for _, item := range existing {
+		if item.SortOrder > maxOrder {
+			maxOrder = item.SortOrder
+		}
+	}
+	role.SortOrder = maxOrder + 10
 	if _, err := s.store.InsertRole(r.Context(), role); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			s.redirect(w, r, "/roles", "同じ名前の役割が既にあります。")
@@ -55,14 +82,24 @@ func (s *Server) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/roles", "登録しました。")
 }
 
-// handleRoleUpdate はパスの役割をフォームの内容で更新します。
+// handleRoleUpdate はパスの役割の名前と有効フラグを更新します。並び順は変えません。
 func (s *Server) handleRoleUpdate(w http.ResponseWriter, r *http.Request) {
 	role, msg := readRole(r)
 	if msg != "" {
 		s.redirect(w, r, "/roles", msg)
 		return
 	}
-	role.ID = r.PathValue("id")
+	current, err := s.findRole(r, r.PathValue("id"))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "見つかりません。", http.StatusNotFound)
+			return
+		}
+		s.fail(w, err)
+		return
+	}
+	role.ID = current.ID
+	role.SortOrder = current.SortOrder
 	if err := s.store.UpdateRole(r.Context(), role); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			s.redirect(w, r, "/roles", "同じ名前の役割が既にあります。")
@@ -95,15 +132,49 @@ func (s *Server) handleRoleDelete(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/roles", "削除しました。")
 }
 
-// readRole は r のフォームを役割にします。名前や並び順が不正ならメッセージを返します。
-func readRole(r *http.Request) (store.Role, string) {
-	sortOrder, msg := parseSort(r.FormValue("sort_order"))
-	role := store.Role{Name: formText(r, "name"), SortOrder: sortOrder, Active: checkbox(r, "active")}
-	if role.Name == "" {
-		msg = firstMsg(msg, "名前を入力してください。")
+// handleRoleMove はパスの役割を、direction が up なら上へ、down なら下へ一つ動かします。
+func (s *Server) handleRoleMove(w http.ResponseWriter, r *http.Request) {
+	direction := formText(r, "direction")
+	moved, err := s.store.MoveRole(r.Context(), r.PathValue("id"), direction)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "見つかりません。", http.StatusNotFound)
+		return
 	}
-	msg = firstMsg(msg, limitRunes(role.Name, "名前", 32))
-	return role, msg
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if !moved {
+		s.redirect(w, r, "/roles", "")
+		return
+	}
+	s.redirect(w, r, "/roles", "並び順を変更しました。")
+}
+
+// readRole は r のフォームから、役割の名前と有効フラグを読みます。並び順は含みません。
+func readRole(r *http.Request) (store.Role, string) {
+	role := store.Role{Name: formText(r, "name"), Active: checkbox(r, "active")}
+	if role.Name == "" {
+		return role, "名前を入力してください。"
+	}
+	if msg := limitRunes(role.Name, "名前", 32); msg != "" {
+		return role, msg
+	}
+	return role, ""
+}
+
+// findRole は id の役割を、現在の並び順のまま返します。
+func (s *Server) findRole(r *http.Request, id string) (store.Role, error) {
+	roles, err := s.store.ListRoles(r.Context())
+	if err != nil {
+		return store.Role{}, err
+	}
+	for _, role := range roles {
+		if role.ID == id {
+			return role, nil
+		}
+	}
+	return store.Role{}, store.ErrNotFound
 }
 
 // handleProcesses は工程の追加欄と、上から順に並んだ登録済み工程を出します。
