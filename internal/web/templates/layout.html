@@ -1,23 +1,10 @@
 {{define "head"}}
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="{{if .Theme}}{{.Theme}}{{else}}light{{end}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} - Odysseus</title>
-  <script>
-    (function () {
-      try {
-        var theme = localStorage.getItem("odysseus-theme");
-        if (theme !== "light" && theme !== "dark") {
-          theme = "light";
-        }
-        document.documentElement.setAttribute("data-theme", theme);
-      } catch (e) {
-        document.documentElement.setAttribute("data-theme", "light");
-      }
-    })();
-  </script>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -44,7 +31,7 @@
   </nav>
   {{end}}
   {{if .Me}}
-  <details class="user-menu">
+  <details class="user-menu" data-csrf="{{.CSRF}}">
     <summary class="user-toggle" aria-label="{{.Me.Name}}のメニュー">
       <span class="user-icon" aria-hidden="true"></span>
     </summary>
@@ -54,8 +41,8 @@
       <div class="theme-picker">
         <span class="theme-label">テーマ</span>
         <div class="theme-options" role="group" aria-label="テーマ">
-          <button type="button" class="theme-option" data-theme-value="light" aria-pressed="true">ライト</button>
-          <button type="button" class="theme-option" data-theme-value="dark" aria-pressed="false">ダーク</button>
+          <button type="button" class="theme-option" data-theme-value="light" aria-pressed="{{if eq .Theme "dark"}}false{{else}}true{{end}}">ライト</button>
+          <button type="button" class="theme-option" data-theme-value="dark" aria-pressed="{{if eq .Theme "dark"}}true{{else}}false{{end}}">ダーク</button>
         </div>
       </div>
       <form method="post" action="/logout">

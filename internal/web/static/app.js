@@ -101,30 +101,40 @@
     });
   }
 
-  function currentTheme() {
-    var theme = document.documentElement.getAttribute("data-theme");
-    return theme === "dark" ? "dark" : "light";
-  }
-
   function applyTheme(theme) {
     if (theme !== "dark" && theme !== "light") {
       theme = "light";
     }
     document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem("odysseus-theme", theme);
-    } catch (e) {}
     document.querySelectorAll(".theme-option").forEach(function (button) {
       var on = button.getAttribute("data-theme-value") === theme;
       button.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
 
+  function saveTheme(theme, csrf) {
+    var body = new URLSearchParams();
+    body.set("theme", theme);
+    body.set("csrf", csrf);
+    fetch("/theme", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      credentials: "same-origin"
+    });
+  }
+
   function setupThemePicker() {
-    applyTheme(currentTheme());
+    var userMenu = document.querySelector(".user-menu");
+    if (!userMenu) {
+      return;
+    }
+    var csrf = userMenu.getAttribute("data-csrf") || "";
     document.querySelectorAll(".theme-option").forEach(function (button) {
       button.addEventListener("click", function () {
-        applyTheme(button.getAttribute("data-theme-value"));
+        var theme = button.getAttribute("data-theme-value");
+        applyTheme(theme);
+        saveTheme(theme, csrf);
       });
     });
   }

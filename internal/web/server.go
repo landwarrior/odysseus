@@ -42,12 +42,14 @@ type Server struct {
 
 // base はどの画面にも共通の見出し、CSRF トークン、通知、ログイン利用者です。
 // Flash は成功、Warn は入力や業務ルールの誤り、Error は想定外の失敗です。
+// Theme は light または dark で、利用者ごとに data ディレクトリへ保存します。
 type base struct {
 	Title string
 	CSRF  string
 	Flash string
 	Warn  string
 	Error string
+	Theme string
 	Me    *store.Person
 }
 
@@ -105,6 +107,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /logout", s.requireLogin(s.handleLogout))
 	mux.HandleFunc("GET /password", s.requireLogin(s.handlePasswordGet))
 	mux.HandleFunc("POST /password", s.requireLogin(s.handlePasswordPost))
+	mux.HandleFunc("POST /theme", s.requireLogin(s.handleThemeSave))
 	mux.HandleFunc("GET /", s.requireLogin(s.handleHome))
 
 	mux.HandleFunc("GET /projects", s.requireAdmin(s.handleProjects))
@@ -181,7 +184,7 @@ func (s *Server) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "ページの有効期限が切れました。戻って再度操作してください。", http.StatusBadRequest)
 			return
 		}
-		if me.MustChangePassword && r.URL.Path != "/password" && r.URL.Path != "/logout" {
+		if me.MustChangePassword && r.URL.Path != "/password" && r.URL.Path != "/logout" && r.URL.Path != "/theme" {
 			http.Redirect(w, r, "/password", http.StatusSeeOther)
 			return
 		}
@@ -351,7 +354,12 @@ func (s *Server) redirectWarn(w http.ResponseWriter, r *http.Request, path, msg 
 // page は title を見出しにした、画面共通の情報を作ります。r の通知はここで消費します。
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) base {
 	flash, warn, errMsg := s.takeNotice(w, r)
-	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Me: personFrom(r)}
+	me := personFrom(r)
+	theme := defaultTheme
+	if me != nil {
+		theme = s.themeOf(me.ID)
+	}
+	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Theme: theme, Me: me}
 }
 
 // render は name のテンプレートを data で描画し、status の HTTP 状態で w に書きます。
@@ -367,7 +375,7 @@ func (s *Server) render(w http.ResponseWriter, status int, name string, data any
 // fail は err をログに残し、w には想定外の失敗として赤い通知だけ返します。SQL の中身は画面に出しません。
 func (s *Server) fail(w http.ResponseWriter, err error) {
 	log.Printf("error: %v", err)
-	s.render(w, http.StatusInternalServerError, "failure", base{Title: "エラー", Error: "処理に失敗しました。"})
+	s.render(w, http.StatusInternalServerError, "failure", base{Title: "エラー", Error: "処理に失敗しました。", Theme: defaultTheme})
 }
 
 // initialHint は初期パスワードのファイルが残っているとき、ログイン画面用の案内を返します。

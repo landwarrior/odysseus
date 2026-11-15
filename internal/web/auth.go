@@ -26,7 +26,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	flash, warn, errMsg := s.takeNotice(w, r)
-	page := loginPage{base: base{Title: "ログイン", Flash: flash, Warn: warn, Error: errMsg}, Hint: s.initialHint()}
+	page := loginPage{base: base{Title: "ログイン", Flash: flash, Warn: warn, Error: errMsg, Theme: defaultTheme}, Hint: s.initialHint()}
 	s.render(w, http.StatusOK, "login", page)
 }
 
@@ -38,7 +38,7 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 	code := formText(r, "code")
 	password := r.FormValue("password")
-	page := loginPage{base: base{Title: "ログイン"}, Code: code, Hint: s.initialHint()}
+	page := loginPage{base: base{Title: "ログイン", Theme: defaultTheme}, Code: code, Hint: s.initialHint()}
 	auth, err := s.store.GetPersonByCode(r.Context(), code)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(auth.PasswordHash), []byte(password)) != nil || len(password) > 72 {
 		page.Warn = "ユーザーコードまたはパスワードが違います。"
