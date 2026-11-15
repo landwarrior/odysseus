@@ -16,6 +16,7 @@ type personListPage struct {
 }
 
 // personView は一覧の1行です。RoleName は表示日時点で有効な、いちばん新しい単価の役割です。
+// 同じ適用開始日に複数あるときは、単価が最も高い役割です。
 type personView struct {
 	store.Person
 	RoleName string
@@ -31,6 +32,7 @@ type personPage struct {
 }
 
 // handlePeople は人材の一覧を出します。役割は、表示日時点で有効な最新の単価から付けます。
+// 同じ適用開始日なら、単価が最も高い役割です。
 func (s *Server) handlePeople(w http.ResponseWriter, r *http.Request) {
 	people, err := s.store.ListPeople(r.Context())
 	if err != nil {

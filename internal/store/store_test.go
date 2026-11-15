@@ -145,6 +145,24 @@ func TestLatestRoleNames(t *testing.T) {
 	if _, ok := names[person.ID]; ok {
 		t.Fatal("future-only rates should stay empty")
 	}
+
+	other, err := st.InsertPerson(ctx, NewPerson{Code: "m02", Name: "佐藤", Password: "memberpass", Active: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: 6000}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["SE"], FromDate: "2026-01-01", HourlyYen: 4500}); err != nil {
+		t.Fatal(err)
+	}
+	names, err = st.LatestRoleNames(ctx, "2026-01-01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names[other.ID] != "PG" {
+		t.Fatalf("same-date highest rate role = %q", names[other.ID])
+	}
 }
 
 func TestMoveRole(t *testing.T) {

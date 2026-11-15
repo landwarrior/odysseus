@@ -629,15 +629,15 @@ func (s *Store) DeleteProcess(ctx context.Context, processID string) error {
 }
 
 // LatestRoleNames は、date 以前に適用が始まっている単価のうち、人材ごとに
-// 適用開始日が最も新しいものの役割名を返します。キーは人材 ID です。
-// 該当する単価が無い人材は map に入りません。
+// 適用開始日が最も新しいものの役割名を返します。同じ適用開始日なら単価が最も高い役割です。
+// キーは人材 ID です。該当する単価が無い人材は map に入りません。
 func (s *Store) LatestRoleNames(ctx context.Context, date string) (map[string]string, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT r.person_id, role.name
 		FROM person_rate r
 		JOIN role ON role.id = r.role_id
 		WHERE r.from_date <= ?
-		ORDER BY r.person_id, r.from_date DESC, role.sort_order, role.name`, date)
+		ORDER BY r.person_id, r.from_date DESC, r.hourly_yen DESC, role.sort_order, role.name`, date)
 	if err != nil {
 		return nil, err
 	}
