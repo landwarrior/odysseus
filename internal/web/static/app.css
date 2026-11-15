@@ -68,6 +68,9 @@ body {
 }
 
 a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+a.button:hover { color: white; }
+a.secondary:hover { color: var(--ink); }
 body, main, p, td, th, .banner, .note { overflow-wrap: anywhere; }
 
 h1, h2, h3 { line-height: 1.3; }
@@ -96,6 +99,8 @@ header.top:not(:has(.site-nav)) {
 }
 
 header.top a { color: inherit; text-decoration: none; }
+header.top a:hover { color: inherit; }
+header.top .user-panel a:hover { color: var(--accent-hover); }
 header.top .brand {
   grid-area: brand;
   font-weight: 700;
