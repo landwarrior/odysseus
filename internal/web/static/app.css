@@ -164,18 +164,30 @@ main.process-page { width: min(100%, 76rem); }
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 0.75rem 1rem;
+  gap: 12px 16px;
 }
 .process-add > label:first-child,
 .process-edit > label:first-child {
-  flex: 1 1 16rem;
-  min-width: 12rem;
+  flex: 1 1 225px;
+  width: 100%;
+  min-width: 225px;
+  max-width: 300px;
 }
 .process-add > button,
-.process-edit > button,
-.process-item > form:last-child > button {
-  width: 6.5rem;
-  flex: 0 0 6.5rem;
+.button-pair > button,
+.button-pair > form > button {
+  width: 126px;
+  min-width: 126px;
+  max-width: 126px;
+  flex: 0 0 126px;
+  box-sizing: border-box;
+}
+.button-pair {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: end;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
@@ -188,7 +200,7 @@ main.process-page { width: min(100%, 76rem); }
   border-radius: 8px;
   background: var(--bg);
 }
-.process-edit { flex: 1 1 32rem; min-width: min(100%, 32rem); }
+.process-edit { flex: 1 1 225px; min-width: 0; }
 .process-index {
   display: inline-grid;
   place-items: center;
@@ -211,5 +223,4 @@ main.process-page { width: min(100%, 76rem); }
   .inline { align-items: stretch; }
   .inline > * { flex: 1 1 12rem; }
   h1 { font-size: 1.35rem; }
-  .process-edit { min-width: 0; flex-basis: 100%; }
 }

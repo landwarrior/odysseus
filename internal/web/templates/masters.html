@@ -164,16 +164,18 @@
             <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
           </form>
         </div>
-        <form method="post" action="/processes/{{.ID}}" class="process-edit">
+        <form id="process-{{.ID}}" method="post" action="/processes/{{.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
           <label>名前<input name="name" value="{{.Name}}" required></label>
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
-          <button type="submit">保存</button>
         </form>
-        <form method="post" action="/processes/{{.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
-          <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <button type="submit" class="danger">削除</button>
-        </form>
+        <div class="button-pair">
+          <button type="submit" form="process-{{.ID}}">保存</button>
+          <form method="post" action="/processes/{{.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
       </li>
       {{end}}
     </ol>
