@@ -5,6 +5,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} - Odysseus</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("odysseus-theme");
+        if (theme !== "light" && theme !== "dark") {
+          theme = "light";
+        }
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -38,6 +51,13 @@
     <div class="user-panel">
       <p class="user-name">{{.Me.Name}}</p>
       <a href="/password">パスワード</a>
+      <div class="theme-picker">
+        <span class="theme-label">テーマ</span>
+        <div class="theme-options" role="group" aria-label="テーマ">
+          <button type="button" class="theme-option" data-theme-value="light" aria-pressed="true">ライト</button>
+          <button type="button" class="theme-option" data-theme-value="dark" aria-pressed="false">ダーク</button>
+        </div>
+      </div>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf" value="{{.CSRF}}">
         <button type="submit">ログアウト</button>

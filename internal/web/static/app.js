@@ -101,5 +101,34 @@
     });
   }
 
+  function currentTheme() {
+    var theme = document.documentElement.getAttribute("data-theme");
+    return theme === "dark" ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    if (theme !== "dark" && theme !== "light") {
+      theme = "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem("odysseus-theme", theme);
+    } catch (e) {}
+    document.querySelectorAll(".theme-option").forEach(function (button) {
+      var on = button.getAttribute("data-theme-value") === theme;
+      button.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function setupThemePicker() {
+    applyTheme(currentTheme());
+    document.querySelectorAll(".theme-option").forEach(function (button) {
+      button.addEventListener("click", function () {
+        applyTheme(button.getAttribute("data-theme-value"));
+      });
+    });
+  }
+
   setupHeaderMenus();
+  setupThemePicker();
 })();
