@@ -1,28 +1,56 @@
 package web
 
 import (
-	"os"
+	"context"
 	"path/filepath"
 	"testing"
 
 	"odysseus/internal/config"
+	"odysseus/internal/db"
+	"odysseus/internal/store"
 )
 
-func TestThemePersistsAcrossServer(t *testing.T) {
+func TestThemePersistsInDatabase(t *testing.T) {
+	ctx := context.Background()
 	dir := t.TempDir()
-	cfg := config.Config{DataDir: dir}
-	s1 := &Server{cfg: cfg}
-	if err := s1.saveTheme("person-1", "dark"); err != nil {
+	database, err := db.Open("sqlite", filepath.Join(dir, "t.db"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "themes.json")); err != nil {
+	t.Cleanup(func() { database.SQL.Close() })
+	if err := db.Migrate(ctx, database); err != nil {
 		t.Fatal(err)
 	}
-	s2 := &Server{cfg: cfg}
-	if got := s2.themeOf("person-1"); got != "dark" {
-		t.Fatalf("theme = %q", got)
+	st := store.New(database)
+	if _, _, err := st.Seed(ctx); err != nil {
+		t.Fatal(err)
 	}
-	if got := s2.themeOf("unknown"); got != "light" {
-		t.Fatalf("default theme = %q", got)
+	admin, err := st.GetPersonByCode(ctx, "admin")
+	if err != nil {
+		t.Fatal(err)
 	}
+	if admin.Theme != "light" {
+		t.Fatalf("default theme = %q", admin.Theme)
+	}
+	if err := st.UpdateTheme(ctx, admin.ID, "dark"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.GetPerson(ctx, admin.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Theme != "dark" {
+		t.Fatalf("theme = %q", got.Theme)
+	}
+	srv, err := NewServer(st, config.Config{
+		DataDir: dir, Driver: "sqlite", StandardMinutes: 480,
+		SessionKey: make([]byte, 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if personTheme(&got) != "dark" {
+		t.Fatal("personTheme")
+	}
+	_ = srv
 }

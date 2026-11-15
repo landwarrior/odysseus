@@ -42,7 +42,7 @@ type Server struct {
 
 // base はどの画面にも共通の見出し、CSRF トークン、通知、ログイン利用者です。
 // Flash は成功、Warn は入力や業務ルールの誤り、Error は想定外の失敗です。
-// Theme は light または dark で、利用者ごとに data ディレクトリへ保存します。
+// Theme は light または dark で、人材テーブルへ保存します。
 type base struct {
 	Title string
 	CSRF  string
@@ -355,11 +355,7 @@ func (s *Server) redirectWarn(w http.ResponseWriter, r *http.Request, path, msg 
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) base {
 	flash, warn, errMsg := s.takeNotice(w, r)
 	me := personFrom(r)
-	theme := defaultTheme
-	if me != nil {
-		theme = s.themeOf(me.ID)
-	}
-	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Theme: theme, Me: me}
+	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Theme: personTheme(me), Me: me}
 }
 
 // render は name のテンプレートを data で描画し、status の HTTP 状態で w に書きます。
