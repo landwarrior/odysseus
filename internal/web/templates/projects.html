@@ -30,9 +30,9 @@
           <td>{{day .StartDate}}</td>
           <td>{{day .EndDate}}</td>
           <td class="actions">
-            <a href="/projects/{{.ID}}">編集</a>
-            <a href="/projects/{{.ID}}/assign">アサイン</a>
-            <a href="/projects/{{.ID}}/forecast">予実</a>
+            <a class="button" href="/projects/{{.ID}}">編集</a>
+            <a class="button" href="/projects/{{.ID}}/assign">アサイン</a>
+            <a class="button" href="/projects/{{.ID}}/forecast">予実</a>
           </td>
         </tr>
         {{end}}
@@ -52,8 +52,8 @@
   {{template "alerts" .}}
   {{if not .IsNew}}
   <p class="actions">
-    <a href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
-    <a href="/projects/{{.Project.ID}}/forecast">予実</a>
+    <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
+    <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
   </p>
   {{end}}
   <form method="post" action="{{if .IsNew}}/projects{{else}}/projects/{{.Project.ID}}{{end}}" class="stack">
