@@ -189,6 +189,8 @@ label.check input:checked {
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; background: var(--paper); }
 th, td { border-bottom: 1px solid var(--line); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+table.rows-middle th,
+table.rows-middle td { vertical-align: middle; }
 .table-wrap th:first-child,
 .table-wrap td:first-child {
   position: sticky;
