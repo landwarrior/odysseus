@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -357,12 +356,12 @@ func formatYenPtr(n *int64) string {
 	return calc.FormatYen(*n)
 }
 
-// formatNumberPtr は n が nil なら空文字、そうでなければ桁区切りのない数字を返します。入力欄の再表示に使います。
+// formatNumberPtr は n が nil なら空文字、そうでなければ桁区切り付きの数字を返します。金額入力欄の再表示に使います。
 func formatNumberPtr(n *int64) string {
 	if n == nil {
 		return ""
 	}
-	return strconv.FormatInt(*n, 10)
+	return calc.FormatComma(*n)
 }
 
 // statusLabel は status（planning、active、closed）を画面用の日本語にします。

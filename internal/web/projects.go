@@ -3,7 +3,6 @@ package web
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"odysseus/internal/calc"
 	"odysseus/internal/report"
@@ -280,7 +279,7 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 	for _, line := range lines {
 		budget := ""
 		if line.BudgetYen != nil {
-			budget = strconv.FormatInt(*line.BudgetYen, 10)
+			budget = calc.FormatComma(*line.BudgetYen)
 		}
 		out = append(out, lineForm{
 			ProcessID: line.ProcessID, Start: line.StartDate, End: line.EndDate,

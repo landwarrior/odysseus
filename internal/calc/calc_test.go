@@ -71,6 +71,15 @@ func TestPersonDays(t *testing.T) {
 }
 
 func TestYen(t *testing.T) {
+	if got := FormatComma(0); got != "0" {
+		t.Fatal(got)
+	}
+	if got := FormatComma(400000); got != "400,000" {
+		t.Fatal(got)
+	}
+	if got := FormatComma(1000000); got != "1,000,000" {
+		t.Fatal(got)
+	}
 	if got := FormatYen(0); got != "¥0" {
 		t.Fatal(got)
 	}

@@ -61,7 +61,7 @@
     <div class="grid">
       <label>プロジェクト番号<input name="code" value="{{.Project.Code}}" required></label>
       <label>プロジェクト名<input name="name" value="{{.Project.Name}}" required></label>
-      <label>受注金額<input name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
+      <label>受注金額<input class="yen-input" name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
       <label>状態
         <select name="status">
           <option value="planning" {{if eq .Project.Status "planning"}}selected{{end}}>計画中</option>
@@ -93,7 +93,7 @@
             <td><input type="date" name="line_start" value="{{$line.Start}}"></td>
             <td><input type="date" name="line_end" value="{{$line.End}}"></td>
             <td><input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></td>
-            <td><input name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></td>
+            <td><input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></td>
             <td><button type="button" class="remove-line secondary">行削除</button></td>
           </tr>
           {{end}}
@@ -117,7 +117,7 @@
       <td><input type="date" name="line_start"></td>
       <td><input type="date" name="line_end"></td>
       <td><input name="line_hours" inputmode="decimal"></td>
-      <td><input name="line_budget" inputmode="numeric"></td>
+      <td><input class="yen-input" name="line_budget" inputmode="numeric"></td>
       <td><button type="button" class="remove-line secondary">行削除</button></td>
     </tr>
   </template>

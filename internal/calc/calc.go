@@ -127,8 +127,8 @@ func ParseYen(raw string) (*int64, error) {
 	return &n, nil
 }
 
-// FormatYen は n（円。負でもよい）を ¥1,234 の形にします。
-func FormatYen(n int64) string {
+// FormatComma は n（整数。負でもよい）を 1,234 の形にします。金額の入力欄用です。
+func FormatComma(n int64) string {
 	sign := ""
 	if n < 0 {
 		sign = "-"
@@ -141,11 +141,18 @@ func FormatYen(n int64) string {
 	}
 	var b strings.Builder
 	b.WriteString(sign)
-	b.WriteString("¥")
 	b.WriteString(s[:lead])
 	for i := lead; i < len(s); i += 3 {
 		b.WriteByte(',')
 		b.WriteString(s[i : i+3])
 	}
 	return b.String()
+}
+
+// FormatYen は n（円。負でもよい）を ¥1,234 の形にします。
+func FormatYen(n int64) string {
+	if n < 0 {
+		return "-¥" + FormatComma(-n)
+	}
+	return "¥" + FormatComma(n)
 }
