@@ -128,7 +128,7 @@ func (s *Server) handleProjectDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if formText(r, "confirm_code") != project.Code {
-		s.redirect(w, r, "/projects/"+project.ID, "削除するにはプロジェクト番号を正しく入力してください。")
+		s.redirectWarn(w, r, "/projects/"+project.ID, "削除するにはプロジェクト番号を正しく入力してください。")
 		return
 	}
 	if err := s.store.DeleteProject(r.Context(), project.ID); err != nil {
@@ -289,10 +289,10 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 	return out
 }
 
-// renderProject は page を status で描画します。errs の先頭があれば、それをエラーとして出します。
+// renderProject は page を status で描画します。errs の先頭があれば、それを警告として出します。
 func (s *Server) renderProject(w http.ResponseWriter, r *http.Request, page projectPage, status int, errs ...string) {
 	if len(errs) > 0 {
-		page.Error = errs[0]
+		page.Warn = errs[0]
 	}
 	processes, err := s.store.ListProcesses(r.Context())
 	if err != nil {
@@ -414,12 +414,12 @@ func (s *Server) handleAssignCreate(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
 	write, msg := s.readAssignment(r, projectID, "")
 	if msg != "" {
-		s.redirect(w, r, "/projects/"+projectID+"/assign", msg)
+		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 		return
 	}
 	if _, err := s.store.CreateAssignment(r.Context(), write); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
 			return
 		}
 		s.fail(w, err)
@@ -437,13 +437,13 @@ func (s *Server) handleAssignUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	write, msg := s.readAssignment(r, projectID, assignment.ID)
 	if msg != "" {
-		s.redirect(w, r, "/projects/"+projectID+"/assign", msg)
+		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 		return
 	}
 	write.ProjectProcessID = assignment.ProjectProcessID
 	if err := s.store.UpdateAssignment(r.Context(), assignment.ID, write); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
 			return
 		}
 		s.fail(w, err)
@@ -577,13 +577,15 @@ func (s *Server) handleRecalc(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	msg := "予定原価を再計算しました。"
 	if len(missing) > 0 {
-		msg = "一部のアサインは開始日時点の単価がないため更新していません。"
-	} else if updated == 0 {
-		msg = "再計算するアサインはありません。"
+		s.redirectWarn(w, r, "/projects/"+id+"/forecast", "一部のアサインは開始日時点の単価がないため更新していません。")
+		return
 	}
-	s.redirect(w, r, "/projects/"+id+"/forecast", msg)
+	if updated == 0 {
+		s.redirectWarn(w, r, "/projects/"+id+"/forecast", "再計算するアサインはありません。")
+		return
+	}
+	s.redirect(w, r, "/projects/"+id+"/forecast", "予定原価を再計算しました。")
 }
 
 // forecastPage は1案件の予実画面です。

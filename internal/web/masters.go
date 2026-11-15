@@ -56,7 +56,7 @@ func (s *Server) handleRoles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 	role, msg := readRole(r)
 	if msg != "" {
-		s.redirect(w, r, "/roles", msg)
+		s.redirectWarn(w, r, "/roles", msg)
 		return
 	}
 	existing, err := s.store.ListRoles(r.Context())
@@ -73,7 +73,7 @@ func (s *Server) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 	role.SortOrder = maxOrder + 10
 	if _, err := s.store.InsertRole(r.Context(), role); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/roles", "同じ名前の役割が既にあります。")
+			s.redirectWarn(w, r, "/roles", "同じ名前の役割が既にあります。")
 			return
 		}
 		s.fail(w, err)
@@ -86,7 +86,7 @@ func (s *Server) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRoleUpdate(w http.ResponseWriter, r *http.Request) {
 	role, msg := readRole(r)
 	if msg != "" {
-		s.redirect(w, r, "/roles", msg)
+		s.redirectWarn(w, r, "/roles", msg)
 		return
 	}
 	current, err := s.findRole(r, r.PathValue("id"))
@@ -102,7 +102,7 @@ func (s *Server) handleRoleUpdate(w http.ResponseWriter, r *http.Request) {
 	role.SortOrder = current.SortOrder
 	if err := s.store.UpdateRole(r.Context(), role); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/roles", "同じ名前の役割が既にあります。")
+			s.redirectWarn(w, r, "/roles", "同じ名前の役割が既にあります。")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {
@@ -119,7 +119,7 @@ func (s *Server) handleRoleUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRoleDelete(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.DeleteRole(r.Context(), r.PathValue("id")); err != nil {
 		if errors.Is(err, store.ErrInUse) {
-			s.redirect(w, r, "/roles", "単価かアサインで使われているため削除できません。無効にしてください。")
+			s.redirectWarn(w, r, "/roles", "単価かアサインで使われているため削除できません。無効にしてください。")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {
@@ -198,7 +198,7 @@ func (s *Server) handleProcesses(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleProcessCreate(w http.ResponseWriter, r *http.Request) {
 	process, msg := readProcess(r)
 	if msg != "" {
-		s.redirect(w, r, "/processes", msg)
+		s.redirectWarn(w, r, "/processes", msg)
 		return
 	}
 	existing, err := s.store.ListProcesses(r.Context())
@@ -215,7 +215,7 @@ func (s *Server) handleProcessCreate(w http.ResponseWriter, r *http.Request) {
 	process.SortOrder = maxOrder + 10
 	if _, err := s.store.InsertProcess(r.Context(), process); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/processes", "同じ名前の工程が既にあります。")
+			s.redirectWarn(w, r, "/processes", "同じ名前の工程が既にあります。")
 			return
 		}
 		s.fail(w, err)
@@ -228,7 +228,7 @@ func (s *Server) handleProcessCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleProcessUpdate(w http.ResponseWriter, r *http.Request) {
 	process, msg := readProcess(r)
 	if msg != "" {
-		s.redirect(w, r, "/processes", msg)
+		s.redirectWarn(w, r, "/processes", msg)
 		return
 	}
 	current, err := s.findProcess(r, r.PathValue("id"))
@@ -244,7 +244,7 @@ func (s *Server) handleProcessUpdate(w http.ResponseWriter, r *http.Request) {
 	process.SortOrder = current.SortOrder
 	if err := s.store.UpdateProcess(r.Context(), process); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/processes", "同じ名前の工程が既にあります。")
+			s.redirectWarn(w, r, "/processes", "同じ名前の工程が既にあります。")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {
@@ -280,7 +280,7 @@ func (s *Server) handleProcessMove(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleProcessDelete(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.DeleteProcess(r.Context(), r.PathValue("id")); err != nil {
 		if errors.Is(err, store.ErrInUse) {
-			s.redirect(w, r, "/processes", "プロジェクトで使われているため削除できません。無効にしてください。")
+			s.redirectWarn(w, r, "/processes", "プロジェクトで使われているため削除できません。無効にしてください。")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {

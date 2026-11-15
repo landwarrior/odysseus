@@ -41,10 +41,12 @@ type Server struct {
 }
 
 // base はどの画面にも共通の見出し、CSRF トークン、通知、ログイン利用者です。
+// Flash は成功、Warn は入力や業務ルールの誤り、Error は想定外の失敗です。
 type base struct {
 	Title string
 	CSRF  string
 	Flash string
+	Warn  string
 	Error string
 	Me    *store.Person
 }
@@ -286,42 +288,70 @@ func (s *Server) openSession(value string) (session, error) {
 	return sess, nil
 }
 
-// setFlash は msg を、次の画面で一度だけ出す通知として w に書きます。
-func (s *Server) setFlash(w http.ResponseWriter, msg string) {
+const (
+	noticeOK    = "ok"
+	noticeWarn  = "warn"
+	noticeError = "error"
+)
+
+// setNotice は kind（ok / warn / error）と msg を、次の画面で一度だけ出す通知として w に書きます。
+func (s *Server) setNotice(w http.ResponseWriter, kind, msg string) {
 	http.SetCookie(w, &http.Cookie{
-		Name: "odysseus_flash", Value: url.QueryEscape(msg), Path: "/", HttpOnly: true,
+		Name: "odysseus_flash", Value: url.QueryEscape(kind + "|" + msg), Path: "/", HttpOnly: true,
 		SameSite: http.SameSiteLaxMode, MaxAge: 120,
 	})
 }
 
-// takeFlash は r の通知を読み、w でそのクッキーを消します。通知が無ければ空文字です。
-func (s *Server) takeFlash(w http.ResponseWriter, r *http.Request) string {
+// takeNotice は r の通知を読み、w でそのクッキーを消します。種類ごとに分けて返します。
+func (s *Server) takeNotice(w http.ResponseWriter, r *http.Request) (flash, warn, errMsg string) {
 	c, err := r.Cookie("odysseus_flash")
 	if err != nil {
-		return ""
+		return "", "", ""
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: "odysseus_flash", Value: "", Path: "/", HttpOnly: true,
 		SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
-	msg, err := url.QueryUnescape(c.Value)
+	raw, err := url.QueryUnescape(c.Value)
 	if err != nil {
-		return ""
+		return "", "", ""
 	}
-	return msg
+	kind, msg, ok := strings.Cut(raw, "|")
+	if !ok {
+		return raw, "", ""
+	}
+	switch kind {
+	case noticeOK:
+		return msg, "", ""
+	case noticeWarn:
+		return "", msg, ""
+	case noticeError:
+		return "", "", msg
+	default:
+		return raw, "", ""
+	}
 }
 
-// redirect は path へ移動させます。flash が空でなければ、移動先で一度だけ表示します。
-func (s *Server) redirect(w http.ResponseWriter, r *http.Request, path, flash string) {
-	if flash != "" {
-		s.setFlash(w, flash)
+// redirect は path へ移動させます。msg が空でなければ、移動先で成功の通知を一度だけ出します。
+func (s *Server) redirect(w http.ResponseWriter, r *http.Request, path, msg string) {
+	if msg != "" {
+		s.setNotice(w, noticeOK, msg)
+	}
+	http.Redirect(w, r, path, http.StatusSeeOther)
+}
+
+// redirectWarn は path へ移動させます。msg が空でなければ、移動先で警告を一度だけ出します。
+func (s *Server) redirectWarn(w http.ResponseWriter, r *http.Request, path, msg string) {
+	if msg != "" {
+		s.setNotice(w, noticeWarn, msg)
 	}
 	http.Redirect(w, r, path, http.StatusSeeOther)
 }
 
 // page は title を見出しにした、画面共通の情報を作ります。r の通知はここで消費します。
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) base {
-	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: s.takeFlash(w, r), Me: personFrom(r)}
+	flash, warn, errMsg := s.takeNotice(w, r)
+	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Me: personFrom(r)}
 }
 
 // render は name のテンプレートを data で描画し、status の HTTP 状態で w に書きます。
@@ -334,10 +364,10 @@ func (s *Server) render(w http.ResponseWriter, status int, name string, data any
 	}
 }
 
-// fail は err をログに残し、w には処理失敗とだけ返します。SQL の中身は画面に出しません。
+// fail は err をログに残し、w には想定外の失敗として赤い通知だけ返します。SQL の中身は画面に出しません。
 func (s *Server) fail(w http.ResponseWriter, err error) {
 	log.Printf("error: %v", err)
-	http.Error(w, "処理に失敗しました。", http.StatusInternalServerError)
+	s.render(w, http.StatusInternalServerError, "failure", base{Title: "エラー", Error: "処理に失敗しました。"})
 }
 
 // initialHint は初期パスワードのファイルが残っているとき、ログイン画面用の案内を返します。

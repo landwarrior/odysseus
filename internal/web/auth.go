@@ -25,7 +25,8 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	page := loginPage{base: base{Title: "ログイン", Flash: s.takeFlash(w, r)}, Hint: s.initialHint()}
+	flash, warn, errMsg := s.takeNotice(w, r)
+	page := loginPage{base: base{Title: "ログイン", Flash: flash, Warn: warn, Error: errMsg}, Hint: s.initialHint()}
 	s.render(w, http.StatusOK, "login", page)
 }
 
@@ -40,12 +41,12 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	page := loginPage{base: base{Title: "ログイン"}, Code: code, Hint: s.initialHint()}
 	auth, err := s.store.GetPersonByCode(r.Context(), code)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(auth.PasswordHash), []byte(password)) != nil || len(password) > 72 {
-		page.Error = "ユーザーコードまたはパスワードが違います。"
+		page.Warn = "ユーザーコードまたはパスワードが違います。"
 		s.render(w, http.StatusBadRequest, "login", page)
 		return
 	}
 	if !auth.Active {
-		page.Error = "このユーザーは無効です。"
+		page.Warn = "このユーザーは無効です。"
 		s.render(w, http.StatusBadRequest, "login", page)
 		return
 	}
@@ -82,17 +83,17 @@ func (s *Server) handlePasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if bcrypt.CompareHashAndPassword([]byte(auth.PasswordHash), []byte(current)) != nil {
-		page.Error = "現在のパスワードが違います。"
+		page.Warn = "現在のパスワードが違います。"
 		s.render(w, http.StatusBadRequest, "password", page)
 		return
 	}
 	if msg := passwordIssue(next, true); msg != "" {
-		page.Error = msg
+		page.Warn = msg
 		s.render(w, http.StatusBadRequest, "password", page)
 		return
 	}
 	if next != confirm {
-		page.Error = "新しいパスワードが一致しません。"
+		page.Warn = "新しいパスワードが一致しません。"
 		s.render(w, http.StatusBadRequest, "password", page)
 		return
 	}

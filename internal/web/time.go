@@ -63,7 +63,7 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 	}
 	date, msg := normalizeDate(r.FormValue("work_date"), true)
 	if msg != "" {
-		page.Error = msg
+		page.Warn = msg
 		s.render(w, http.StatusBadRequest, "time_form", page)
 		return
 	}
@@ -75,7 +75,7 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 			parsed, errText := parseOptionalHours(raw)
 			if errText != "" {
 				page.Date = date
-				page.Error = column.ProcessName + "の" + errText
+				page.Warn = column.ProcessName + "の" + errText
 				s.render(w, http.StatusBadRequest, "time_form", page)
 				return
 			}
@@ -83,14 +83,14 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 		}
 		if minutes > 24*60 {
 			page.Date = date
-			page.Error = "1 日の入力は 24 時間までです。"
+			page.Warn = "1 日の入力は 24 時間までです。"
 			s.render(w, http.StatusBadRequest, "time_form", page)
 			return
 		}
 		inRange := date >= column.StartDate && date <= column.EndDate
 		if minutes > 0 && !inRange {
 			page.Date = date
-			page.Error = column.ProcessName + "は " + column.StartDate + " から " + column.EndDate + " の範囲で入力してください。"
+			page.Warn = column.ProcessName + "は " + column.StartDate + " から " + column.EndDate + " の範囲で入力してください。"
 			s.render(w, http.StatusBadRequest, "time_form", page)
 			return
 		}
@@ -105,13 +105,13 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/time/"+page.Project.ID+"?month="+date[:7]+"&date="+date, "登録しました。")
 }
 
-// prepareTime は実績画面の表示データを作り、errMsg をエラーとして載せます。表示できないときは false です。
+// prepareTime は実績画面の表示データを作り、errMsg を警告として載せます。表示できないときは false です。
 func (s *Server) prepareTime(w http.ResponseWriter, r *http.Request, errMsg string) (timePage, bool) {
 	page, _, ok := s.timeContext(w, r)
 	if !ok {
 		return timePage{}, false
 	}
-	page.Error = errMsg
+	page.Warn = errMsg
 	return page, true
 }
 
@@ -128,7 +128,7 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		return timePage{}, nil, false
 	}
 	if project.Status == "closed" {
-		s.redirect(w, r, "/time", "完了したプロジェクトには実績を入力できません。")
+		s.redirectWarn(w, r, "/time", "完了したプロジェクトには実績を入力できません。")
 		return timePage{}, nil, false
 	}
 	columns, err := s.store.ListPersonAssignments(r.Context(), project.ID, personFrom(r).ID)
@@ -137,7 +137,7 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		return timePage{}, nil, false
 	}
 	if len(columns) == 0 {
-		s.redirect(w, r, "/time", "このプロジェクトへのアサインがありません。")
+		s.redirectWarn(w, r, "/time", "このプロジェクトへのアサインがありません。")
 		return timePage{}, nil, false
 	}
 	month := time.Now().Format("2006-01")

@@ -61,7 +61,7 @@ func (s *Server) handlePersonCreate(w http.ResponseWriter, r *http.Request) {
 	in, msg := readPerson(r, true)
 	if msg != "" {
 		s.render(w, http.StatusBadRequest, "person_form", personPage{
-			base:   errBase(s.page(w, r, "人材の追加"), msg),
+			base:   warnBase(s.page(w, r, "人材の追加"), msg),
 			IsNew:  true,
 			Person: postedPerson(in),
 		})
@@ -70,7 +70,7 @@ func (s *Server) handlePersonCreate(w http.ResponseWriter, r *http.Request) {
 	person, err := s.store.InsertPerson(r.Context(), in)
 	if errors.Is(err, store.ErrConflict) {
 		s.render(w, http.StatusBadRequest, "person_form", personPage{
-			base: errBase(s.page(w, r, "人材の追加"), "このユーザーコードは既に使われています。"), IsNew: true, Person: postedPerson(in),
+			base: warnBase(s.page(w, r, "人材の追加"), "このユーザーコードは既に使われています。"), IsNew: true, Person: postedPerson(in),
 		})
 		return
 	}
@@ -122,7 +122,7 @@ func (s *Server) handlePersonUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePersonDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == personFrom(r).ID {
-		s.redirect(w, r, "/people/"+id, "自分自身は削除できません。")
+		s.redirectWarn(w, r, "/people/"+id, "自分自身は削除できません。")
 		return
 	}
 	person, err := s.store.GetPerson(r.Context(), id)
@@ -135,16 +135,16 @@ func (s *Server) handlePersonDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if formText(r, "confirm_code") != person.Code {
-		s.redirect(w, r, "/people/"+id, "削除するにはユーザーコードを正しく入力してください。")
+		s.redirectWarn(w, r, "/people/"+id, "削除するにはユーザーコードを正しく入力してください。")
 		return
 	}
 	if err := s.store.DeletePerson(r.Context(), id); err != nil {
 		if errors.Is(err, store.ErrInUse) {
-			s.redirect(w, r, "/people/"+id, "アサインがあるため削除できません。無効にしてください。")
+			s.redirectWarn(w, r, "/people/"+id, "アサインがあるため削除できません。無効にしてください。")
 			return
 		}
 		if errors.Is(err, store.ErrLastAdmin) {
-			s.redirect(w, r, "/people/"+id, "最後の有効な管理者は削除できません。")
+			s.redirectWarn(w, r, "/people/"+id, "最後の有効な管理者は削除できません。")
 			return
 		}
 		s.fail(w, err)
@@ -174,14 +174,14 @@ func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 		msg = firstMsg(msg, "役割を選択してください。")
 	}
 	if msg != "" {
-		s.redirect(w, r, "/people/"+id, msg)
+		s.redirectWarn(w, r, "/people/"+id, msg)
 		return
 	}
 	if _, err := s.store.InsertRate(r.Context(), store.Rate{
 		PersonID: id, RoleID: roleID, FromDate: date, HourlyYen: *yen,
 	}); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.redirect(w, r, "/people/"+id, "同じ役割と適用開始日の単価が既にあります。")
+			s.redirectWarn(w, r, "/people/"+id, "同じ役割と適用開始日の単価が既にあります。")
 			return
 		}
 		s.fail(w, err)
@@ -228,13 +228,13 @@ func (s *Server) loadPerson(w http.ResponseWriter, r *http.Request) (personPage,
 	return personPage{base: s.page(w, r, "人材の編集"), Person: person, Rates: rates, Roles: roles}, true
 }
 
-// renderPersonError は id の編集画面を、in の入力内容と msg のエラーで描き直します。
+// renderPersonError は id の編集画面を、in の入力内容と msg の警告で描き直します。
 func (s *Server) renderPersonError(w http.ResponseWriter, r *http.Request, id string, in store.NewPerson, msg string) {
 	page, ok := s.loadPerson(w, r)
 	if !ok {
 		return
 	}
-	page.Error = msg
+	page.Warn = msg
 	page.Person.Code = in.Code
 	page.Person.Name = in.Name
 	page.Person.NameKana = in.NameKana
@@ -276,8 +276,8 @@ func postedPerson(in store.NewPerson) store.Person {
 	}
 }
 
-// errBase は b に msg をエラーとして載せたコピーを返します。
-func errBase(b base, msg string) base {
-	b.Error = msg
+// warnBase は b に msg を警告として載せたコピーを返します。
+func warnBase(b base, msg string) base {
+	b.Warn = msg
 	return b
 }
