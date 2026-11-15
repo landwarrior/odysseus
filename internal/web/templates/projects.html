@@ -73,61 +73,70 @@
       <label>終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
     </div>
     <h2>工程</h2>
-    <div class="table-wrap">
-      <table id="lines">
-        <thead>
-          <tr><th>工程</th><th>開始</th><th>終了</th><th>予定時間</th><th>予算</th><th></th></tr>
-        </thead>
-        <tbody>
-          {{range .Lines}}
-          {{$line := .}}
-          <tr>
-            <td>
-              <select name="process_id">
-                <option value="">選択</option>
-                {{range $.Processes}}
-                <option value="{{.ID}}" {{if eq .ID $line.ProcessID}}selected{{end}}>{{.Name}}{{if not .Active}}（無効）{{end}}</option>
-                {{end}}
-              </select>
-            </td>
-            <td><input type="date" name="line_start" value="{{$line.Start}}"></td>
-            <td><input type="date" name="line_end" value="{{$line.End}}"></td>
-            <td><input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></td>
-            <td><input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></td>
-            <td><button type="button" class="remove-line secondary">行削除</button></td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
+    <div id="lines" class="project-lines">
+      {{range .Lines}}
+      {{$line := .}}
+      <div class="project-line">
+        <div class="line-process">
+          <label>工程
+            <select name="process_id">
+              <option value="">選択</option>
+              {{range $.Processes}}
+              <option value="{{.ID}}" {{if eq .ID $line.ProcessID}}selected{{end}}>{{.Name}}{{if not .Active}}（無効）{{end}}</option>
+              {{end}}
+            </select>
+          </label>
+        </div>
+        <div class="line-dates">
+          <label>開始<input type="date" name="line_start" value="{{$line.Start}}"></label>
+          <label>終了<input type="date" name="line_end" value="{{$line.End}}"></label>
+        </div>
+        <div class="line-amounts">
+          <label>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
+          <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
+        </div>
+        <div class="line-remove">
+          <button type="button" class="remove-line secondary">行削除</button>
+        </div>
+      </div>
+      {{end}}
     </div>
     <p><button type="button" id="add-line" class="secondary">行を追加</button></p>
     <p class="note">予定時間は時間単位です。1.5 は 1 時間 30 分です。予算を空にすると、予実画面ではアサインの予定原価を予算として表示します。</p>
     <button type="submit">登録</button>
   </form>
   <template id="line-row">
-    <tr>
-      <td>
-        <select name="process_id">
-          <option value="">選択</option>
-          {{range .Processes}}
-          {{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
-          {{end}}
-        </select>
-      </td>
-      <td><input type="date" name="line_start"></td>
-      <td><input type="date" name="line_end"></td>
-      <td><input name="line_hours" inputmode="decimal"></td>
-      <td><input class="yen-input" name="line_budget" inputmode="numeric"></td>
-      <td><button type="button" class="remove-line secondary">行削除</button></td>
-    </tr>
+    <div class="project-line">
+      <div class="line-process">
+        <label>工程
+          <select name="process_id">
+            <option value="">選択</option>
+            {{range .Processes}}
+            {{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+            {{end}}
+          </select>
+        </label>
+      </div>
+      <div class="line-dates">
+        <label>開始<input type="date" name="line_start"></label>
+        <label>終了<input type="date" name="line_end"></label>
+      </div>
+      <div class="line-amounts">
+        <label>予定時間<input name="line_hours" inputmode="decimal"></label>
+        <label>予算<input class="yen-input" name="line_budget" inputmode="numeric"></label>
+      </div>
+      <div class="line-remove">
+        <button type="button" class="remove-line secondary">行削除</button>
+      </div>
+    </div>
   </template>
   <script>
     document.getElementById("add-line").addEventListener("click", function () {
-      document.querySelector("#lines tbody").appendChild(document.getElementById("line-row").content.cloneNode(true));
+      document.getElementById("lines").appendChild(document.getElementById("line-row").content.cloneNode(true));
     });
     document.getElementById("lines").addEventListener("click", function (event) {
       if (event.target.classList.contains("remove-line")) {
-        event.target.closest("tr").remove();
+        event.target.closest(".project-line").remove();
       }
     });
   </script>

@@ -241,6 +241,43 @@ section.danger { border-color: #e7c1c1; }
 .cost { margin: 0; align-self: end; }
 .assign-row { margin-bottom: 0.4rem; }
 
+.project-lines {
+  display: grid;
+  gap: 0.75rem;
+}
+.project-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.line-process {
+  flex: 1 1 14rem;
+  min-width: 14rem;
+}
+.line-dates,
+.line-amounts {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: end;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+.line-dates label,
+.line-amounts label {
+  width: 9.5rem;
+  min-width: 9.5rem;
+}
+.line-remove {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
 main.process-page,
 main.role-page,
 main.person-page {
