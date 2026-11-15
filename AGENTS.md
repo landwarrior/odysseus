@@ -8,6 +8,8 @@
 go build -trimpath -ldflags "-s -w" -o odysseus.exe ./cmd/odysseus
 ```
 
+`CGO_ENABLED=0` は付けない。昔の SQLite ドライバ（`mattn/go-sqlite3`）は C に依存したため付けていたが、ここでは `modernc.org/sqlite` と `pgx` の純 Go 実装だけを使う。環境変数なしでも同じ純 Go ビルドになる。
+
 CSS と HTML は実行ファイルに埋め込まれる。画面を変えたらビルドし直す。
 
 ## 構成
