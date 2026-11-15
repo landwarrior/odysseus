@@ -57,6 +57,7 @@
       <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
     </div>
     <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
+    {{if .IsNew}}<p class="note">時間単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
     <button type="submit">登録</button>
   </form>
   <script>
