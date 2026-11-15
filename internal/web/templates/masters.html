@@ -1,0 +1,234 @@
+{{define "people"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <div class="title-row">
+    <h1>人材</h1>
+    <a class="button" href="/people/new">新規作成</a>
+  </div>
+  {{template "alerts" .}}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>コード</th><th>氏名</th><th>役割</th><th class="mark">管理者</th><th>状態</th><th>備考</th><th></th></tr></thead>
+      <tbody>
+        {{range .People}}
+        <tr>
+          <td>{{.Code}}</td>
+          <td>{{.Name}}</td>
+          <td>{{.RoleName}}</td>
+          <td class="mark">{{if .IsAdmin}}<span class="mark-check" title="管理者" aria-label="管理者"></span>{{end}}</td>
+          <td>{{if .Active}}有効{{else}}無効{{end}}</td>
+          <td class="clip"{{if .Remarks}} title="{{.Remarks}}"{{end}}>{{.Remarks}}</td>
+          <td><a class="button" href="/people/{{.ID}}">編集</a></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "person_form"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main class="person-page">
+  <h1>{{if .IsNew}}人材の追加{{else}}人材の編集{{end}}</h1>
+  {{template "alerts" .}}
+  <form method="post" action="{{if .IsNew}}/people{{else}}/people/{{.Person.ID}}{{end}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="grid">
+      <label>ユーザーコード<input name="code" value="{{.Person.Code}}" required></label>
+      <label>氏名<input name="name" value="{{.Person.Name}}" required></label>
+      <label>カナ<input name="name_kana" value="{{.Person.NameKana}}"></label>
+      <label>
+        <span class="label-row">
+          パスワード
+          <details class="help">
+            <summary aria-label="パスワードの説明">?</summary>
+            <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
+          </details>
+        </span>
+        <input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{end}}>
+      </label>
+    </div>
+    <div class="inline checks">
+      <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
+      <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
+    </div>
+    <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
+    {{if .IsNew}}<p class="note">時間単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
+    <button type="submit">登録</button>
+  </form>
+  <script>
+    document.addEventListener("click", function (event) {
+      document.querySelectorAll("details.help[open]").forEach(function (help) {
+        if (!help.contains(event.target)) help.removeAttribute("open");
+      });
+    });
+  </script>
+  {{if not .IsNew}}
+  <section class="card">
+    <h2>時間単価</h2>
+    {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
+    {{if .Rates}}
+    <table class="rates">
+      <thead><tr><th>役割</th><th>適用開始日</th><th>円 / 時</th><th></th></tr></thead>
+      <tbody>
+        {{range .Rates}}
+        <tr>
+          <td>{{.RoleName}}</td>
+          <td>{{.FromDate}}</td>
+          <td class="num">{{yen .HourlyYen}}</td>
+          <td>
+            <form method="post" action="/people/{{$.Person.ID}}/rates/{{.ID}}/delete">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button type="submit" class="secondary">削除</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+    <form method="post" action="/people/{{.Person.ID}}/rates" class="grid rates-form">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label>役割
+        <select name="role_id" required>
+          {{range .Roles}}{{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}{{end}}
+        </select>
+      </label>
+      <label>適用開始日<input type="date" name="from_date" required></label>
+      <label>円 / 時<input class="yen-input" name="hourly_yen" inputmode="numeric" required></label>
+      <button type="submit">単価を追加</button>
+    </form>
+  </section>
+  <section class="danger">
+    <h2>削除</h2>
+    <p>アサインがある人材は削除できません。無効にしてください。</p>
+    <form method="post" action="/people/{{.Person.ID}}/delete" class="person-delete">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input name="confirm_code" placeholder="ユーザーコード" required>
+      <button type="submit" class="danger">削除</button>
+    </form>
+  </section>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "roles"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main class="role-page">
+  <h1>役割</h1>
+  {{template "alerts" .}}
+  <section class="card">
+    <h2>役割を追加</h2>
+    <p class="note">追加した役割は、一覧の一番下に入ります。</p>
+    <form method="post" action="/roles" class="process-add">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="process-name">名前<input name="name" required></label>
+      <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
+      <button type="submit">追加</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>登録済みの役割</h2>
+    <p class="note">上にある役割ほど、人材の単価とアサインの画面で先に表示されます。上へ、下へで隣と入れ替わります。</p>
+    {{if not .Roles}}<p>登録済みの役割はありません。</p>{{end}}
+    {{if .Roles}}
+    <ol class="process-list">
+      {{range .Roles}}
+      <li class="process-item">
+        <div class="move-col">
+          <span class="process-index">{{.Position}}</span>
+          <form method="post" action="/roles/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="up">
+            <button type="submit" class="secondary" {{if .First}}disabled{{end}}>上へ</button>
+          </form>
+          <form method="post" action="/roles/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="down">
+            <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
+          </form>
+        </div>
+        <form id="role-{{.ID}}" method="post" action="/roles/{{.ID}}" class="process-edit">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
+          <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="role-{{.ID}}">保存</button>
+          <form method="post" action="/roles/{{.ID}}/delete" onsubmit="return confirm('この役割を削除しますか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </li>
+      {{end}}
+    </ol>
+    {{end}}
+  </section>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "processes"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main class="process-page">
+  <h1>工程</h1>
+  {{template "alerts" .}}
+  <section class="card">
+    <h2>工程を追加</h2>
+    <p class="note">追加した工程は、一覧の一番下に入ります。</p>
+    <form method="post" action="/processes" class="process-add">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="process-name">名前<input name="name" required></label>
+      <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
+      <button type="submit">追加</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>登録済みの工程</h2>
+    <p class="note">上にある工程ほど、プロジェクトの画面で先に表示されます。上へ、下へで隣と入れ替わります。</p>
+    {{if not .Processes}}<p>登録済みの工程はありません。</p>{{end}}
+    {{if .Processes}}
+    <ol class="process-list">
+      {{range .Processes}}
+      <li class="process-item">
+        <div class="move-col">
+          <span class="process-index">{{.Position}}</span>
+          <form method="post" action="/processes/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="up">
+            <button type="submit" class="secondary" {{if .First}}disabled{{end}}>上へ</button>
+          </form>
+          <form method="post" action="/processes/{{.ID}}/move">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="direction" value="down">
+            <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
+          </form>
+        </div>
+        <form id="process-{{.ID}}" method="post" action="/processes/{{.ID}}" class="process-edit">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
+          <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="process-{{.ID}}">保存</button>
+          <form method="post" action="/processes/{{.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </li>
+      {{end}}
+    </ol>
+    {{end}}
+  </section>
+</main>
+{{template "foot" .}}
+{{end}}

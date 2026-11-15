@@ -1,0 +1,166 @@
+{{define "assign"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <div class="title-row">
+    <h1>人材アサイン</h1>
+    <a href="/projects/{{.Project.ID}}">{{.Project.Code}} {{.Project.Name}}</a>
+  </div>
+  {{template "alerts" .}}
+  {{if not .Groups}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
+  {{range .Groups}}
+  <section class="card">
+    <h2>{{.Line.ProcessName}}</h2>
+    <p class="note">工程の予定 {{hours .Line.PlannedMinutes}} 時間。期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
+    <h3>登録済みのアサイン</h3>
+    {{if not .Rows}}<p>アサインはありません。</p>{{end}}
+    {{if .Rows}}
+    <div class="assign-list">
+      {{range .Rows}}
+      {{$row := .}}
+      <div class="assign-item">
+        <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <label>人材
+            <select name="person_id">
+              {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+          </label>
+          <label>役割
+            <select name="role_id">
+              {{range .Roles}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.RoleID}}selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+          </label>
+          <label>開始<input type="date" name="start_date" value="{{.Assignment.StartDate}}" required></label>
+          <label>終了<input type="date" name="end_date" value="{{.Assignment.EndDate}}" required></label>
+          <label>予定時間<input name="hours" value="{{.Hours}}" required></label>
+          <p class="cost">予定原価 {{yen .Assignment.PlannedCostYen}}</p>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="assign-{{.Assignment.ID}}">保存</button>
+          <form method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}/delete" onsubmit="return confirm('このアサインと、その実績を削除します。よろしいですか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+    <div class="assign-add">
+      <h3>アサインを追加</h3>
+      {{if not $.People}}<p>有効な人材がいません。</p>{{end}}
+      {{if $.People}}
+      <p class="note">追加したアサインは、上の登録済み一覧に入ります。選べるのは、開始日時点でその役割の時間単価がある人材です。予定原価は、その開始日の単価で計算して保存します。</p>
+      <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
+        <label>人材
+          <select name="person_id" required>
+            {{range $.People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+          </select>
+        </label>
+        <label>役割
+          <select name="role_id" required>
+            {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+          </select>
+        </label>
+        <label>開始<input type="date" name="start_date" value="{{.Line.StartDate}}" required></label>
+        <label>終了<input type="date" name="end_date" value="{{.Line.EndDate}}" required></label>
+        <label>予定時間<input name="hours" required></label>
+        <button type="submit">追加</button>
+      </form>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "forecast"}}
+{{template "head" .}}
+{{template "nav" .}}
+<main>
+  <div class="title-row">
+    <h1>予実</h1>
+    <span>{{.Project.Code}} {{.Project.Name}}（{{status .Project.Status}}）</span>
+  </div>
+  {{template "alerts" .}}
+  {{if not .Report.ActualKnown}}
+  <p class="banner">単価未設定の実績が {{hours .Report.UnsetMinutes}} 時間あります。この分は実績原価に含めていません。粗利見込みも確定していません。</p>
+  {{end}}
+  {{if .Report.DerivedBudget}}
+  <p class="note">予算を空にした工程は、アサインの予定原価を予算として表示しています。</p>
+  {{end}}
+  <div class="summary">
+    <div><span>受注金額</span><strong>{{yenp .Report.OrderAmount}}</strong></div>
+    <div><span>予算合計</span><strong>{{yen .Report.BudgetYen}}</strong></div>
+    <div><span>予定原価</span><strong>{{yen .Report.PlannedCostYen}}</strong></div>
+    <div><span>実績原価</span><strong>{{yen .Report.ActualCostYen}}</strong></div>
+    <div><span>残予定原価</span><strong>{{yen .Report.RemainingCostYen}}</strong></div>
+    <div><span>粗利見込み</span><strong>{{yenp .Report.GrossMargin}}</strong></div>
+    <div><span>予定工数</span><strong>{{hours .Report.PlannedMinutes}} 時間（{{pdays .Report.PlannedMinutes}} 人日）</strong></div>
+    <div><span>実績工数</span><strong>{{hours .Report.ActualMinutes}} 時間（{{pdays .Report.ActualMinutes}} 人日）</strong></div>
+  </div>
+  <form method="post" action="/projects/{{.Project.ID}}/recalc">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit" class="secondary">現在の単価で予定原価を再計算</button>
+  </form>
+  <h2>工程</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>工程</th><th>期間</th><th>工程の予定</th><th>アサイン予定</th><th>実績</th><th>差分</th><th>予算</th><th>予定原価</th><th>実績原価</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Report.Processes}}
+        <tr {{if .OverBudget}}class="over"{{end}}>
+          <td>{{.Name}}</td>
+          <td>{{day .StartDate}} 〜 {{day .EndDate}}</td>
+          <td class="num">{{hours .PlannedMinutes}}</td>
+          <td class="num">{{hours .AssignmentMinutes}}</td>
+          <td class="num">{{hours .ActualMinutes}}</td>
+          <td class="num">{{hours (sub .AssignmentMinutes .PlannedMinutes)}}</td>
+          <td class="num">{{yen .BudgetYen}}{{if .BudgetFromAssignments}} *{{end}}</td>
+          <td class="num">{{yen .PlannedCostYen}}</td>
+          <td class="num">{{yen .ActualCostYen}}{{if .UnsetMinutes}} ※{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <h2>人材</h2>
+  {{if not .Report.People}}<p>アサインはありません。</p>{{end}}
+  {{if .Report.People}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>工程</th><th>人材</th><th>役割</th><th>期間</th><th>予定</th><th>実績</th><th>予定原価</th><th>実績原価</th><th>残予定原価</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Report.People}}
+        <tr>
+          <td>{{.ProcessName}}</td>
+          <td>{{.PersonCode}} {{.PersonName}}</td>
+          <td>{{.RoleName}}</td>
+          <td>{{.StartDate}} 〜 {{.EndDate}}</td>
+          <td class="num">{{hours .PlannedMinutes}}</td>
+          <td class="num">{{hours .ActualMinutes}}</td>
+          <td class="num">{{yen .PlannedCostYen}}</td>
+          <td class="num">{{yen .ActualCostYen}}{{if .UnsetMinutes}} ※{{end}}</td>
+          <td class="num">{{yen .RemainingCostYen}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+  <p class="actions"><a href="/projects/{{.Project.ID}}">編集に戻る</a></p>
+</main>
+{{template "foot" .}}
+{{end}}

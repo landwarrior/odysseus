@@ -1,0 +1,68 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="ja" data-theme="{{if .Theme}}{{.Theme}}{{else}}light{{end}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} - Odysseus</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+{{end}}
+
+{{define "nav"}}
+<header class="top">
+  {{if and .Me (not .Me.MustChangePassword)}}
+  <button type="button" class="nav-toggle" aria-controls="site-nav" aria-expanded="false" aria-label="メニューを開く">
+    <span class="hamburger" aria-hidden="true"></span>
+  </button>
+  {{end}}
+  <a class="brand" href="/">Odysseus</a>
+  {{if and .Me (not .Me.MustChangePassword)}}
+  <nav id="site-nav" class="site-nav">
+    <a href="/">ホーム</a>
+    <a href="/time">実績</a>
+    {{if .Me.IsAdmin}}
+    <a href="/projects">プロジェクト</a>
+    <a href="/people">人材</a>
+    <a href="/roles">役割</a>
+    <a href="/processes">工程</a>
+    {{end}}
+  </nav>
+  {{end}}
+  {{if .Me}}
+  <details class="user-menu" data-csrf="{{.CSRF}}">
+    <summary class="user-toggle" aria-label="{{.Me.Name}}のメニュー">
+      <span class="user-icon" aria-hidden="true"></span>
+    </summary>
+    <div class="user-panel">
+      <p class="user-name">{{.Me.Name}}</p>
+      <a href="/password">パスワード</a>
+      <div class="theme-picker">
+        <span class="theme-label">テーマ</span>
+        <div class="theme-options" role="group" aria-label="テーマ">
+          <button type="button" class="theme-option" data-theme-value="light" aria-pressed="{{if eq .Theme "dark"}}false{{else}}true{{end}}">ライト</button>
+          <button type="button" class="theme-option" data-theme-value="dark" aria-pressed="{{if eq .Theme "dark"}}true{{else}}false{{end}}">ダーク</button>
+        </div>
+      </div>
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button type="submit">ログアウト</button>
+      </form>
+    </div>
+  </details>
+  {{end}}
+</header>
+{{end}}
+
+{{define "alerts"}}
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+{{if .Warn}}<p class="warn">{{.Warn}}</p>{{end}}
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+{{end}}
+
+{{define "foot"}}
+<script src="/static/app.js"></script>
+</body>
+</html>
+{{end}}
