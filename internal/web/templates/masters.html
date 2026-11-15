@@ -41,12 +41,14 @@
       <label>ユーザーコード<input name="code" value="{{.Person.Code}}" required></label>
       <label>氏名<input name="name" value="{{.Person.Name}}" required></label>
       <label>カナ<input name="name_kana" value="{{.Person.NameKana}}"></label>
-      <label>パスワード<input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{end}}></label>
+      <label>パスワード<input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{else}}placeholder="空なら今のパスワードのまま。入力すると、本人が次回ログインで変更します。"{{end}}></label>
     </div>
-    <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
-    <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
+    <div class="inline checks">
+      <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
+      <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
+    </div>
     <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
-    {{if .IsNew}}<p class="note">初期パスワードは、本人が最初のログインで変更します。</p>{{else}}<p class="note">パスワードを空のままにすると、今のパスワードを変えません。入力した場合は、次回ログイン時に本人が変更します。</p>{{end}}
+    {{if .IsNew}}<p class="note">初期パスワードは、本人が最初のログインで変更します。</p>{{end}}
     <button type="submit">登録</button>
   </form>
   {{if not .IsNew}}

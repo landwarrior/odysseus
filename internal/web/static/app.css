@@ -129,6 +129,8 @@ label.check input:checked {
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .title-row h1, .title-row h2 { margin-right: auto; }
 .filters a.current { font-weight: 700; }
+.inline.checks { gap: 0.75rem 1.5rem; }
+.inline.checks .check { flex: 0 0 auto; }
 
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; background: var(--paper); }
