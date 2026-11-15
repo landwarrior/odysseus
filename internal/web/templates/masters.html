@@ -166,7 +166,7 @@
         </div>
         <form id="process-{{.ID}}" method="post" action="/processes/{{.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <label class="process-name">名前<input name="name" value="{{.Name}}" required></label>
+          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">

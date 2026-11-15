@@ -159,7 +159,7 @@ section.danger { border-color: #e7c1c1; }
 .cost { margin: 0; align-self: end; }
 .assign-row { margin-bottom: 0.4rem; }
 
-main.process-page { width: min(100%, 76rem); }
+main.process-page { width: min(100%, 1100px); }
 .process-add, .process-edit {
   display: flex;
   flex-wrap: nowrap;
@@ -170,16 +170,22 @@ main.process-page { width: min(100%, 76rem); }
   flex: 1 1 225px;
   min-width: max-content;
 }
-.process-name {
+label.process-name {
   flex: 1 1 225px;
   width: auto;
   min-width: 225px;
   max-width: none;
 }
-.process-name input {
+label.process-name input {
   width: 100%;
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
+}
+input.process-name {
+  flex: 1 1 225px;
+  width: auto;
+  min-width: 225px;
+  max-width: none;
 }
 .process-add > button,
 .button-pair > button,
