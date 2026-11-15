@@ -2,15 +2,35 @@
 
 人材の予定工数・予定原価と、実績工数・実績原価を突き合わせる。ブランチは `features/new-generation`。修正のたびにこのブランチへコミットする。push は頼まれたときだけ。
 
-ビルドは次を単体で実行する。`$env:` の設定や `;` での連結、`Write-Host` での終了コード表示はしない。
+## シェルコマンドの実行ルール
 
-```powershell
-go build -trimpath -ldflags "-s -w" -o odysseus.exe ./cmd/odysseus
-```
+この環境は Windows の PowerShell です。コマンドを実行するときは次を守る。
 
-`CGO_ENABLED=0` は付けない。昔の SQLite ドライバ（`mattn/go-sqlite3`）は C に依存したため付けていたが、ここでは `modernc.org/sqlite` と `pgx` の純 Go 実装だけを使う。環境変数なしでも同じ純 Go ビルドになる。
+- コマンドは1回に1つずつ実行する。`;`、`&&`、`|` でつながない。
+- `$env:` などで環境変数を設定してからコマンドを実行しない。
+- `Write-Host` で終了コードを表示するなど、確認のためのコマンドを後ろに付けない。
+- bash の書き方（ヒアドキュメント `<<'EOF'`、`$(cat ...)` など）は使わない。
 
-CSS と HTML は実行ファイルに埋め込まれる。画面を変えたらビルドし直す。
+### Go
+
+- ビルドは次を単体で実行する。
+
+  ```powershell
+  go build -trimpath -ldflags "-s -w" -o odysseus.exe ./cmd/odysseus
+  ```
+
+- テストは `go test ./...` を単体で実行する。
+- `CGO_ENABLED` は付けない。`go env` で設定済みで、ここでは `modernc.org/sqlite` と `pgx` の純 Go 実装だけを使う。昔の SQLite ドライバ（`mattn/go-sqlite3`）向けに付けていた指定は不要。
+- CSS と HTML は実行ファイルに埋め込まれる。画面を変えたらビルドし直す。
+
+### Git
+
+- `git add`、`git commit`、`git status` などは1つずつ別々に実行する。
+- コミットメッセージは `-m` で直接渡す。複数行にするときは `-m` を複数回付ける。
+
+  ```powershell
+  git commit -m "1行目の要約" -m "本文"
+  ```
 
 ## 構成
 
@@ -50,4 +70,4 @@ Go のドキュメントは `//` を宣言の直前に置く。仮引数は本�
 
 - セルは縦方向の中央揃え。見出しは左寄せ。金額・工数のセルは `td.num` で右寄せ。
 - 金額の入力は `yen-input`。表示時は3桁カンマ、フォーカス中は外す。受け取りは `calc.ParseYen`。
-- 人材編集の時間単価表（`table.rates`）と追加欄（`.rates-form`）は、広い画面では役割・適用開始日・円 / 時・操作の4列を等幅にする。
+- 人材編集の時間単価表（`table.rates`）と追加欄（`.rates-form`）は、広い画面では役割・適用開始日・円 / 時・操作の4列を等幅にする。狭い画面では2列にする。
