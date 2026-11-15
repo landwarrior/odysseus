@@ -106,10 +106,10 @@
   <section class="danger">
     <h2>削除</h2>
     <p>アサインがある人材は削除できません。無効にしてください。</p>
-    <form method="post" action="/people/{{.Person.ID}}/delete" class="inline">
+    <form method="post" action="/people/{{.Person.ID}}/delete" class="person-delete">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <input name="confirm_code" placeholder="ユーザーコード" required>
-      <button type="submit" class="danger">削除する</button>
+      <button type="submit" class="danger">削除</button>
     </form>
   </section>
   {{end}}

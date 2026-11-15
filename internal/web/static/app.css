@@ -185,7 +185,7 @@ label.check input:checked {
 }
 @media (max-width: 56rem) {
   .grid.rates-form {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
@@ -252,6 +252,24 @@ main.person-page {
 main.process-page label,
 main.role-page label,
 main.person-page label { font-size: 16px; }
+.person-delete {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+}
+.person-delete input[name="confirm_code"] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.person-delete > button {
+  width: 126px;
+  min-width: 126px;
+  max-width: 126px;
+  flex: 0 0 126px;
+  box-sizing: border-box;
+}
 main.process-page .card,
 main.role-page .card { padding: 16px 20px; }
 main.process-page label.check,
