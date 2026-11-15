@@ -167,15 +167,14 @@ main.process-page { width: min(100%, 76rem); }
   gap: 16px;
 }
 .process-edit {
-  flex: 1 1 320px;
+  flex: 1 1 225px;
   min-width: max-content;
-  max-width: 420px;
 }
 .process-name {
   flex: 1 1 225px;
   width: auto;
   min-width: 225px;
-  max-width: 300px;
+  max-width: none;
 }
 .process-name input {
   width: 100%;
