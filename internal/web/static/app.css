@@ -801,9 +801,9 @@ main.page-schedule {
   background: var(--paper);
   --sticky-left-phase: 192px;
   --sticky-left-meta1: 320px;
-  --sticky-left-meta2: 390px;
-  --sticky-left-meta3: 460px;
-  --sticky-cols-width: 530px;
+  --sticky-left-meta2: 395px;
+  --sticky-left-meta3: 465px;
+  --sticky-cols-width: 535px;
   --sticky-thead-height: 4rem;
 }
 .schedule-table th,
@@ -835,7 +835,7 @@ main.page-schedule {
 }
 .schedule-table col.col-project { width: 192px; }
 .schedule-table col.col-phase { width: 8rem; }
-.schedule-table col.col-meta1,
+.schedule-table col.col-meta1 { width: 75px; }
 .schedule-table col.col-meta2,
 .schedule-table col.col-meta3 { width: 70px; }
 .sticky-col {
@@ -846,9 +846,9 @@ main.page-schedule {
 }
 .schedule-table .col-project { left: 0; min-width: 192px; }
 .schedule-table .col-phase { left: var(--sticky-left-phase, 192px); min-width: 8rem; }
-.schedule-table .col-meta1 { left: var(--sticky-left-meta1, 320px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
-.schedule-table .col-meta2 { left: var(--sticky-left-meta2, 390px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
-.schedule-table .col-meta3 { left: var(--sticky-left-meta3, 460px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta1 { left: var(--sticky-left-meta1, 320px); width: 75px; min-width: 75px; max-width: 75px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta2 { left: var(--sticky-left-meta2, 395px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta3 { left: var(--sticky-left-meta3, 465px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
 .schedule-table th.col-project:not([colspan]),
 .schedule-table td.col-project:not([colspan]) {
   width: 192px;
@@ -873,7 +873,12 @@ main.page-schedule {
   font-weight: 400;
 }
 .schedule-table .col-phase:not([colspan]) { max-width: 8rem; }
-.schedule-table .col-meta1:not([colspan]),
+.schedule-table .col-meta1:not([colspan]) {
+  width: 75px;
+  min-width: 75px;
+  max-width: 75px;
+  box-sizing: border-box;
+}
 .schedule-table .col-meta2:not([colspan]),
 .schedule-table .col-meta3:not([colspan]) {
   width: 70px;
