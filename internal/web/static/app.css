@@ -811,7 +811,7 @@ main.page-schedule {
   border: 0;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  padding: 0.3rem 0.25rem;
+  padding: 0.35rem 0.25rem;
   font-size: var(--font-size-schedule);
   white-space: nowrap;
   vertical-align: middle;
@@ -827,14 +827,11 @@ main.page-schedule {
   top: 0;
   z-index: 3;
   background: var(--thead-bg);
-  font-size: 11px;
+  font-size: var(--font-size-schedule);
   font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.2;
-  padding: 0.25rem 0.15rem;
 }
 .schedule-table thead tr:nth-child(2) th {
-  top: 1.6rem;
+  top: 2rem;
 }
 .schedule-table col.col-project { width: 192px; }
 .schedule-table col.col-phase { width: 8rem; }
