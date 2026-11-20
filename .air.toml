@@ -3,9 +3,10 @@
 
 root = "."
 tmp_dir = "tmp"
+env_files = [".env.air"]
 
 [build]
-  bin = "./tmp/odysseus.exe"
+  entrypoint = ["./tmp/odysseus.exe"]
   cmd = "go build -o ./tmp/odysseus.exe ./cmd/odysseus"
   delay = 800
   exclude_dir = ["tmp", "data", "vendor", "testdata", ".git"]
@@ -17,11 +18,6 @@ tmp_dir = "tmp"
   # Windows ではポーリングの方が取りこぼしにくいです。
   poll = true
   poll_interval = 500
-
-[env]
-  ODYSSEUS_HTTP_ADDR = "127.0.0.1:8080"
-  ODYSSEUS_OPEN_BROWSER = "0"
-  ODYSSEUS_DEV = "1"
 
 [log]
   time = false

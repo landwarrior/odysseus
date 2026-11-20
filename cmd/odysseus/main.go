@@ -101,20 +101,41 @@ func main() {
 }
 
 // appDir は設定とデータの基準フォルダです。
-// go run の一時フォルダで動いているときは、今の作業フォルダを返します。
+// go run の一時フォルダや、air が置く tmp 配下の実行ファイルでは、今の作業フォルダを返します。
 func appDir() string {
+	wd, wdErr := os.Getwd()
 	exe, err := os.Executable()
 	if err != nil {
-		wd, _ := os.Getwd()
-		return wd
-	}
-	dir := filepath.Dir(exe)
-	if strings.Contains(filepath.ToSlash(dir), "go-build") {
-		if wd, err := os.Getwd(); err == nil {
+		if wdErr == nil {
 			return wd
 		}
+		return "."
+	}
+	dir := filepath.Dir(exe)
+	if strings.Contains(filepath.ToSlash(dir), "go-build") && wdErr == nil {
+		return wd
+	}
+	if wdErr == nil && underDir(dir, filepath.Join(wd, "tmp")) {
+		return wd
 	}
 	return dir
+}
+
+// underDir は path が root そのものか、その下にあるとき真です。
+func underDir(path, root string) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	if absPath == absRoot {
+		return true
+	}
+	prefix := absRoot + string(filepath.Separator)
+	return strings.HasPrefix(absPath, prefix)
 }
 
 // loadOrCreateKey は path にある署名鍵を読みます。無ければ 32 バイトを作って保存します。

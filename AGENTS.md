@@ -22,7 +22,7 @@
 - テストは `go test ./...` を単体で実行する。
 - `CGO_ENABLED` は付けない。`go env` で設定済みで、ここでは `modernc.org/sqlite` と `pgx` の純 Go 実装だけを使う。昔の SQLite ドライバ（`mattn/go-sqlite3`）向けに付けていた指定は不要。
 - CSS と HTML は実行ファイルに埋め込まれる。画面を変えたらビルドし直す。
-- 開発中の素早い確認はリポジトリ根で `air`（`.air.toml`）。`ODYSSEUS_DEV=1` で HTML/CSS はディスクから都度読む。Go の変更だけが再ビルド対象。待受は `127.0.0.1:8080`。
+- 開発中の素早い確認はリポジトリ根で `air`（`.air.toml` + `.env.air`）。`ODYSSEUS_DEV=1` で HTML/CSS はディスクから都度読む。Go の変更だけが再ビルド対象。待受は `127.0.0.1:8080`。
 
 ### Git
 
