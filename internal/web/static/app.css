@@ -799,11 +799,11 @@ main.page-schedule {
   width: max-content;
   min-width: 100%;
   background: var(--paper);
-  --sticky-left-phase: 12rem;
-  --sticky-left-meta1: 20rem;
-  --sticky-left-meta2: 24.2rem;
-  --sticky-left-meta3: 28.4rem;
-  --sticky-cols-width: 32.6rem;
+  --sticky-left-phase: 192px;
+  --sticky-left-meta1: 320px;
+  --sticky-left-meta2: 390px;
+  --sticky-left-meta3: 460px;
+  --sticky-cols-width: 530px;
   --sticky-thead-height: 4rem;
 }
 .schedule-table th,
@@ -811,7 +811,7 @@ main.page-schedule {
   border: 0;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  padding: 0.35rem 0.45rem;
+  padding: 0.3rem 0.25rem;
   font-size: var(--font-size-schedule);
   white-space: nowrap;
   vertical-align: middle;
@@ -827,32 +827,39 @@ main.page-schedule {
   top: 0;
   z-index: 3;
   background: var(--thead-bg);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  padding: 0.25rem 0.15rem;
 }
 .schedule-table thead tr:nth-child(2) th {
-  top: 2rem;
+  top: 1.6rem;
 }
-.schedule-table col.col-project { width: 12rem; }
+.schedule-table col.col-project { width: 192px; }
 .schedule-table col.col-phase { width: 8rem; }
 .schedule-table col.col-meta1,
 .schedule-table col.col-meta2,
-.schedule-table col.col-meta3 { width: 4.2rem; }
+.schedule-table col.col-meta3 { width: 70px; }
 .sticky-col {
   position: sticky;
   left: 0;
   background: var(--sticky-bg);
   z-index: 2;
 }
-.schedule-table .col-project { left: 0; min-width: 12rem; }
-.schedule-table .col-phase { left: var(--sticky-left-phase, 12rem); min-width: 8rem; }
-.schedule-table .col-meta1 { left: var(--sticky-left-meta1, 20rem); min-width: 4.2rem; text-align: right; }
-.schedule-table .col-meta2 { left: var(--sticky-left-meta2, 24.2rem); min-width: 4.2rem; text-align: right; }
-.schedule-table .col-meta3 { left: var(--sticky-left-meta3, 28.4rem); min-width: 4.2rem; text-align: right; }
+.schedule-table .col-project { left: 0; min-width: 192px; }
+.schedule-table .col-phase { left: var(--sticky-left-phase, 192px); min-width: 8rem; }
+.schedule-table .col-meta1 { left: var(--sticky-left-meta1, 320px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta2 { left: var(--sticky-left-meta2, 390px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta3 { left: var(--sticky-left-meta3, 460px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
 .schedule-table th.col-project:not([colspan]),
 .schedule-table td.col-project:not([colspan]) {
-  width: 12rem;
-  max-width: 12rem;
+  width: 192px;
+  min-width: 192px;
+  max-width: 192px;
   white-space: normal;
   vertical-align: middle;
+  box-sizing: border-box;
 }
 .schedule-table .project-name {
   max-width: 100%;
@@ -871,7 +878,12 @@ main.page-schedule {
 .schedule-table .col-phase:not([colspan]) { max-width: 8rem; }
 .schedule-table .col-meta1:not([colspan]),
 .schedule-table .col-meta2:not([colspan]),
-.schedule-table .col-meta3:not([colspan]) { max-width: 4.2rem; }
+.schedule-table .col-meta3:not([colspan]) {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+}
 .schedule-table th.col-phase,
 .schedule-table td.col-phase {
   overflow: hidden;
@@ -901,9 +913,9 @@ main.page-schedule {
 }
 .schedule-table tbody.project-block > tr > td:not(.sticky-col),
 .schedule-table tfoot td:not(.sticky-col) {
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
   box-sizing: border-box;
 }
 .schedule-table tbody.project-block:not(:last-of-type) > tr:last-child > * {
@@ -916,9 +928,9 @@ main.page-schedule {
 .decade-head {
   text-align: center;
   font-weight: 600;
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
   box-sizing: border-box;
 }
 .schedule-table .num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -930,9 +942,9 @@ main.page-schedule {
 .phase-cell {
   text-align: center;
   color: transparent;
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
   box-sizing: border-box;
 }
 .phase-cell .effort-field {
@@ -965,10 +977,10 @@ main.page-schedule {
   font-weight: normal;
   border: 0;
   width: 100%;
-  max-width: 80px;
+  max-width: 70px;
   box-sizing: border-box;
   text-align: right;
-  padding: 0.2rem 0.3rem;
+  padding: 0.15rem 0.2rem;
   font: inherit;
   font-variant-numeric: tabular-nums;
   scroll-margin-left: calc(var(--sticky-cols-width, 32.6rem) + 4px);
