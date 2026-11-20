@@ -17,7 +17,7 @@
   <form method="post" action="/login" class="stack">
     <label>ユーザーコード<input name="code" value="{{.Code}}" autocomplete="username" required></label>
     <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label>
-    <button type="submit">ログイン</button>
+    <button type="submit" class="primary">ログイン</button>
   </form>
 </main>
 {{template "foot" .}}
@@ -35,7 +35,7 @@
     <label>現在のパスワード<input type="password" name="current_password" autocomplete="current-password" required></label>
     <label>新しいパスワード<input type="password" name="new_password" autocomplete="new-password" required></label>
     <label>新しいパスワード（確認）<input type="password" name="confirm_password" autocomplete="new-password" required></label>
-    <button type="submit">変更する</button>
+    <button type="submit" class="primary">変更する</button>
   </form>
 </main>
 {{template "foot" .}}

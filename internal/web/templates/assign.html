@@ -37,7 +37,7 @@
           <p class="cost">予定原価 {{yen .Assignment.PlannedCostYen}}</p>
         </form>
         <div class="button-pair">
-          <button type="submit" form="assign-{{.Assignment.ID}}">保存</button>
+          <button type="submit" form="assign-{{.Assignment.ID}}" class="primary">保存</button>
           <form method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}/delete" onsubmit="return confirm('このアサインと、その実績を削除します。よろしいですか？')">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <button type="submit" class="danger">削除</button>
@@ -68,7 +68,7 @@
         <label>開始<input type="date" name="start_date" value="{{.Line.StartDate}}" required></label>
         <label>終了<input type="date" name="end_date" value="{{.Line.EndDate}}" required></label>
         <label>予定時間<input name="hours" required></label>
-        <button type="submit">追加</button>
+        <button type="submit" class="primary">追加</button>
       </form>
       {{end}}
     </div>
@@ -105,7 +105,7 @@
   </div>
   <form method="post" action="/projects/{{.Project.ID}}/recalc">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button type="submit" class="secondary">現在の単価で予定原価を再計算</button>
+    <button type="submit" class="primary">現在の単価で予定原価を再計算</button>
   </form>
   <h2>工程</h2>
   <div class="table-wrap">

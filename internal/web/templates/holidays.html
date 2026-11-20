@@ -11,7 +11,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <label>日付<input type="date" name="date" required></label>
       <label>名称（任意）<input name="name" placeholder="後から入力できます" autocomplete="off"></label>
-      <button type="submit">追加</button>
+      <button type="submit" class="primary">追加</button>
     </form>
   </section>
   <section class="card">
@@ -34,7 +34,7 @@
               </form>
             </td>
             <td class="actions">
-              <button type="submit" form="holiday-{{.Date}}">更新</button>
+              <button type="submit" form="holiday-{{.Date}}" class="primary">更新</button>
               <form method="post" action="/holidays/{{.Date}}/delete" onsubmit="return confirm('削除しますか？')">
                 <input type="hidden" name="csrf" value="{{$.CSRF}}">
                 <button type="submit" class="danger">削除</button>

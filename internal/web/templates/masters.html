@@ -58,7 +58,7 @@
     </div>
     <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
     {{if .IsNew}}<p class="note">時間単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
-    <button type="submit">登録</button>
+    <button type="submit" class="primary">登録</button>
   </form>
   <script>
     document.addEventListener("click", function (event) {
@@ -100,7 +100,7 @@
       </label>
       <label>適用開始日<input type="date" name="from_date" required></label>
       <label>円 / 時<input class="yen-input" name="hourly_yen" inputmode="numeric" required></label>
-      <button type="submit">単価を追加</button>
+      <button type="submit" class="primary">単価を追加</button>
     </form>
   </section>
   <section class="danger">
@@ -130,7 +130,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <label class="process-name">名前<input name="name" required></label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
-      <button type="submit">追加</button>
+      <button type="submit" class="primary">追加</button>
     </form>
   </section>
   <section class="card">
@@ -160,7 +160,7 @@
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">
-          <button type="submit" form="role-{{.ID}}">保存</button>
+          <button type="submit" form="role-{{.ID}}" class="primary">保存</button>
           <form method="post" action="/roles/{{.ID}}/delete" onsubmit="return confirm('この役割を削除しますか？')">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <button type="submit" class="danger">削除</button>
@@ -188,7 +188,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <label class="process-name">名前<input name="name" required></label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
-      <button type="submit">追加</button>
+      <button type="submit" class="primary">追加</button>
     </form>
   </section>
   <section class="card">
@@ -218,7 +218,7 @@
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">
-          <button type="submit" form="process-{{.ID}}">保存</button>
+          <button type="submit" form="process-{{.ID}}" class="primary">保存</button>
           <form method="post" action="/processes/{{.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <button type="submit" class="danger">削除</button>

@@ -271,19 +271,30 @@ header.top .user-panel > form button:hover {
   background: var(--secondary-hover);
 }
 
+/* 既定はナビ・表示など。DB を更新する操作は .primary、削除は .danger */
 button, .button {
   display: inline-block;
-  background: var(--button-bg);
-  color: var(--button-text);
-  border: 1px solid var(--button-border);
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 0.45rem 0.85rem;
   text-decoration: none;
   font: inherit;
   cursor: pointer;
 }
-button:hover:not(:disabled):not(.secondary):not(.danger):not(header.top button),
-a.button:hover {
+button:hover:not(:disabled):not(.primary):not(.danger):not(header.top button),
+a.button:hover:not(.primary):not(.danger) {
+  background: var(--secondary-hover);
+}
+
+button.primary, .button.primary {
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--button-border);
+}
+button.primary:hover:not(:disabled),
+a.button.primary:hover {
   background: var(--button-hover-bg);
   border-color: var(--button-hover-border);
   color: var(--button-text);
