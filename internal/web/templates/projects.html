@@ -128,7 +128,7 @@
         {{end}}
         {{end}}
         <tr class="project-summary">
-          <td class="sticky-col col-phase summary-label" colspan="4">キャパ（人日）・{{$block.MemberCount}}人</td>
+          <td class="sticky-col col-phase summary-label" colspan="4">キャパ（人日） {{$block.MemberCount}}人</td>
           {{range $block.Capacity}}
           <td class="num{{if .Current}} col-current{{end}}">{{.Days}}</td>
           {{end}}
