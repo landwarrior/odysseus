@@ -68,6 +68,20 @@ func TestPersonDays(t *testing.T) {
 	if got := FormatPersonDays(24, 480); got != "0.1" {
 		t.Fatalf("round half up = %s", got)
 	}
+	got, err := ParsePersonDays("1.5", 480)
+	if err != nil || got != 720 {
+		t.Fatalf("parse 1.5 = %d %v", got, err)
+	}
+	got, err = ParsePersonDays("0.1", 480)
+	if err != nil || got != 48 {
+		t.Fatalf("parse 0.1 = %d %v", got, err)
+	}
+	if _, err := ParsePersonDays("", 480); err != ErrEmpty {
+		t.Fatalf("empty: %v", err)
+	}
+	if _, err := ParsePersonDays("0.15", 480); err != ErrFormat {
+		t.Fatalf("not tenth: %v", err)
+	}
 }
 
 func TestYen(t *testing.T) {

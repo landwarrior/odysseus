@@ -130,6 +130,34 @@ type LineWrite struct {
 	BudgetYen      *int64
 }
 
+// Task は工程明細を細分化した作業です。見積工数とスケジュール割当の単位です。
+type Task struct {
+	ID               string
+	ProjectProcessID string
+	ProjectID        string
+	ProcessID        string
+	ProcessName      string
+	ProcessSort      int64
+	Name             string
+	SortOrder        int64
+	PlannedMinutes   int64
+}
+
+// TaskWrite はタスクの保存内容です。
+type TaskWrite struct {
+	ID             string
+	Name           string
+	PlannedMinutes int64
+}
+
+// TaskAllocation はタスクの旬への工数割当です。YearMonth は YYYY-MM、Decade は 1〜3 です。
+type TaskAllocation struct {
+	TaskID         string
+	YearMonth      string
+	Decade         int
+	PlannedMinutes int64
+}
+
 // Assignment は工程に人を割り当てた1件です。PlannedCostYen は保存時点の予定原価で、単価変更では自動更新しません。
 type Assignment struct {
 	ID               string

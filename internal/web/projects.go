@@ -3,11 +3,19 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"odysseus/internal/calc"
 	"odysseus/internal/report"
 	"odysseus/internal/store"
 )
+
+// taskForm は工程下のタスク入力欄です。
+type taskForm struct {
+	ID    string
+	Name  string
+	Hours string
+}
 
 // lineForm は工程明細の入力欄です。時間と予算は、まだ数値に変換する前の文字列です。
 type lineForm struct {
@@ -16,6 +24,7 @@ type lineForm struct {
 	End       string
 	Hours     string
 	Budget    string
+	Tasks     []taskForm
 }
 
 // projectPage は案件の登録と編集です。IsNew が真のときは削除欄を出しません。
@@ -28,33 +37,11 @@ type projectPage struct {
 	Status    string
 }
 
-// projectListPage は案件一覧です。Status が空ならすべての状態を出します。
-type projectListPage struct {
-	base
-	Projects []store.Project
-	Status   string
-}
-
-// handleProjects は案件一覧を出します。クエリ status があれば、その状態だけに絞ります。
-func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
-	status := r.URL.Query().Get("status")
-	if status != "" && !validStatus(status) {
-		status = ""
-	}
-	projects, err := s.store.ListProjects(r.Context(), status)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	page := projectListPage{base: s.page(w, r, "プロジェクト"), Projects: projects, Status: status}
-	s.render(w, http.StatusOK, "projects", page)
-}
-
 // handleProjectNew は空の案件作成画面を出します。初期状態は進行中です。
 func (s *Server) handleProjectNew(w http.ResponseWriter, r *http.Request) {
 	s.renderProject(w, r, projectPage{
 		base: s.page(w, r, "プロジェクト作成"), IsNew: true,
-		Project: store.Project{Status: "active"}, Lines: []lineForm{{}},
+		Project: store.Project{Status: "active"}, Lines: []lineForm{{Tasks: []taskForm{{}}}},
 	}, http.StatusOK)
 }
 
@@ -74,6 +61,10 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	if err := s.saveProjectTasks(r, id, forms); err != nil {
+		s.fail(w, err)
+		return
+	}
 	s.redirect(w, r, "/projects/"+id, "登録しました。")
 }
 
@@ -83,8 +74,13 @@ func (s *Server) handleProjectEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	forms, err := s.lineFormsWithTasks(r, project.ID, lines)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
 	s.renderProject(w, r, projectPage{
-		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: lineForms(lines),
+		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms,
 	}, http.StatusOK)
 }
 
@@ -110,6 +106,10 @@ func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "見つかりません。", http.StatusNotFound)
 			return
 		}
+		s.fail(w, err)
+		return
+	}
+	if err := s.saveProjectTasks(r, id, forms); err != nil {
 		s.fail(w, err)
 		return
 	}
@@ -200,8 +200,10 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 	}
 	seen := map[string]bool{}
 	var lines []store.LineWrite
-	for _, form := range forms {
-		if form.ProcessID == "" && form.Start == "" && form.End == "" && form.Hours == "" && form.Budget == "" {
+	for i := range forms {
+		form := &forms[i]
+		emptyLine := form.ProcessID == "" && form.Start == "" && form.End == "" && form.Hours == "" && form.Budget == "" && !hasNamedTask(form.Tasks)
+		if emptyLine {
 			continue
 		}
 		if form.ProcessID == "" {
@@ -232,12 +234,31 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 		if berr != nil {
 			msg = firstMsg(msg, "予算は 0 以上の整数で入力してください。")
 		}
+		var taskSum int64
+		for _, task := range form.Tasks {
+			if stringsTrim(task.Name) == "" {
+				continue
+			}
+			if m := limitRunes(stringsTrim(task.Name), "タスク名", 128); m != "" {
+				msg = firstMsg(msg, m)
+			}
+			taskMinutes, tm := parseOptionalHours(task.Hours)
+			msg = firstMsg(msg, tm)
+			if taskMinutes > 100000*60 {
+				msg = firstMsg(msg, "タスクの予定時間が大きすぎます。")
+			}
+			taskSum += taskMinutes
+		}
+		if hasNamedTask(form.Tasks) {
+			minutes = taskSum
+			form.Hours = calc.FormatHours(taskSum)
+		}
 		lines = append(lines, store.LineWrite{
 			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: minutes, BudgetYen: budget,
 		})
 	}
 	if len(forms) == 0 {
-		forms = []lineForm{{}}
+		forms = []lineForm{{Tasks: []taskForm{{}}}}
 	}
 	return project, lines, forms, msg
 }
@@ -257,9 +278,41 @@ func readLineForms(r *http.Request) []lineForm {
 	for i := 0; i < n; i++ {
 		out = append(out, lineForm{
 			ProcessID: at(ids, i), Start: at(starts, i), End: at(ends, i), Hours: at(hours, i), Budget: at(budgets, i),
+			Tasks: []taskForm{{}},
 		})
 	}
+	attachTasks(out, r)
 	return out
+}
+
+// attachTasks は task_process_id の並びに合わせて、各工程行へタスクを載せます。
+func attachTasks(lines []lineForm, r *http.Request) {
+	processIDs := r.Form["task_process_id"]
+	ids := r.Form["task_id"]
+	names := r.Form["task_name"]
+	hours := r.Form["task_hours"]
+	if len(processIDs) == 0 {
+		return
+	}
+	byProcess := map[string][]taskForm{}
+	n := len(processIDs)
+	for i := 0; i < n; i++ {
+		pid := at(processIDs, i)
+		if pid == "" {
+			continue
+		}
+		byProcess[pid] = append(byProcess[pid], taskForm{
+			ID: at(ids, i), Name: at(names, i), Hours: at(hours, i),
+		})
+	}
+	for i := range lines {
+		if lines[i].ProcessID == "" {
+			continue
+		}
+		if tasks, ok := byProcess[lines[i].ProcessID]; ok {
+			lines[i].Tasks = tasks
+		}
+	}
 }
 
 // at は values の i 番目を返します。範囲外なら空文字です。
@@ -273,7 +326,7 @@ func at(values []string, i int) string {
 // lineForms は lines を入力欄の文字列に戻します。空なら空行を1つ足します。
 func lineForms(lines []store.ProcessLine) []lineForm {
 	if len(lines) == 0 {
-		return []lineForm{{}}
+		return []lineForm{{Tasks: []taskForm{{}}}}
 	}
 	out := make([]lineForm, 0, len(lines))
 	for _, line := range lines {
@@ -284,9 +337,68 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 		out = append(out, lineForm{
 			ProcessID: line.ProcessID, Start: line.StartDate, End: line.EndDate,
 			Hours: calc.FormatHours(line.PlannedMinutes), Budget: budget,
+			Tasks: []taskForm{{}},
 		})
 	}
 	return out
+}
+
+// lineFormsWithTasks は工程明細に、保存済みタスクを載せて返します。
+func (s *Server) lineFormsWithTasks(r *http.Request, projectID string, lines []store.ProcessLine) ([]lineForm, error) {
+	forms := lineForms(lines)
+	tasks, err := s.store.ListTasksByProject(r.Context(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	byProcess := map[string][]taskForm{}
+	for _, task := range tasks {
+		byProcess[task.ProcessID] = append(byProcess[task.ProcessID], taskForm{
+			ID: task.ID, Name: task.Name, Hours: calc.FormatHours(task.PlannedMinutes),
+		})
+	}
+	for i := range forms {
+		if tasks, ok := byProcess[forms[i].ProcessID]; ok && len(tasks) > 0 {
+			forms[i].Tasks = tasks
+		}
+	}
+	return forms, nil
+}
+
+// saveProjectTasks は forms のタスクを projectID へ保存します。
+func (s *Server) saveProjectTasks(r *http.Request, projectID string, forms []lineForm) error {
+	byProcess := map[string][]store.TaskWrite{}
+	for _, form := range forms {
+		if form.ProcessID == "" {
+			continue
+		}
+		var writes []store.TaskWrite
+		for _, task := range form.Tasks {
+			name := stringsTrim(task.Name)
+			if name == "" {
+				continue
+			}
+			minutes, _ := parseOptionalHours(task.Hours)
+			writes = append(writes, store.TaskWrite{ID: task.ID, Name: name, PlannedMinutes: minutes})
+		}
+		// 工程行にタスク欄があったものだけ置き換える（空ならその工程のタスクを消す）。
+		if len(form.Tasks) > 0 {
+			byProcess[form.ProcessID] = writes
+		}
+	}
+	return s.store.ReplaceTasksByProcess(r.Context(), projectID, byProcess)
+}
+
+func hasNamedTask(tasks []taskForm) bool {
+	for _, task := range tasks {
+		if stringsTrim(task.Name) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func stringsTrim(s string) string {
+	return strings.TrimSpace(s)
 }
 
 // renderProject は page を status で描画します。errs の先頭があれば、それを警告として出します。

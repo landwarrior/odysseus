@@ -693,3 +693,202 @@ input.process-name {
   .inline > * { flex: 1 1 12rem; }
   h1 { font-size: 1.35rem; }
 }
+
+/* プロジェクト編集のタスク分解 */
+.line-tasks {
+  flex: 1 1 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+}
+.line-tasks h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+.task-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.task-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem 0.75rem;
+}
+.task-name-field { flex: 1 1 14rem; min-width: 12rem; }
+.task-hours-field { flex: 0 0 8rem; }
+
+/* スケジュール表（プロジェクト一覧） */
+main.page-schedule {
+  max-width: none;
+  padding-bottom: 1.5rem;
+}
+.schedule-toolbar {
+  display: grid;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+}
+.schedule-toolbar-notes { margin: 0; }
+.schedule-range-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+.range-control { display: grid; gap: 0.35rem; }
+.range-label { font-size: 0.9rem; color: var(--muted); }
+.range-fields {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.range-sep { color: var(--muted); }
+.table-scroll {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.schedule-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.85rem;
+  --sticky-left-phase: 12rem;
+  --sticky-left-meta1: 20rem;
+  --sticky-left-meta2: 24.2rem;
+  --sticky-left-meta3: 28.4rem;
+  --sticky-cols-width: 32.6rem;
+  --sticky-thead-height: 4rem;
+  --phase-cyan-bg: #cdeef3;
+  --phase-orange-bg: #ffd8b8;
+  --phase-green-bg: #d1fae5;
+  --phase-lavender-bg: #d8cff5;
+  --current-col-tint: rgba(37, 99, 235, 0.07);
+  --current-col-bg: #d5ddec;
+  --sticky-bg: #e8e8e8;
+  --thead-bg: #d6d6d6;
+  --month-head-bg: #cfcfcf;
+  --project-divider: #8a8a8a;
+  --cap-warn-bg: #fef3c7;
+  --cap-warn-text: #92400e;
+  --hatch: rgba(0, 0, 0, 0.08);
+}
+html[data-theme="dark"] .schedule-table {
+  --phase-cyan-bg: #1f3d42;
+  --phase-orange-bg: #4a3424;
+  --phase-green-bg: #14532d;
+  --phase-lavender-bg: #5c5685;
+  --current-col-tint: rgba(6, 12, 22, 0.24);
+  --current-col-bg: #32373e;
+  --sticky-bg: #2e2e2e;
+  --thead-bg: #3a3a3a;
+  --month-head-bg: #404040;
+  --project-divider: #707070;
+  --cap-warn-bg: #5b4a16;
+  --cap-warn-text: #fde68a;
+  --hatch: rgba(255, 255, 255, 0.12);
+}
+.schedule-table th,
+.schedule-table td {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.45rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--thead-bg);
+}
+.schedule-table thead tr:nth-child(2) th {
+  top: 2rem;
+}
+.schedule-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--sticky-bg);
+}
+.schedule-table th.col-project,
+.schedule-table td.col-project { left: 0; min-width: 11rem; max-width: 14rem; white-space: normal; }
+.schedule-table th.col-phase,
+.schedule-table td.col-phase { left: var(--sticky-left-phase); min-width: 8rem; max-width: 10rem; white-space: normal; }
+.schedule-table th.col-meta1,
+.schedule-table td.col-meta1 { left: var(--sticky-left-meta1); min-width: 4.2rem; }
+.schedule-table th.col-meta2,
+.schedule-table td.col-meta2 { left: var(--sticky-left-meta2); min-width: 4.2rem; }
+.schedule-table th.col-meta3,
+.schedule-table td.col-meta3 { left: var(--sticky-left-meta3); min-width: 4.2rem; }
+.schedule-table thead .sticky-col { z-index: 4; }
+.schedule-table tfoot .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--sticky-bg);
+}
+.schedule-table tfoot .summary-label { text-align: left; }
+.schedule-table tbody.project-block:not(:last-of-type) > tr:last-child > * {
+  border-bottom: 2px solid var(--project-divider);
+}
+.schedule-table .project-name { font-weight: 700; }
+.schedule-table .project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.schedule-table .task-process {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.schedule-table .task-name { display: block; }
+.schedule-table .month-head { text-align: center; background: var(--month-head-bg); }
+.schedule-table .decade-head { text-align: center; min-width: 3.2rem; }
+.schedule-table .col-current { background: var(--current-col-tint); }
+.schedule-table thead .col-current { background: var(--current-col-bg); }
+.schedule-table td.num.warn { color: var(--warn); font-weight: 700; }
+.schedule-table td.num.diff-over { color: var(--danger); font-weight: 700; }
+.schedule-table td.cap-warn { background: var(--cap-warn-bg); color: var(--cap-warn-text); }
+.schedule-table td.cap-over { background: var(--over-bg); color: var(--danger); font-weight: 700; }
+.schedule-table .empty { text-align: center; padding: 1.5rem; white-space: normal; }
+.schedule-table .muted { color: var(--muted); }
+.phase-cell { text-align: center; color: transparent; min-width: 3.2rem; }
+.phase-cell .effort-field {
+  display: block;
+  margin: 0;
+  position: relative;
+}
+.phase-cell .effort-input {
+  width: 100%;
+  min-width: 2.8rem;
+  min-height: 1.8rem;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  text-align: center;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.phase-cell.active .effort-input {
+  color: var(--ink);
+  font-weight: 700;
+}
+.phase-cell.color-cyan.active { background: var(--phase-cyan-bg); }
+.phase-cell.color-orange.active { background: var(--phase-orange-bg); }
+.phase-cell.color-green.active { background: var(--phase-green-bg); }
+.phase-cell.color-lavender.active { background: var(--phase-lavender-bg); }
+.phase-cell .effort-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  color: var(--ink);
+  background: var(--field);
+}

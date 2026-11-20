@@ -109,6 +109,35 @@ func FormatPersonDays(minutes, standardMinutes int64) string {
 	return fmt.Sprintf("%s%d.%d", sign, tenths/10, tenths%10)
 }
 
+// ParsePersonDays は raw（画面の人日。0.1 刻み）を分にします。
+// standardMinutes は 1 人日の分数です。0 以下のときは 480 分として計算します。
+// raw が空なら ErrEmpty、数値でなければ ErrFormat、負なら ErrNegative です。
+// 0.1 人日未満の端数は受け付けません。
+func ParsePersonDays(raw string, standardMinutes int64) (int64, error) {
+	if standardMinutes <= 0 {
+		standardMinutes = 480
+	}
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, ErrEmpty
+	}
+	if strings.ContainsAny(s, ",，") {
+		return 0, ErrFormat
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, ErrFormat
+	}
+	if f < 0 {
+		return 0, ErrNegative
+	}
+	tenths := math.Round(f * 10)
+	if math.Abs(f*10-tenths) > 1e-9 {
+		return 0, ErrFormat
+	}
+	return int64(tenths) * standardMinutes / 10, nil
+}
+
 // ParseYen は raw（画面の金額。カンマや円記号を含んでよい）を円にします。
 // raw が空なら nil です。読めないときや負のときは ErrFormat です。
 func ParseYen(raw string) (*int64, error) {

@@ -124,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /", s.requireLogin(s.handleHome))
 
 	mux.HandleFunc("GET /projects", s.requireAdmin(s.handleProjects))
+	mux.HandleFunc("POST /projects/allocations", s.requireAdmin(s.handleAllocationSave))
 	mux.HandleFunc("GET /projects/new", s.requireAdmin(s.handleProjectNew))
 	mux.HandleFunc("POST /projects", s.requireAdmin(s.handleProjectCreate))
 	mux.HandleFunc("GET /projects/{id}", s.requireAdmin(s.handleProjectEdit))
