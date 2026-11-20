@@ -6,10 +6,13 @@
   --muted: #666666;
   --line: #bdbdbd;
   --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  /* ライトはリンクを明るく、塗りボタンは少し暗くする */
+  --link-hover: #3b82f6;
   --button-bg: #2563eb;
   --button-text: #ffffff;
   --button-border: #2563eb;
+  --button-hover-bg: #1d4ed8;
+  --button-hover-border: #1d4ed8;
   --warn: #b45309;
   --danger: #b91c1c;
   --danger-hover: #991b1b;
@@ -36,13 +39,16 @@ html[data-theme="dark"] {
   --muted: #9a9a9a;
   --line: #4a4a4a;
   --accent: #8bb4e8;
-  --accent-hover: #a8c8f0;
+  /* ダークはリンクを暗く、塗りボタンは同系色で少し明るくする */
+  --link-hover: #6b9ad4;
   --button-bg: #3a4f6a;
   --button-text: #d5dbe6;
   --button-border: #4a6280;
+  --button-hover-bg: #4a6280;
+  --button-hover-border: #5c7694;
   --warn: #fbbf24;
   --danger: #f87171;
-  --danger-hover: #ef4444;
+  --danger-hover: #dc5c5c;
   --secondary-hover: #2a3f5f;
   --header-bg: #1a1a1a;
   --header-fg: #d0d0d0;
@@ -75,7 +81,7 @@ body {
 }
 
 a { color: var(--accent); }
-a:hover { color: var(--accent-hover); }
+a:hover { color: var(--link-hover); }
 a.button:hover { color: var(--button-text); }
 a.secondary:hover { color: var(--ink); }
 body, main, p, td, th, .banner, .note { overflow-wrap: anywhere; }
@@ -107,7 +113,7 @@ header.top:not(:has(.site-nav)) {
 
 header.top a { color: inherit; text-decoration: none; }
 header.top a:hover { color: inherit; }
-header.top .user-panel a:hover { color: var(--accent-hover); }
+header.top .user-panel a:hover { color: var(--link-hover); }
 header.top .brand {
   grid-area: brand;
   font-weight: 700;
@@ -240,13 +246,13 @@ header.top .theme-option {
   padding: 0.4rem 0.55rem;
 }
 header.top .theme-option[aria-pressed="true"] {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--button-bg);
+  color: var(--button-text);
+  border-color: var(--button-border);
 }
 header.top .theme-option[aria-pressed="true"]:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
 }
 header.top .theme-option:hover:not([aria-pressed="true"]) {
   background: var(--secondary-hover);
@@ -275,8 +281,8 @@ button, .button {
 }
 button:hover:not(:disabled):not(.secondary):not(.danger):not(header.top button),
 a.button:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
   color: var(--button-text);
 }
 
