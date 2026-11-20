@@ -34,11 +34,21 @@ type scheduleTaskRow struct {
 	Cells     []scheduleCell
 }
 
+// scheduleCapCell はプロジェクト単位のキャパまたは割当合計の1マスです。
+type scheduleCapCell struct {
+	Days     string
+	Current  bool
+	CapClass string
+}
+
 // scheduleProjectBlock は案件ごとの行の塊です。
 type scheduleProjectBlock struct {
-	Project  store.Project
-	Tasks    []scheduleTaskRow
-	RowCount int
+	Project     store.Project
+	Tasks       []scheduleTaskRow
+	RowCount    int
+	MemberCount int
+	Capacity    []scheduleCapCell
+	Allocated   []scheduleCapCell
 }
 
 // schedulePeriodCol はフッターの旬列です。
@@ -47,9 +57,7 @@ type schedulePeriodCol struct {
 	Decade       int
 	Current      bool
 	BusinessDays int
-	Capacity     string
 	Allocated    string
-	CapClass     string
 }
 
 // schedulePage はプロジェクト一覧（スケジュール）です。
@@ -65,7 +73,6 @@ type schedulePage struct {
 	DecadeLabel map[int]string
 	Blocks      []scheduleProjectBlock
 	Periods     []schedulePeriodCol
-	MemberCount int
 	ColSpan     int
 }
 
@@ -108,7 +115,12 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	members, err := s.store.CountActivePeople(r.Context())
+	assignees, err := s.store.CountAssigneesByProjects(r.Context(), ids)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	holidays, err := s.store.ListHolidayDates(r.Context())
 	if err != nil {
 		s.fail(w, err)
 		return
@@ -120,6 +132,14 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 	for _, a := range allocs {
 		allocMap[a.TaskID+"|"+a.YearMonth+"|"+strconv.Itoa(a.Decade)] = a.PlannedMinutes
 	}
+	bizDays := map[string]int{}
+	for _, ym := range months {
+		for decade := 1; decade <= 3; decade++ {
+			days, _ := schedule.BusinessDays(ym, decade, holidays)
+			bizDays[ym+"|"+strconv.Itoa(decade)] = days
+		}
+	}
+
 	periodAllocated := map[string]int64{}
 	tasksByProject := map[string][]store.Task{}
 	for _, t := range tasks {
@@ -129,7 +149,16 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 	blocks := make([]scheduleProjectBlock, 0, len(projects))
 	for _, project := range projects {
 		projectTasks := tasksByProject[project.ID]
-		block := scheduleProjectBlock{Project: project, RowCount: len(projectTasks)}
+		members := assignees[project.ID]
+		projectPeriod := map[string]int64{}
+		block := scheduleProjectBlock{
+			Project:     project,
+			MemberCount: members,
+			RowCount:    len(projectTasks) + 2, // タスク行 + キャパ + 割当合計
+		}
+		if len(projectTasks) == 0 {
+			block.RowCount = 3 // 未登録案内 + キャパ + 割当合計
+		}
 		for _, task := range projectTasks {
 			est := task.PlannedMinutes
 			allocated := totals[task.ID]
@@ -154,7 +183,9 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 				for decade := 1; decade <= 3; decade++ {
 					key := task.ID + "|" + ym + "|" + strconv.Itoa(decade)
 					minutes := allocMap[key]
-					periodAllocated[ym+"|"+strconv.Itoa(decade)] += minutes
+					periodKey := ym + "|" + strconv.Itoa(decade)
+					periodAllocated[periodKey] += minutes
+					projectPeriod[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,
 						Current: ym == currentYM && decade == currentDec,
@@ -167,30 +198,41 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 			}
 			block.Tasks = append(block.Tasks, row)
 		}
+		for _, ym := range months {
+			for decade := 1; decade <= 3; decade++ {
+				periodKey := ym + "|" + strconv.Itoa(decade)
+				days := bizDays[periodKey]
+				capacityMinutes := int64(days*members) * std
+				allocated := projectPeriod[periodKey]
+				capClass := ""
+				if capacityMinutes > 0 {
+					if allocated >= capacityMinutes {
+						capClass = "cap-over"
+					} else if allocated*100 > capacityMinutes*80 {
+						capClass = "cap-warn"
+					}
+				}
+				current := ym == currentYM && decade == currentDec
+				block.Capacity = append(block.Capacity, scheduleCapCell{
+					Days: calc.FormatPersonDays(capacityMinutes, std), Current: current,
+				})
+				block.Allocated = append(block.Allocated, scheduleCapCell{
+					Days: calc.FormatPersonDays(allocated, std), Current: current, CapClass: capClass,
+				})
+			}
+		}
 		blocks = append(blocks, block)
 	}
 
 	periods := make([]schedulePeriodCol, 0, len(months)*3)
 	for _, ym := range months {
 		for decade := 1; decade <= 3; decade++ {
-			days, _ := schedule.BusinessDays(ym, decade, nil)
-			allocated := periodAllocated[ym+"|"+strconv.Itoa(decade)]
-			capacityMinutes := int64(days*members) * std
-			capClass := ""
-			if capacityMinutes > 0 {
-				if allocated >= capacityMinutes {
-					capClass = "cap-over"
-				} else if allocated*100 > capacityMinutes*80 {
-					capClass = "cap-warn"
-				}
-			}
+			periodKey := ym + "|" + strconv.Itoa(decade)
 			periods = append(periods, schedulePeriodCol{
 				YM: ym, Decade: decade,
 				Current:      ym == currentYM && decade == currentDec,
-				BusinessDays: days,
-				Capacity:     calc.FormatPersonDays(capacityMinutes, std),
-				Allocated:    calc.FormatPersonDays(allocated, std),
-				CapClass:     capClass,
+				BusinessDays: bizDays[periodKey],
+				Allocated:    calc.FormatPersonDays(periodAllocated[periodKey], std),
 			})
 		}
 	}
@@ -207,13 +249,12 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 		DecadeLabel: schedule.DecadeLabels,
 		Blocks:      blocks,
 		Periods:     periods,
-		MemberCount: members,
 		ColSpan:     5 + len(months)*3,
 	}
 	s.render(w, http.StatusOK, "projects", page)
 }
 
-// handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分と旬合計を JSON で返します。
+// handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分を JSON で返します。
 func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 	taskID := formText(r, "task_id")
 	ym, err := schedule.NormalizeYM(r.FormValue("year_month"))

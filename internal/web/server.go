@@ -157,6 +157,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /processes/{id}", s.requireAdmin(s.handleProcessUpdate))
 	mux.HandleFunc("POST /processes/{id}/delete", s.requireAdmin(s.handleProcessDelete))
 
+	mux.HandleFunc("GET /holidays", s.requireAdmin(s.handleHolidays))
+	mux.HandleFunc("POST /holidays", s.requireAdmin(s.handleHolidayCreate))
+	mux.HandleFunc("POST /holidays/{date}", s.requireAdmin(s.handleHolidayUpdate))
+	mux.HandleFunc("POST /holidays/{date}/delete", s.requireAdmin(s.handleHolidayDelete))
+
 	mux.HandleFunc("GET /time", s.requireLogin(s.handleTimeList))
 	mux.HandleFunc("GET /time/{projectID}", s.requireLogin(s.handleTimeEdit))
 	mux.HandleFunc("POST /time/{projectID}", s.requireLogin(s.handleTimeSave))

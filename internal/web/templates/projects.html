@@ -26,9 +26,10 @@
       </div>
       <button type="submit">表示</button>
     </form>
-    <p class="schedule-toolbar-notes note">
+    <p class="schedule-toolbar-notes field-help">
       行は工程を細分化したタスクです。見積工数はタスクの予定、割当済は旬セルの合計、差分は見積 − 割当済です（プラスは割当不足）。
-      メンバー人数: {{.MemberCount}}人 ／ キャパ = 営業日 × 人数（祝日は未反映） ／ 工数は人日（0.1 刻み）
+      キャパは案件のアサイン人数 × 営業日です。祝日・休業日は<a href="/holidays">祝日・休業日マスタ</a>で登録します。
+      工数は人日（0.1 刻み）／工数セルは矢印キーで移動できます。
     </p>
   </section>
   <div class="table-scroll" data-csrf="{{.CSRF}}">
@@ -49,7 +50,7 @@
           <th class="sticky-col col-meta2">割当済</th>
           <th class="sticky-col col-meta3">差分</th>
           {{range .Months}}
-          <th colspan="3" class="month-head">{{.}}</th>
+          <th colspan="3" class="month-head" data-ym="{{.}}">{{.}}</th>
           {{end}}
         </tr>
         <tr>
@@ -76,10 +77,14 @@
       <tbody class="project-block">
         {{if not $block.Tasks}}
         <tr>
-          <th class="sticky-col col-project">
+          <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
             <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+            <p class="project-links">
+              <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+              <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+            </p>
           </th>
-          <td class="sticky-col col-phase" colspan="4"><span class="muted">タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
+          <td class="sticky-col col-phase" colspan="4"><span class="field-help">タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
           {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
         </tr>
         {{else}}
@@ -114,6 +119,7 @@
                 data-task-id="{{$task.TaskID}}"
                 data-ym="{{.YM}}"
                 data-decade="{{.Decade}}"
+                data-estimate="{{.Days}}"
               >
             </label>
           </td>
@@ -121,6 +127,18 @@
         </tr>
         {{end}}
         {{end}}
+        <tr class="project-summary">
+          <td class="sticky-col col-phase summary-label" colspan="4">キャパ（人日）・{{$block.MemberCount}}人</td>
+          {{range $block.Capacity}}
+          <td class="num{{if .Current}} col-current{{end}}">{{.Days}}</td>
+          {{end}}
+        </tr>
+        <tr class="project-summary">
+          <td class="sticky-col col-phase summary-label" colspan="4">割当合計（人日）</td>
+          {{range $block.Allocated}}
+          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
+          {{end}}
+        </tr>
       </tbody>
       {{end}}
       <tfoot>
@@ -131,15 +149,9 @@
           {{end}}
         </tr>
         <tr>
-          <th class="sticky-col summary-label" colspan="5">キャパ（人日）</th>
+          <th class="sticky-col summary-label" colspan="5">割当合計（全体・人日）</th>
           {{range .Periods}}
-          <td class="num{{if .Current}} col-current{{end}}">{{.Capacity}}</td>
-          {{end}}
-        </tr>
-        <tr>
-          <th class="sticky-col summary-label" colspan="5">割当合計（人日）</th>
-          {{range .Periods}}
-          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}">{{.Allocated}}</td>
+          <td class="num{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}">{{.Allocated}}</td>
           {{end}}
         </tr>
       </tfoot>
@@ -200,7 +212,7 @@
           <label>終了<input type="date" name="line_end" value="{{$line.End}}"></label>
         </div>
         <div class="line-amounts">
-          <label>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}" {{if $line.Tasks}}{{range $line.Tasks}}{{if .Name}}readonly{{end}}{{end}}{{end}}></label>
+          <label>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
           <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
         </div>
         <div class="line-remove">

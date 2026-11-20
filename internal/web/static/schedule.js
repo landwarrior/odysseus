@@ -6,14 +6,8 @@
   }
   const csrf = root.getAttribute("data-csrf") || "";
   let saveTimer = null;
-
-  function formatEffort(value) {
-    const number = Number(value);
-    if (!number) {
-      return "";
-    }
-    return number.toFixed(1);
-  }
+  let activeRow = null;
+  let activeColEls = [];
 
   function formatSum(value) {
     const number = Number(value);
@@ -42,6 +36,7 @@
     const meta1Width = meta1.getBoundingClientRect().width;
     const meta2Width = meta2.getBoundingClientRect().width;
     const meta3Width = meta3.getBoundingClientRect().width;
+    const stickyColsWidth = projectWidth + phaseWidth + meta1Width + meta2Width + meta3Width;
     table.style.setProperty("--sticky-left-phase", `${projectWidth}px`);
     table.style.setProperty("--sticky-left-meta1", `${projectWidth + phaseWidth}px`);
     table.style.setProperty("--sticky-left-meta2", `${projectWidth + phaseWidth + meta1Width}px`);
@@ -49,13 +44,160 @@
       "--sticky-left-meta3",
       `${projectWidth + phaseWidth + meta1Width + meta2Width}px`
     );
-    table.style.setProperty(
-      "--sticky-cols-width",
-      `${projectWidth + phaseWidth + meta1Width + meta2Width + meta3Width}px`
-    );
+    table.style.setProperty("--sticky-cols-width", `${stickyColsWidth}px`);
     if (thead) {
       table.style.setProperty("--sticky-thead-height", `${thead.getBoundingClientRect().height}px`);
     }
+  }
+
+  function effortGrid() {
+    return [...table.querySelectorAll("tbody tr")]
+      .filter((row) => row.querySelector(".effort-input"))
+      .map((row) => [...row.querySelectorAll(".effort-input")]);
+  }
+
+  function effortPosition(grid, input) {
+    for (let row = 0; row < grid.length; row += 1) {
+      const col = grid[row].indexOf(input);
+      if (col >= 0) {
+        return { row, col };
+      }
+    }
+    return null;
+  }
+
+  function scrollEffortIntoView(input) {
+    const scrollRoot = input.closest(".table-scroll");
+    if (!scrollRoot) {
+      return;
+    }
+    const stickyWidth = Number.parseFloat(getComputedStyle(table).getPropertyValue("--sticky-cols-width")) || 0;
+    const stickyTop = Number.parseFloat(getComputedStyle(table).getPropertyValue("--sticky-thead-height")) || 0;
+    const pad = 4;
+    const rootRect = scrollRoot.getBoundingClientRect();
+    const inputRect = input.getBoundingClientRect();
+    const viewLeft = rootRect.left + scrollRoot.clientLeft + stickyWidth + pad;
+    const viewRight = rootRect.left + scrollRoot.clientLeft + scrollRoot.clientWidth - pad;
+    const viewTop = rootRect.top + scrollRoot.clientTop + stickyTop + pad;
+    const viewBottom = rootRect.top + scrollRoot.clientTop + scrollRoot.clientHeight - pad;
+    let deltaX = 0;
+    let deltaY = 0;
+    if (inputRect.left < viewLeft) {
+      deltaX = inputRect.left - viewLeft;
+    } else if (inputRect.right > viewRight) {
+      deltaX = inputRect.right - viewRight;
+    }
+    if (inputRect.top < viewTop) {
+      deltaY = inputRect.top - viewTop;
+    } else if (inputRect.bottom > viewBottom) {
+      deltaY = inputRect.bottom - viewBottom;
+    }
+    if (deltaX !== 0) {
+      scrollRoot.scrollLeft += deltaX;
+    }
+    if (deltaY !== 0) {
+      scrollRoot.scrollTop += deltaY;
+    }
+  }
+
+  function focusEffortInput(input) {
+    input.focus({ preventScroll: true });
+    scrollEffortIntoView(input);
+    input.select();
+    requestAnimationFrame(() => {
+      scrollEffortIntoView(input);
+    });
+  }
+
+  function moveEffortInput(input, rowDelta, colDelta) {
+    const grid = effortGrid();
+    const pos = effortPosition(grid, input);
+    if (!pos) {
+      return;
+    }
+    const nextRow = pos.row + rowDelta;
+    const nextCol = pos.col + colDelta;
+    if (nextRow < 0 || nextRow >= grid.length) {
+      return;
+    }
+    if (nextCol < 0 || nextCol >= grid[nextRow].length) {
+      return;
+    }
+    focusEffortInput(grid[nextRow][nextCol]);
+  }
+
+  function handleEffortKeydown(event) {
+    const key = event.key;
+    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "ArrowUp" && key !== "ArrowDown") {
+      return;
+    }
+    event.preventDefault();
+    if (key === "ArrowLeft") {
+      moveEffortInput(event.target, 0, -1);
+    } else if (key === "ArrowRight") {
+      moveEffortInput(event.target, 0, 1);
+    } else if (key === "ArrowUp") {
+      moveEffortInput(event.target, -1, 0);
+    } else if (key === "ArrowDown") {
+      moveEffortInput(event.target, 1, 0);
+    }
+  }
+
+  function scrollCurrentPeriodIntoView() {
+    const head = table.querySelector("thead th.decade-head.col-current");
+    if (!head) {
+      return;
+    }
+    const stickyWidth = Number.parseFloat(getComputedStyle(table).getPropertyValue("--sticky-cols-width")) || 0;
+    const pad = 8;
+    const rootRect = root.getBoundingClientRect();
+    const headRect = head.getBoundingClientRect();
+    const viewLeft = rootRect.left + root.clientLeft + stickyWidth + pad;
+    const viewRight = rootRect.left + root.clientLeft + root.clientWidth - pad;
+    const viewWidth = Math.max(viewRight - viewLeft, headRect.width);
+    const targetLeft = viewLeft + (viewWidth - headRect.width) / 2;
+    root.scrollLeft += headRect.left - targetLeft;
+  }
+
+  function clearActiveColumn() {
+    activeColEls.forEach((el) => el.classList.remove("col-editing"));
+    activeColEls = [];
+  }
+
+  function setActiveColumn(input) {
+    clearActiveColumn();
+    const ym = input.dataset.ym;
+    const decade = input.dataset.decade;
+    if (!ym || !decade) {
+      return;
+    }
+    const targets = [
+      ...table.querySelectorAll(`.month-head[data-ym="${ym}"]`),
+      ...table.querySelectorAll(`.decade-head[data-ym="${ym}"][data-decade="${decade}"]`),
+    ];
+    targets.forEach((el) => {
+      el.classList.add("col-editing");
+      activeColEls.push(el);
+    });
+  }
+
+  function setActiveRow(input) {
+    if (activeRow) {
+      activeRow.classList.remove("row-editing");
+    }
+    activeRow = input.closest("tr");
+    if (activeRow) {
+      activeRow.classList.add("row-editing");
+    }
+    setActiveColumn(input);
+  }
+
+  function clearActiveRow() {
+    if (activeRow) {
+      activeRow.classList.remove("row-editing");
+      activeRow = null;
+    }
+    clearActiveColumn();
   }
 
   function updatePeriodTotals() {
@@ -107,6 +249,7 @@
       return res.json();
     }).then((data) => {
       input.value = data.effort === "0.0" ? "" : data.effort;
+      input.dataset.estimate = input.value;
       const cell = input.closest(".phase-cell");
       if (cell) {
         cell.classList.toggle("active", Boolean(input.value));
@@ -126,6 +269,9 @@
   }
 
   table.querySelectorAll(".effort-input").forEach((input) => {
+    input.addEventListener("keydown", handleEffortKeydown);
+    input.addEventListener("focus", () => setActiveRow(input));
+    input.addEventListener("blur", () => clearActiveRow());
     input.addEventListener("change", () => {
       window.clearTimeout(saveTimer);
       saveAllocation(input);
@@ -141,9 +287,8 @@
 
   syncStickyOffsets();
   window.addEventListener("resize", syncStickyOffsets);
-
-  const current = table.querySelector("th.col-current, td.col-current");
-  if (current) {
-    current.scrollIntoView({ block: "nearest", inline: "center" });
-  }
+  requestAnimationFrame(() => {
+    syncStickyOffsets();
+    scrollCurrentPeriodIntoView();
+  });
 })();

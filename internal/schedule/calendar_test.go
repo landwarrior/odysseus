@@ -13,13 +13,20 @@ func TestIterMonths(t *testing.T) {
 }
 
 func TestBusinessDays(t *testing.T) {
-	// 2026-11 上旬: 日〜火始まり。1=日,2=月,...,10=火。平日は 2-6,9,10 = 7 日。
+	// 2026-11 上旬: 1=日,2=月,...,10=火。平日は 2-6,9,10 = 7 日。
 	days, err := BusinessDays("2026-11", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if days != 7 {
 		t.Fatalf("days = %d", days)
+	}
+	days, err = BusinessDays("2026-11", 1, []string{"2026-11-03"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if days != 6 {
+		t.Fatalf("with holiday = %d", days)
 	}
 }
 
