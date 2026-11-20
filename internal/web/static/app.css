@@ -959,13 +959,17 @@ main.page-schedule {
   min-width: 70px;
   max-width: 70px;
   box-sizing: border-box;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+  overflow: hidden;
 }
 .phase-cell .effort-field {
-  display: inline-flex;
+  display: block;
   position: relative;
-  gap: 0;
-  vertical-align: middle;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
 }
 .phase-cell.color-cyan.active {
   background: var(--phase-cyan-bg);
@@ -985,12 +989,13 @@ main.page-schedule {
 }
 .phase-cell.active { font-weight: 700; }
 .effort-input {
-  width: 4.2rem;
-  max-width: 70px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 0;
   box-sizing: border-box;
   text-align: right;
-  padding: 0.2rem 0.3rem;
+  padding: 0.2rem 0.25rem;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--field);
