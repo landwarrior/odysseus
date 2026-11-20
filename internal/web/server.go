@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -34,10 +35,13 @@ import (
 var assets embed.FS
 
 // Server は画面の描画と、ログイン状態の確認を持っています。
+// Dev のときは funcs と webDir から、リクエストごとにテンプレートを読み直します。
 type Server struct {
-	store *store.Store
-	cfg   config.Config
-	tmpl  *template.Template
+	store  *store.Store
+	cfg    config.Config
+	tmpl   *template.Template
+	funcs  template.FuncMap
+	webDir string
 }
 
 // base はどの画面にも共通の見出し、CSRF トークン、通知、ログイン利用者です。
@@ -92,11 +96,20 @@ func NewServer(st *store.Store, cfg config.Config) (*Server, error) {
 			return s
 		},
 	}
+	s := &Server{store: st, cfg: cfg, funcs: funcs}
+	if cfg.Dev {
+		s.webDir = cfg.WebDir
+		if _, err := s.loadTemplates(); err != nil {
+			return nil, fmt.Errorf("開発モードのテンプレート (%s): %w", filepath.Join(cfg.WebDir, "templates"), err)
+		}
+		return s, nil
+	}
 	tmpl, err := template.New("").Funcs(funcs).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	return &Server{store: st, cfg: cfg, tmpl: tmpl}, nil
+	s.tmpl = tmpl
+	return s, nil
 }
 
 // Handler は URL と処理の対応表を返します。
@@ -147,12 +160,27 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /time/{projectID}", s.requireLogin(s.handleTimeEdit))
 	mux.HandleFunc("POST /time/{projectID}", s.requireLogin(s.handleTimeSave))
 
-	sub, err := fs.Sub(assets, "static")
-	if err != nil {
-		panic(err)
+	if s.cfg.Dev {
+		staticDir := filepath.Join(s.webDir, "static")
+		mux.Handle("GET /static/", http.StripPrefix("/static/", noCacheFileServer(http.Dir(staticDir))))
+	} else {
+		sub, err := fs.Sub(assets, "static")
+		if err != nil {
+			panic(err)
+		}
+		mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(sub))))
 	}
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(sub))))
 	return secure(mux)
+}
+
+// noCacheFileServer は root 配下のファイルを返し、ブラウザにキャッシュさせません。
+// 開発モードで CSS/JS を書き換えたあと、再読み込みだけで反映するためのものです。
+func noCacheFileServer(root http.FileSystem) http.Handler {
+	files := http.FileServer(root)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		files.ServeHTTP(w, r)
+	})
 }
 
 // secure は next の前に、内容の種類をブラウザが誤認しないためのヘッダを付けます。
@@ -358,12 +386,29 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) base
 	return base{Title: title, CSRF: sessionFrom(r).CSRF, Flash: flash, Warn: warn, Error: errMsg, Theme: personTheme(me), Me: me}
 }
 
+// loadTemplates は webDir の HTML を読み、テンプレート集合を返します。
+// 開発モードではリクエストのたびに呼び、保存した変更をすぐ画面に出します。
+func (s *Server) loadTemplates() (*template.Template, error) {
+	pattern := filepath.Join(s.webDir, "templates", "*.html")
+	return template.New("").Funcs(s.funcs).ParseGlob(pattern)
+}
+
 // render は name のテンプレートを data で描画し、status の HTTP 状態で w に書きます。
 func (s *Server) render(w http.ResponseWriter, status int, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	tmpl := s.tmpl
+	if s.cfg.Dev {
+		fresh, err := s.loadTemplates()
+		if err != nil {
+			log.Printf("template reload: %v", err)
+			http.Error(w, "テンプレートの読み込みに失敗しました", http.StatusInternalServerError)
+			return
+		}
+		tmpl = fresh
+	}
 	w.WriteHeader(status)
-	if err := s.tmpl.ExecuteTemplate(w, name, data); err != nil {
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		log.Printf("template %s: %v", name, err)
 	}
 }

@@ -78,6 +78,9 @@ func main() {
 	log.Printf("  開く URL: %s", cfg.BrowserURL())
 	log.Printf("  データ: %s", cfg.DataDir)
 	log.Printf("  データベース: %s", cfg.Driver)
+	if cfg.Dev {
+		log.Printf("  開発モード: HTML/CSS を %s から都度読みます", cfg.WebDir)
+	}
 	log.Printf("停止するには、この画面で Ctrl+C を押してください。")
 	go func() {
 		if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
