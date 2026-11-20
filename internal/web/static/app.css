@@ -899,6 +899,13 @@ main.page-schedule {
   text-align: right;
   font-weight: 600;
 }
+.schedule-table tbody.project-block > tr > td:not(.sticky-col),
+.schedule-table tfoot td:not(.sticky-col) {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  box-sizing: border-box;
+}
 .schedule-table tbody.project-block:not(:last-of-type) > tr:last-child > * {
   border-bottom: 2px solid var(--project-divider);
 }
@@ -906,19 +913,34 @@ main.page-schedule {
   background: var(--sticky-bg);
 }
 .month-head { text-align: center; background: var(--month-head-bg); }
-.decade-head { text-align: center; font-weight: 600; }
+.decade-head {
+  text-align: center;
+  font-weight: 600;
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  box-sizing: border-box;
+}
 .schedule-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .schedule-table .warn { color: var(--warn); font-weight: 600; }
 .schedule-table .diff-over { color: var(--danger); font-weight: 600; }
 .schedule-table .cap-warn { background: var(--cap-warn-bg); color: var(--cap-warn-text); font-weight: 700; }
 .schedule-table .cap-over { background: var(--over-bg); color: var(--danger); font-weight: 700; }
 .schedule-table .empty { text-align: center; color: var(--muted); padding: 1.5rem !important; white-space: normal; }
-.phase-cell { text-align: center; color: transparent; }
+.phase-cell {
+  text-align: center;
+  color: transparent;
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  box-sizing: border-box;
+}
 .phase-cell .effort-field {
   display: inline-flex;
   position: relative;
   gap: 0;
   vertical-align: middle;
+  width: 100%;
 }
 .phase-cell.color-cyan.active {
   background: var(--phase-cyan-bg);
@@ -942,7 +964,9 @@ main.page-schedule {
   color: var(--ink);
   font-weight: normal;
   border: 0;
-  width: 4.2rem;
+  width: 100%;
+  max-width: 80px;
+  box-sizing: border-box;
   text-align: right;
   padding: 0.2rem 0.3rem;
   font: inherit;
