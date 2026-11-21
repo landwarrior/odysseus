@@ -185,10 +185,11 @@
       <label>終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
     </div>
     <h2>工程とタスク</h2>
-    <p class="note">工程の下にタスクを登録すると、その見積工数がスケジュール表の「工程」「見積工数」の根拠になります。タスクがある工程の予定時間はタスク合計になります。</p>
+    <p class="note">工程の下にタスクを登録すると、その見積工数がスケジュール表の「工程」「見積工数」の根拠になります。タスクがある工程の予定時間はタスク合計の表示になります。</p>
     <div id="lines" class="project-lines">
       {{range .Lines}}
       {{$line := .}}
+      {{$named := false}}{{range $line.Tasks}}{{if .Name}}{{$named = true}}{{end}}{{end}}
       <div class="project-line">
         <div class="line-process">
           <label>工程
@@ -205,7 +206,8 @@
           <label>終了<input type="date" name="line_end" value="{{$line.End}}"></label>
         </div>
         <div class="line-amounts">
-          <label>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
+          <label class="line-hours-edit"{{if $named}} hidden{{end}}>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
+          <p class="line-hours-view"{{if not $named}} hidden{{end}}><span class="line-hours-caption">予定時間</span><strong class="line-hours-sum">{{$line.Hours}}</strong><span class="line-hours-unit">時間（タスク合計）</span></p>
           <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
         </div>
         <div class="line-remove">
@@ -250,7 +252,8 @@
         <label>終了<input type="date" name="line_end"></label>
       </div>
       <div class="line-amounts">
-        <label>予定時間<input name="line_hours" inputmode="decimal"></label>
+        <label class="line-hours-edit">予定時間<input name="line_hours" inputmode="decimal"></label>
+        <p class="line-hours-view" hidden><span class="line-hours-caption">予定時間</span><strong class="line-hours-sum">0</strong><span class="line-hours-unit">時間（タスク合計）</span></p>
         <label>予算<input class="yen-input" name="line_budget" inputmode="numeric"></label>
       </div>
       <div class="line-remove">
@@ -287,17 +290,13 @@
       line.querySelectorAll(".task-process-id").forEach(function (input) {
         input.value = pid;
       });
-      var hours = line.querySelector('input[name="line_hours"]');
-      var named = false;
-      line.querySelectorAll('input[name="task_name"]').forEach(function (input) {
-        if (input.value.trim()) named = true;
-      });
-      if (hours) {
-        hours.readOnly = named;
-      }
+      syncTaskSum(line);
     }
     function syncTaskSum(line) {
       var hours = line.querySelector('input[name="line_hours"]');
+      var edit = line.querySelector(".line-hours-edit");
+      var view = line.querySelector(".line-hours-view");
+      var sumEl = line.querySelector(".line-hours-sum");
       if (!hours) return;
       var sum = 0;
       var named = false;
@@ -309,9 +308,15 @@
         var v = parseFloat(th && th.value ? th.value : "0");
         if (!isNaN(v)) sum += v;
       });
-      hours.readOnly = named;
       if (named) {
-        hours.value = (Math.round(sum * 100) / 100).toString();
+        var text = (Math.round(sum * 100) / 100).toString();
+        hours.value = text;
+        if (sumEl) sumEl.textContent = text;
+        if (edit) edit.hidden = true;
+        if (view) view.hidden = false;
+      } else {
+        if (edit) edit.hidden = false;
+        if (view) view.hidden = true;
       }
     }
     document.getElementById("add-line").addEventListener("click", function () {

@@ -561,6 +561,26 @@ section.danger { border-color: var(--danger-line); }
   width: 9.5rem;
   min-width: 9.5rem;
 }
+.line-hours-view {
+  display: grid;
+  gap: 0.25rem;
+  width: 9.5rem;
+  min-width: 9.5rem;
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+.line-hours-caption {
+  color: var(--muted);
+}
+.line-hours-sum {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.line-hours-unit {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 .line-remove {
   flex: 0 0 auto;
   min-width: max-content;
