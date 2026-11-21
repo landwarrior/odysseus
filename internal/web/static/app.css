@@ -577,10 +577,6 @@ section.danger { border-color: var(--danger-line); }
   font-size: 1rem;
   font-weight: 600;
 }
-.line-hours-unit {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
 .line-remove {
   flex: 0 0 auto;
   min-width: max-content;

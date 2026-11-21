@@ -185,7 +185,7 @@
       <label>終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
     </div>
     <h2>工程とタスク</h2>
-    <p class="note">工程の下にタスクを登録すると、その見積工数がスケジュール表の「工程」「見積工数」の根拠になります。タスクがある工程の予定時間はタスク合計の表示になります。</p>
+    <p class="note">工程の下にタスクを登録すると、その見積時間がスケジュール表の「工程」「見積工数」の根拠になります。タスクがある工程の合計時間は、見積時間の合計表示になります。</p>
     <div id="lines" class="project-lines">
       {{range .Lines}}
       {{$line := .}}
@@ -206,8 +206,8 @@
           <label>終了<input type="date" name="line_end" value="{{$line.End}}"></label>
         </div>
         <div class="line-amounts">
-          <label class="line-hours-edit"{{if $named}} hidden{{end}}>予定時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
-          <p class="line-hours-view"{{if not $named}} hidden{{end}}><span class="line-hours-caption">予定時間</span><strong class="line-hours-sum">{{$line.Hours}}</strong><span class="line-hours-unit">時間（タスク合計）</span></p>
+          <label class="line-hours-edit"{{if $named}} hidden{{end}}>合計時間<input name="line_hours" inputmode="decimal" value="{{$line.Hours}}"></label>
+          <p class="line-hours-view"{{if not $named}} hidden{{end}}><span class="line-hours-caption">合計時間</span><strong class="line-hours-sum">{{$line.Hours}}</strong></p>
           <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
         </div>
         <div class="line-remove">
@@ -221,7 +221,7 @@
               <input type="hidden" name="task_process_id" class="task-process-id" value="{{$line.ProcessID}}">
               <input type="hidden" name="task_id" value="{{.ID}}">
               <label class="task-name-field">名前<input name="task_name" value="{{.Name}}" aria-label="タスク名"></label>
-              <label class="task-hours-field">予定時間<input name="task_hours" inputmode="decimal" value="{{.Hours}}" aria-label="タスク予定時間"></label>
+              <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" value="{{.Hours}}" aria-label="タスク見積時間"></label>
               <button type="button" class="remove-task secondary">削除</button>
             </div>
             {{end}}
@@ -232,7 +232,7 @@
       {{end}}
     </div>
     <p><button type="button" id="add-line" class="secondary">工程を追加</button></p>
-    <p class="note">予定時間は時間単位です。1.5 は 1 時間 30 分です。予算を空にすると、予実画面ではアサインの予定原価を予算として表示します。</p>
+    <p class="note">時間は時間単位です。1.5 は 1 時間 30 分です。予算を空にすると、予実画面ではアサインの予定原価を予算として表示します。</p>
     <button type="submit" class="primary">登録</button>
   </form>
   <template id="line-row">
@@ -252,8 +252,8 @@
         <label>終了<input type="date" name="line_end"></label>
       </div>
       <div class="line-amounts">
-        <label class="line-hours-edit">予定時間<input name="line_hours" inputmode="decimal"></label>
-        <p class="line-hours-view" hidden><span class="line-hours-caption">予定時間</span><strong class="line-hours-sum">0</strong><span class="line-hours-unit">時間（タスク合計）</span></p>
+        <label class="line-hours-edit">合計時間<input name="line_hours" inputmode="decimal"></label>
+        <p class="line-hours-view" hidden><span class="line-hours-caption">合計時間</span><strong class="line-hours-sum">0</strong></p>
         <label>予算<input class="yen-input" name="line_budget" inputmode="numeric"></label>
       </div>
       <div class="line-remove">
@@ -266,7 +266,7 @@
             <input type="hidden" name="task_process_id" class="task-process-id" value="">
             <input type="hidden" name="task_id" value="">
             <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
-            <label class="task-hours-field">予定時間<input name="task_hours" inputmode="decimal" aria-label="タスク予定時間"></label>
+            <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
             <button type="button" class="remove-task secondary">削除</button>
           </div>
         </div>
@@ -279,7 +279,7 @@
       <input type="hidden" name="task_process_id" class="task-process-id" value="">
       <input type="hidden" name="task_id" value="">
       <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
-      <label class="task-hours-field">予定時間<input name="task_hours" inputmode="decimal" aria-label="タスク予定時間"></label>
+      <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
       <button type="button" class="remove-task secondary">削除</button>
     </div>
   </template>

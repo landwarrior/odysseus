@@ -228,7 +228,7 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 		minutes, m := parseOptionalHours(form.Hours)
 		msg = firstMsg(msg, m)
 		if minutes > 100000*60 {
-			msg = firstMsg(msg, "予定時間が大きすぎます。")
+			msg = firstMsg(msg, "合計時間が大きすぎます。")
 		}
 		budget, berr := calc.ParseYen(form.Budget)
 		if berr != nil {
@@ -245,7 +245,7 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 			taskMinutes, tm := parseOptionalHours(task.Hours)
 			msg = firstMsg(msg, tm)
 			if taskMinutes > 100000*60 {
-				msg = firstMsg(msg, "タスクの予定時間が大きすぎます。")
+				msg = firstMsg(msg, "タスクの見積時間が大きすぎます。")
 			}
 			taskSum += taskMinutes
 		}
