@@ -48,10 +48,10 @@
             パスワード
             <details class="help">
               <summary aria-label="パスワードの説明">?</summary>
-              <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
             </details>
           </span>
         </span>
+        <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
       </label>
     </div>
     <div class="inline checks">
@@ -65,7 +65,11 @@
   <script>
     document.addEventListener("click", function (event) {
       document.querySelectorAll("details.help[open]").forEach(function (help) {
-        if (!help.contains(event.target)) help.removeAttribute("open");
+        if (help.contains(event.target)) return;
+        var field = help.closest("label.field");
+        var tip = field && field.querySelector(":scope > .help-tip");
+        if (tip && tip.contains(event.target)) return;
+        help.removeAttribute("open");
       });
     });
   </script>
