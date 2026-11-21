@@ -207,8 +207,8 @@
         </div>
         <div class="line-amounts">
           <label class="line-hours-field{{if $named}} is-sum{{end}}">合計時間
-            <input name="line_hours" class="line-hours-input" inputmode="decimal" value="{{$line.Hours}}"{{if $named}} hidden{{end}}>
-            <span class="line-hours-sum"{{if not $named}} hidden{{end}}>{{$line.Hours}}</span>
+            <input name="line_hours" class="line-hours-input" inputmode="decimal" value="{{$line.Hours}}">
+            <span class="line-hours-sum">{{if $named}}{{$line.Hours}}{{else}}0{{end}}</span>
           </label>
           <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
         </div>
@@ -256,7 +256,7 @@
       <div class="line-amounts">
         <label class="line-hours-field">合計時間
           <input name="line_hours" class="line-hours-input" inputmode="decimal">
-          <span class="line-hours-sum" hidden>0</span>
+          <span class="line-hours-sum">0</span>
         </label>
         <label>予算<input class="yen-input" name="line_budget" inputmode="numeric"></label>
       </div>
@@ -315,12 +315,8 @@
         var text = (Math.round(sum * 100) / 100).toString();
         hours.value = text;
         sumEl.textContent = text;
-        hours.hidden = true;
-        sumEl.hidden = false;
         field.classList.add("is-sum");
       } else {
-        hours.hidden = false;
-        sumEl.hidden = true;
         field.classList.remove("is-sum");
       }
     }
