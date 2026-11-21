@@ -149,17 +149,17 @@
           <form method="post" action="/roles/{{.ID}}/move">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <input type="hidden" name="direction" value="up">
-            <button type="submit" class="secondary" {{if .First}}disabled{{end}}>上へ</button>
+            <button type="submit" class="secondary move-btn" aria-label="上へ" {{if .First}}disabled{{end}}><span class="move-icon move-up" aria-hidden="true"></span></button>
           </form>
           <form method="post" action="/roles/{{.ID}}/move">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <input type="hidden" name="direction" value="down">
-            <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
+            <button type="submit" class="secondary move-btn" aria-label="下へ" {{if .Last}}disabled{{end}}><span class="move-icon move-down" aria-hidden="true"></span></button>
           </form>
         </div>
         <form id="role-{{.ID}}" method="post" action="/roles/{{.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
+          <label class="field process-name"><input name="name" value="{{.Name}}" placeholder=" " required><span class="field-label">名前</span></label>
           <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">
@@ -218,30 +218,32 @@
           <form method="post" action="/processes/{{.ID}}/move">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <input type="hidden" name="direction" value="up">
-            <button type="submit" class="secondary" {{if .First}}disabled{{end}}>上へ</button>
+            <button type="submit" class="secondary move-btn" aria-label="上へ" {{if .First}}disabled{{end}}><span class="move-icon move-up" aria-hidden="true"></span></button>
           </form>
           <form method="post" action="/processes/{{.ID}}/move">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <input type="hidden" name="direction" value="down">
-            <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
+            <button type="submit" class="secondary move-btn" aria-label="下へ" {{if .Last}}disabled{{end}}><span class="move-icon move-down" aria-hidden="true"></span></button>
           </form>
         </div>
         {{$p := .}}
         <form id="process-{{$p.ID}}" method="post" action="/processes/{{$p.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <input class="process-name" name="name" value="{{$p.Name}}" required aria-label="名前">
-          <label class="process-color">
-            <span class="sr-only">背景色</span>
-            <span class="phase-color-cell">
-              <select name="color" aria-label="背景色">
-                {{range $color := $.Colors}}
-                <option value="{{$color}}" {{if eq $p.Color $color}}selected{{end}}>{{index $.ColorLabels $color}}</option>
-                {{end}}
-              </select>
-              <span class="color-sample color-{{$p.Color}}" aria-hidden="true"></span>
-            </span>
-          </label>
-          <label class="check"><input type="checkbox" name="active" value="1" {{if $p.Active}}checked{{end}}>有効</label>
+          <label class="field process-name"><input name="name" value="{{$p.Name}}" placeholder=" " required><span class="field-label">名前</span></label>
+          <div class="process-side">
+            <label class="field process-color">
+              <span class="phase-color-cell">
+                <select name="color">
+                  {{range $color := $.Colors}}
+                  <option value="{{$color}}" {{if eq $p.Color $color}}selected{{end}}>{{index $.ColorLabels $color}}</option>
+                  {{end}}
+                </select>
+                <span class="color-sample color-{{$p.Color}}" aria-hidden="true"></span>
+              </span>
+              <span class="field-label">背景色</span>
+            </label>
+            <label class="check"><input type="checkbox" name="active" value="1" {{if $p.Active}}checked{{end}}>有効</label>
+          </div>
         </form>
         <div class="button-pair">
           <button type="submit" form="process-{{$p.ID}}" class="primary">保存</button>
