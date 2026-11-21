@@ -443,6 +443,13 @@ label.field:has(:read-only) > .field-label {
   max-width: 100%;
 }
 label.field:has(.help) { position: relative; }
+label.field:has(.help) > .field-label {
+  overflow: visible;
+  text-overflow: clip;
+}
+label.field:has(.help[open]) {
+  z-index: 5;
+}
 label.field > .field-label .help { pointer-events: auto; }
 .help {
   position: static;
