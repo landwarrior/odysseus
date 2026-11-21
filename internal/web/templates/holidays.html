@@ -9,8 +9,8 @@
     <h2>祝日・休業日を追加</h2>
     <form method="post" action="/holidays" class="process-add holiday-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label class="field"><input type="date" name="date" required><span class="field-label">日付</span></label>
-      <label class="field"><input name="name" placeholder=" " autocomplete="off"><span class="field-label">名称（任意）</span></label>
+      <label class="field holiday-date"><input type="date" name="date" required><span class="field-label">日付</span></label>
+      <label class="field process-name"><input name="name" placeholder=" " autocomplete="off"><span class="field-label">名称（任意）</span></label>
       <button type="submit" class="primary">追加</button>
     </form>
   </section>
@@ -18,35 +18,27 @@
     <h2>登録済み</h2>
     {{if not .Holidays}}<p>祝日・休業日は未登録です。</p>{{end}}
     {{if .Holidays}}
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>日付</th><th>名称</th><th></th></tr>
-        </thead>
-        <tbody>
-          {{range .Holidays}}
-          <tr>
-            <td>{{.Date}}</td>
-            <td>
-              <form id="holiday-{{.Date}}" method="post" action="/holidays/{{.Date}}" class="holiday-name-form">
-                <input type="hidden" name="csrf" value="{{$.CSRF}}">
-                <input name="name" value="{{.Name}}" placeholder="名称を入力" aria-label="{{.Date}}の名称" autocomplete="off">
-              </form>
-            </td>
-            <td>
-              <div class="button-pair">
-                <button type="submit" form="holiday-{{.Date}}" class="primary">更新</button>
-                <form method="post" action="/holidays/{{.Date}}/delete" onsubmit="return confirm('削除しますか？')">
-                  <input type="hidden" name="csrf" value="{{$.CSRF}}">
-                  <button type="submit" class="danger">削除</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
+    <ul class="process-list">
+      {{range .Holidays}}
+      <li class="process-item holiday-item">
+        <div class="field field-display holiday-date">
+          <span class="field-value">{{.Date}}</span>
+          <span class="field-label">日付</span>
+        </div>
+        <form id="holiday-{{.Date}}" method="post" action="/holidays/{{.Date}}" class="process-edit">
+          <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <label class="field process-name"><input name="name" value="{{.Name}}" placeholder=" " autocomplete="off"><span class="field-label">名称</span></label>
+        </form>
+        <div class="button-pair">
+          <button type="submit" form="holiday-{{.Date}}" class="primary">更新</button>
+          <form method="post" action="/holidays/{{.Date}}/delete" onsubmit="return confirm('削除しますか？')">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </li>
+      {{end}}
+    </ul>
     {{end}}
   </section>
 </main>

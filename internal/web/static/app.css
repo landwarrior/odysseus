@@ -1342,6 +1342,24 @@ main.page-schedule {
 .schedule-table td.col-current {
   box-shadow: inset 0 0 0 9999px var(--current-col-tint);
 }
-.holiday-add > .field { flex: 1 1 10rem; min-width: min(100%, 10rem); }
-.holiday-name-form { margin: 0; }
-.holiday-name-form input { width: min(100%, 16rem); }
+.holiday-add > .holiday-date {
+  flex: 0 0 12rem;
+  width: 12rem;
+  min-width: min(100%, 12rem);
+}
+.holiday-item {
+  grid-template-columns: max-content minmax(225px, 1fr) max-content;
+}
+.holiday-item .holiday-date {
+  width: 12rem;
+  min-width: 12rem;
+  max-width: 12rem;
+}
+@media (max-width: 56rem) {
+  .holiday-item {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .holiday-item .holiday-date {
+    justify-self: start;
+  }
+}
