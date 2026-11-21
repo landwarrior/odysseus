@@ -21,9 +21,10 @@ type scheduleCell struct {
 	Current bool
 }
 
-// scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
+// scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクまたは工程集計です。
 type scheduleRow struct {
 	RowID     string
+	ProcessID string
 	Process   string
 	Name      string
 	Remarks   string
@@ -33,7 +34,18 @@ type scheduleRow struct {
 	Diff      string
 	DiffClass string
 	Editable  bool
+	Summary   bool
 	Cells     []scheduleCell
+}
+
+// scheduleProcessGroup は案件スケジュールの工程とそのタスク行です。
+type scheduleProcessGroup struct {
+	ProcessID string
+	Process   string
+	Color     string
+	RowSpan   int
+	Tasks     []scheduleRow
+	Summary   scheduleRow
 }
 
 // scheduleCapCell はプロジェクト単位のキャパまたは割当合計の1マスです。
@@ -47,6 +59,7 @@ type scheduleCapCell struct {
 type scheduleProjectBlock struct {
 	Project   store.Project
 	Rows      []scheduleRow
+	Groups    []scheduleProcessGroup
 	RowCount  int
 	Allocated []scheduleCapCell
 }
@@ -63,19 +76,19 @@ type schedulePeriodCol struct {
 // schedulePage はプロジェクト一覧または案件のスケジュールです。
 type schedulePage struct {
 	base
-	Detail     bool
-	Project    store.Project
-	Status     string
-	From       string
-	To         string
-	Months     []string
-	CurrentYM  string
-	CurrentDec int
-	Decades    []int
+	Detail      bool
+	Project     store.Project
+	Status      string
+	From        string
+	To          string
+	Months      []string
+	CurrentYM   string
+	CurrentDec  int
+	Decades     []int
 	DecadeLabel map[int]string
-	Blocks     []scheduleProjectBlock
-	Periods    []schedulePeriodCol
-	ColSpan    int
+	Blocks      []scheduleProjectBlock
+	Periods     []schedulePeriodCol
+	ColSpan     int
 	RangeAction string
 }
 
@@ -221,7 +234,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Rows, block.RowCount = s.scheduleTaskRows(projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
 		} else {
 			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
 		}
@@ -251,6 +264,10 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		}
 	}
 
+	stickyCols := 5
+	if in.Detail {
+		stickyCols = 6
+	}
 	return schedulePage{
 		base:        s.page(w, r, in.Title),
 		Detail:      in.Detail,
@@ -265,7 +282,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		DecadeLabel: schedule.DecadeLabels,
 		Blocks:      blocks,
 		Periods:     periods,
-		ColSpan:     5 + len(in.Months)*3,
+		ColSpan:     stickyCols + len(in.Months)*3,
 		RangeAction: in.RangeAction,
 	}, nil
 }
@@ -345,8 +362,8 @@ func (s *Server) scheduleProcessRows(
 	return rows, len(rows) + 1
 }
 
-// scheduleTaskRows はタスク行を作ります（案件スケジュール用・編集可）。
-func (s *Server) scheduleTaskRows(
+// scheduleTaskGroups は工程ごとのタスク行と集計行を作ります（案件スケジュール用）。
+func (s *Server) scheduleTaskGroups(
 	tasks []store.Task,
 	months []string,
 	currentYM string,
@@ -356,40 +373,102 @@ func (s *Server) scheduleTaskRows(
 	std int64,
 	projectPeriod map[string]int64,
 	periodAllocated map[string]int64,
-) ([]scheduleRow, int) {
+) ([]scheduleProcessGroup, int) {
 	if len(tasks) == 0 {
 		return nil, 2
 	}
-	rows := make([]scheduleRow, 0, len(tasks))
+	type processKey struct {
+		id    string
+		name  string
+		color string
+	}
+	order := make([]processKey, 0)
+	tasksByProcess := map[string][]store.Task{}
+	seen := map[string]bool{}
 	for _, task := range tasks {
-		est := task.PlannedMinutes
-		allocated := totals[task.ID]
-		diff := est - allocated
+		tasksByProcess[task.ProcessID] = append(tasksByProcess[task.ProcessID], task)
+		if !seen[task.ProcessID] {
+			seen[task.ProcessID] = true
+			order = append(order, processKey{
+				id: task.ProcessID, name: task.ProcessName, color: schedule.NormalizeColor(task.ProcessColor),
+			})
+		}
+	}
+	groups := make([]scheduleProcessGroup, 0, len(order))
+	rowCount := 1 // プロジェクト割当合計
+	for _, key := range order {
+		lineTasks := tasksByProcess[key.id]
+		var estTotal, allocTotal int64
+		periodMinutes := map[string]int64{}
+		taskRows := make([]scheduleRow, 0, len(lineTasks))
+		for _, task := range lineTasks {
+			est := task.PlannedMinutes
+			allocated := totals[task.ID]
+			estTotal += est
+			allocTotal += allocated
+			diff := est - allocated
+			diffClass := ""
+			if diff > 0 {
+				diffClass = "warn"
+			} else if diff < 0 {
+				diffClass = "diff-over"
+			}
+			row := scheduleRow{
+				RowID:     task.ID,
+				ProcessID: key.id,
+				Process:   key.name,
+				Name:      task.Name,
+				Remarks:   task.Remarks,
+				Color:     key.color,
+				Estimate:  calc.FormatPersonDays(est, std),
+				Allocated: calc.FormatPersonDays(allocated, std),
+				Diff:      calc.FormatPersonDays(diff, std),
+				DiffClass: diffClass,
+				Editable:  true,
+			}
+			for _, ym := range months {
+				for decade := 1; decade <= 3; decade++ {
+					allocKey := task.ID + "|" + ym + "|" + strconv.Itoa(decade)
+					minutes := allocMap[allocKey]
+					periodKey := ym + "|" + strconv.Itoa(decade)
+					periodAllocated[periodKey] += minutes
+					projectPeriod[periodKey] += minutes
+					periodMinutes[periodKey] += minutes
+					cell := scheduleCell{
+						YM: ym, Decade: decade, Minutes: minutes,
+						Current: ym == currentYM && decade == currentDec,
+					}
+					if minutes > 0 {
+						cell.Days = calc.FormatPersonDays(minutes, std)
+					}
+					row.Cells = append(row.Cells, cell)
+				}
+			}
+			taskRows = append(taskRows, row)
+		}
+		diffTotal := estTotal - allocTotal
 		diffClass := ""
-		if diff > 0 {
+		if diffTotal > 0 {
 			diffClass = "warn"
-		} else if diff < 0 {
+		} else if diffTotal < 0 {
 			diffClass = "diff-over"
 		}
-		row := scheduleRow{
-			RowID:     task.ID,
-			Process:   task.ProcessName,
-			Name:      task.Name,
-			Remarks:   task.Remarks,
-			Color:     schedule.NormalizeColor(task.ProcessColor),
-			Estimate:  calc.FormatPersonDays(est, std),
-			Allocated: calc.FormatPersonDays(allocated, std),
-			Diff:      calc.FormatPersonDays(diff, std),
+		summary := scheduleRow{
+			RowID:     key.id,
+			ProcessID: key.id,
+			Process:   key.name,
+			Name:      "合計",
+			Color:     key.color,
+			Estimate:  calc.FormatPersonDays(estTotal, std),
+			Allocated: calc.FormatPersonDays(allocTotal, std),
+			Diff:      calc.FormatPersonDays(diffTotal, std),
 			DiffClass: diffClass,
-			Editable:  true,
+			Summary:   true,
 		}
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
-				key := task.ID + "|" + ym + "|" + strconv.Itoa(decade)
-				minutes := allocMap[key]
 				periodKey := ym + "|" + strconv.Itoa(decade)
-				periodAllocated[periodKey] += minutes
-				projectPeriod[periodKey] += minutes
+				minutes := periodMinutes[periodKey]
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
 					Current: ym == currentYM && decade == currentDec,
@@ -397,12 +476,20 @@ func (s *Server) scheduleTaskRows(
 				if minutes > 0 {
 					cell.Days = calc.FormatPersonDays(minutes, std)
 				}
-				row.Cells = append(row.Cells, cell)
+				summary.Cells = append(summary.Cells, cell)
 			}
 		}
-		rows = append(rows, row)
+		groups = append(groups, scheduleProcessGroup{
+			ProcessID: key.id,
+			Process:   key.name,
+			Color:     key.color,
+			RowSpan:   len(taskRows) + 1,
+			Tasks:     taskRows,
+			Summary:   summary,
+		})
+		rowCount += len(taskRows) + 1
 	}
-	return rows, len(rows) + 1
+	return groups, rowCount
 }
 
 // handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分を JSON で返します。

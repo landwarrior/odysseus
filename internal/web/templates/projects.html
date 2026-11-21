@@ -42,7 +42,7 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      行は工程を細分化したタスクです。見積工数はタスクの予定、割当済は旬セルの合計、差分は見積 − 割当済です（プラスは割当不足）。
+      タスク行で旬に工数を割り当てます。工程の集計行に、その工程の見積合計・割当合計・差分と旬ごとの割当合計が出ます。差分のプラスは割当不足です。
       工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
       行は工程です。見積・割当・差分は工程内タスクの合計です。タスク単位の割当は各案件のスケジュールから行います。
@@ -51,10 +51,11 @@
     </p>
   </section>
   <div class="table-scroll" data-csrf="{{.CSRF}}">
-    <table class="schedule-table">
+    <table class="schedule-table{{if .Detail}} schedule-detail{{end}}">
       <colgroup>
         <col class="col-project">
         <col class="col-phase">
+        {{if .Detail}}<col class="col-task">{{end}}
         <col class="col-meta1">
         <col class="col-meta2">
         <col class="col-meta3">
@@ -63,7 +64,8 @@
       <thead>
         <tr>
           <th class="sticky-col col-project">プロジェクト</th>
-          <th class="sticky-col col-phase">{{if .Detail}}工程 / タスク{{else}}工程{{end}}</th>
+          <th class="sticky-col col-phase">工程</th>
+          {{if .Detail}}<th class="sticky-col col-task">タスク</th>{{end}}
           <th class="sticky-col col-meta1">見積工数</th>
           <th class="sticky-col col-meta2">割当済</th>
           <th class="sticky-col col-meta3">差分</th>
@@ -74,6 +76,7 @@
         <tr>
           <th class="sticky-col col-project"></th>
           <th class="sticky-col col-phase"></th>
+          {{if .Detail}}<th class="sticky-col col-task"></th>{{end}}
           <th class="sticky-col col-meta1"></th>
           <th class="sticky-col col-meta2"></th>
           <th class="sticky-col col-meta3"></th>
@@ -93,85 +96,133 @@
       {{range .Blocks}}
       {{$block := .}}
       <tbody class="project-block">
-        {{if not $block.Rows}}
-        <tr>
-          <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
-            <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
-            <p class="project-links">
-              {{if not $.Detail}}<a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>{{end}}
-              <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
-              <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
-            </p>
-          </th>
-          <td class="sticky-col col-phase" colspan="4"><span class="field-help">{{if $.Detail}}タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）{{else}}工程未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）{{end}}</span></td>
-          {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
-        </tr>
+        {{if $.Detail}}
+          {{if not $block.Groups}}
+          <tr>
+            <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
+              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+              <p class="project-links">
+                <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+                <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+              </p>
+            </th>
+            <td class="sticky-col col-phase" colspan="5"><span class="field-help">タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
+            {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
+          </tr>
+          {{else}}
+          {{range $gi, $group := $block.Groups}}
+            {{range $ti, $row := $group.Tasks}}
+            <tr data-task-id="{{$row.RowID}}" data-process-id="{{$group.ProcessID}}">
+              {{if and (eq $gi 0) (eq $ti 0)}}
+              <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
+                <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+                <p class="project-links">
+                  <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+                  <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+                </p>
+              </th>
+              {{end}}
+              {{if eq $ti 0}}
+              <td class="sticky-col col-phase" rowspan="{{$group.RowSpan}}">{{$group.Process}}</td>
+              {{end}}
+              <td class="sticky-col col-task"><span class="task-name"{{if $row.Remarks}} title="{{$row.Remarks}}"{{end}}>{{$row.Name}}</span></td>
+              <td class="sticky-col col-meta1 num" data-phase-total="{{$row.RowID}}">{{$row.Estimate}}</td>
+              <td class="sticky-col col-meta2 num" data-phase-allocated="{{$row.RowID}}">{{$row.Allocated}}</td>
+              <td class="sticky-col col-meta3 num {{$row.DiffClass}}" data-phase-diff="{{$row.RowID}}">{{$row.Diff}}</td>
+              {{range $row.Cells}}
+              <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">
+                <label class="effort-field">
+                  <input
+                    class="effort-input"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value="{{.Days}}"
+                    aria-label="割当工数"
+                    data-task-id="{{$row.RowID}}"
+                    data-process-id="{{$group.ProcessID}}"
+                    data-ym="{{.YM}}"
+                    data-decade="{{.Decade}}"
+                    data-estimate="{{.Days}}"
+                  >
+                </label>
+              </td>
+              {{end}}
+            </tr>
+            {{end}}
+            {{$sum := $group.Summary}}
+            <tr class="phase-summary" data-process-id="{{$group.ProcessID}}">
+              <td class="sticky-col col-task summary-label">合計</td>
+              <td class="sticky-col col-meta1 num" data-process-total="{{$group.ProcessID}}">{{$sum.Estimate}}</td>
+              <td class="sticky-col col-meta2 num" data-process-allocated="{{$group.ProcessID}}">{{$sum.Allocated}}</td>
+              <td class="sticky-col col-meta3 num {{$sum.DiffClass}}" data-process-diff="{{$group.ProcessID}}">{{$sum.Diff}}</td>
+              {{range $sum.Cells}}
+              <td class="phase-cell color-{{$sum.Color}} num {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}" data-process-cell="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}">{{if .Days}}{{.Days}}{{end}}</td>
+              {{end}}
+            </tr>
+          {{end}}
+          {{end}}
+          <tr class="project-summary">
+            <td class="sticky-col col-phase summary-label" colspan="5">割当合計（人日）</td>
+            {{range $block.Allocated}}
+            <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
+            {{end}}
+          </tr>
         {{else}}
-        {{range $i, $row := $block.Rows}}
-        <tr{{if $row.Editable}} data-task-id="{{$row.RowID}}"{{end}}>
-          {{if eq $i 0}}
-          <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
-            <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
-            <p class="project-links">
-              {{if not $.Detail}}<a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>{{end}}
-              <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
-              <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
-            </p>
-          </th>
-          {{end}}
-          <td class="sticky-col col-phase">
-            {{if $row.Name}}
-            <span class="task-process">{{$row.Process}}</span>
-            <span class="task-name"{{if $row.Remarks}} title="{{$row.Remarks}}"{{end}}>{{$row.Name}}</span>
-            {{else}}
-            {{$row.Process}}
+          {{if not $block.Rows}}
+          <tr>
+            <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
+              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+              <p class="project-links">
+                <a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>
+                <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+                <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+              </p>
+            </th>
+            <td class="sticky-col col-phase" colspan="4"><span class="field-help">工程未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
+            {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
+          </tr>
+          {{else}}
+          {{range $i, $row := $block.Rows}}
+          <tr>
+            {{if eq $i 0}}
+            <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
+              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+              <p class="project-links">
+                <a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>
+                <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+                <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+              </p>
+            </th>
             {{end}}
-          </td>
-          <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
-          <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>{{$row.Allocated}}</td>
-          <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
-          {{range $row.Cells}}
-          <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">
-            {{if $row.Editable}}
-            <label class="effort-field">
-              <input
-                class="effort-input"
-                type="number"
-                min="0"
-                step="0.1"
-                value="{{.Days}}"
-                aria-label="割当工数"
-                data-task-id="{{$row.RowID}}"
-                data-ym="{{.YM}}"
-                data-decade="{{.Decade}}"
-                data-estimate="{{.Days}}"
-              >
-            </label>
-            {{else}}
-            {{if .Days}}{{.Days}}{{end}}
+            <td class="sticky-col col-phase">{{$row.Process}}</td>
+            <td class="sticky-col col-meta1 num">{{$row.Estimate}}</td>
+            <td class="sticky-col col-meta2 num">{{$row.Allocated}}</td>
+            <td class="sticky-col col-meta3 num {{$row.DiffClass}}">{{$row.Diff}}</td>
+            {{range $row.Cells}}
+            <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">{{if .Days}}{{.Days}}{{end}}</td>
             {{end}}
-          </td>
+          </tr>
           {{end}}
-        </tr>
-        {{end}}
-        {{end}}
-        <tr class="project-summary">
-          <td class="sticky-col col-phase summary-label" colspan="4">割当合計（人日）</td>
-          {{range $block.Allocated}}
-          <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
           {{end}}
-        </tr>
+          <tr class="project-summary">
+            <td class="sticky-col col-phase summary-label" colspan="4">割当合計（人日）</td>
+            {{range $block.Allocated}}
+            <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
+            {{end}}
+          </tr>
+        {{end}}
       </tbody>
       {{end}}
       <tfoot>
         <tr>
-          <th class="sticky-col summary-label" colspan="5">営業日</th>
+          <th class="sticky-col summary-label" colspan="{{if .Detail}}6{{else}}5{{end}}">営業日</th>
           {{range .Periods}}
           <td class="num{{if .Current}} col-current{{end}}">{{.BusinessDays}}</td>
           {{end}}
         </tr>
         <tr>
-          <th class="sticky-col summary-label" colspan="5">割当合計（全体・人日）</th>
+          <th class="sticky-col summary-label" colspan="{{if .Detail}}6{{else}}5{{end}}">割当合計（全体・人日）</th>
           {{range .Periods}}
           <td class="num{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}">{{.Allocated}}</td>
           {{end}}
