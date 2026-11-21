@@ -297,7 +297,7 @@ func TestPeopleListShowsLatestRoleAndEditButton(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	body = admin.submit(t, "/people", url.Values{
-		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"},
+		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"}, "name_kana": {"太郎"},
 		"password": {"memberpass"}, "active": {"1"},
 		"remarks": {"長い備考テキストを一覧でも見えるようにする"},
 	})
@@ -322,9 +322,9 @@ func TestPeopleListShowsLatestRoleAndEditButton(t *testing.T) {
 	})
 	page := admin.getBody(t, "/people")
 	for _, want := range []string{
-		"<th>役割</th>", "<th>備考</th>", "SE", "長い備考テキストを一覧でも見えるようにする",
+		"<th>役割</th>", "<th>備考</th>", "SE", "山田 太郎", "長い備考テキストを一覧でも見えるようにする",
 		`class="button" href="/people/` + personID(t, st, "m01") + `">編集</a>`,
-		`class="clip"`,
+		`class="clip"`, `class="person-fullname"`,
 	} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("people page missing %s\n%s", want, page)

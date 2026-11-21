@@ -40,7 +40,7 @@ type Store struct{ db *db.DB }
 func New(database *db.DB) *Store { return &Store{db: database} }
 
 // Person はログインも兼ねる人材です。パスワードそのものは持ちません。
-// Theme は light または dark です。
+// Name は姓、NameKana は名です。Theme は light または dark です。
 type Person struct {
 	ID                 string
 	Code               string
@@ -53,6 +53,14 @@ type Person struct {
 	Theme              string
 }
 
+// FullName は姓と名を空白でつないだ表示名です。名が空なら姓だけです。
+func (p Person) FullName() string {
+	if p.NameKana == "" {
+		return p.Name
+	}
+	return p.Name + " " + p.NameKana
+}
+
 // PersonAuth は Person に、照合用のパスワードハッシュを足したものです。画面へは渡しません。
 type PersonAuth struct {
 	Person
@@ -60,6 +68,7 @@ type PersonAuth struct {
 }
 
 // NewPerson は人材の登録と更新に使う入力です。Password が空の更新では、パスワードを変えません。
+// Name は姓、NameKana は名です。
 type NewPerson struct {
 	Code     string
 	Name     string
@@ -253,7 +262,7 @@ func (s *Store) Seed(ctx context.Context) (adminPassword string, created bool, e
 		return "", false, err
 	}
 	_, err = s.InsertPerson(ctx, NewPerson{
-		Code: "admin", Name: "管理者", NameKana: "カンリシャ", Password: password,
+		Code: "admin", Name: "管理者", NameKana: "", Password: password,
 		IsAdmin: true, Active: true, Remarks: "初期管理者",
 	})
 	if err != nil {

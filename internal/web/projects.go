@@ -727,7 +727,7 @@ func activePersonOpts(people []store.Person) []opt {
 	var out []opt
 	for _, p := range people {
 		if p.Active {
-			out = append(out, opt{ID: p.ID, Label: p.Code + " " + p.Name})
+			out = append(out, opt{ID: p.ID, Label: p.Code + " " + p.FullName()})
 		}
 	}
 	return out

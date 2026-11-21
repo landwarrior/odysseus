@@ -506,7 +506,8 @@ const lineSelect = `
 	JOIN process ON process.id = pp.process_id`
 
 const assignmentSelect = `
-	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code, person.name,
+	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code,
+		CASE WHEN person.name_kana = '' THEN person.name ELSE person.name || ' ' || person.name_kana END,
 		a.role_id, role.name, a.start_date, a.end_date, a.planned_minutes, a.planned_cost_yen
 	FROM assignment a
 	JOIN project_process pp ON pp.id = a.project_process_id

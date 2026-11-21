@@ -14,7 +14,7 @@
         {{range .People}}
         <tr>
           <td>{{.Code}}</td>
-          <td>{{.Name}}</td>
+          <td class="person-fullname">{{.FullName}}</td>
           <td>{{.RoleName}}</td>
           <td class="mark">{{if .IsAdmin}}<span class="mark-check" title="管理者" aria-label="管理者"></span>{{end}}</td>
           <td>{{if .Active}}有効{{else}}無効{{end}}</td>
@@ -39,8 +39,8 @@
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="grid">
       <label>ユーザーコード<input name="code" value="{{.Person.Code}}" required></label>
-      <label>氏名<input name="name" value="{{.Person.Name}}" required></label>
-      <label>カナ<input name="name_kana" value="{{.Person.NameKana}}"></label>
+      <label>姓<input name="name" value="{{.Person.Name}}" required autocomplete="family-name"></label>
+      <label>名<input name="name_kana" value="{{.Person.NameKana}}" autocomplete="given-name"></label>
       <label>
         <span class="label-row">
           パスワード

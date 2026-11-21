@@ -473,6 +473,9 @@ td.clip {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+td.person-fullname {
+  white-space: nowrap;
+}
 th.mark, td.mark { text-align: center; width: 4.5rem; }
 table.rates {
   table-layout: fixed;
