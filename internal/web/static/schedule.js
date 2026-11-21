@@ -227,6 +227,30 @@
         cell.textContent = formatSum(totals[key] || 0);
       });
     });
+    updateCapacityWarnings();
+  }
+
+  function updateCapacityWarnings(processId) {
+    const selector = processId
+      ? `[data-process-cap^="${processId}|"]`
+      : "[data-process-cap]";
+    table.querySelectorAll(selector).forEach((cell) => {
+      const key = cell.getAttribute("data-process-cap") || "";
+      const parts = key.split("|");
+      if (parts.length < 3) {
+        return;
+      }
+      const pid = parts[0];
+      const ym = parts[1];
+      const decade = parts[2];
+      let allocated = 0;
+      table.querySelectorAll(`.effort-input[data-process-id="${pid}"][data-ym="${ym}"][data-decade="${decade}"]`).forEach((input) => {
+        const value = Number(input.value || 0);
+        allocated += Number.isNaN(value) ? 0 : value;
+      });
+      const capacity = Number(cell.dataset.capacity || 0);
+      cell.classList.toggle("cap-warn", allocated > capacity);
+    });
   }
 
   function applyDiffClass(cell, diffSign) {
@@ -282,6 +306,7 @@
         cell.classList.toggle("active", cellIsActive(cell, input.value));
       }
       applyTaskMeta(data.task_id, data.allocated, data.diff, data.diff_sign);
+      updateCapacityWarnings(input.dataset.processId || "");
       updatePeriodTotals();
     }).catch((err) => {
       window.alert(err.message || "保存に失敗しました");
@@ -308,11 +333,13 @@
       if (cell) {
         cell.classList.toggle("active", cellIsActive(cell, input.value && Number(input.value) > 0));
       }
+      updateCapacityWarnings(input.dataset.processId || "");
       queueSave(input);
     });
   });
 
   syncStickyOffsets();
+  updateCapacityWarnings();
   window.addEventListener("resize", syncStickyOffsets);
   requestAnimationFrame(() => {
     syncStickyOffsets();

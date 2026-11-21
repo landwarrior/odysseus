@@ -42,8 +42,8 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程に開始日・終了日がある旬は背景色が付きます。工数を入れた旬も同様です。
-      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
+      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程の「枠」は、その旬に期間が重なるアサイン人数 × 営業日（人日）の目安です。割当合計が枠を超えると枠セルが警告色になります。
+      工程に開始日・終了日がある旬と、工数を入れた旬には背景色が付きます。工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
       行は工程です。見積・割当・差分は工程内タスクの合計です。開始日・終了日がある旬と、割当がある旬に背景色が付きます。タスク単位の割当は各案件のスケジュールから行います。
       {{end}}
@@ -152,6 +152,16 @@
               {{end}}
             </tr>
             {{end}}
+            {{$cap := $group.Capacity}}
+            <tr class="phase-capacity" data-process-id="{{$group.ProcessID}}">
+              <td class="sticky-col col-task summary-label" title="その旬に重なるアサイン人数 × 営業日">枠</td>
+              <td class="sticky-col col-meta1"><span class="field-help">人数×</span></td>
+              <td class="sticky-col col-meta2"><span class="field-help">営業日</span></td>
+              <td class="sticky-col col-meta3"></td>
+              {{range $cap.Cells}}
+              <td class="phase-cell num {{if .CapWarn}}cap-warn{{end}}{{if .Current}} col-current{{end}}" data-process-cap="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}" data-capacity="{{if .Days}}{{.Days}}{{else}}0{{end}}"{{if .Headcount}} title="{{.Headcount}}人 × 営業日"{{end}}>{{if .Days}}{{.Days}}{{end}}</td>
+              {{end}}
+            </tr>
           {{end}}
           {{end}}
           <tr class="project-summary">

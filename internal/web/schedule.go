@@ -13,13 +13,16 @@ import (
 )
 
 // scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
+// Headcount と CapWarn は工程の枠行用です。
 type scheduleCell struct {
-	YM      string
-	Decade  int
-	Minutes int64
-	Days    string
-	InRange bool
-	Current bool
+	YM        string
+	Decade    int
+	Minutes   int64
+	Days      string
+	InRange   bool
+	Current   bool
+	Headcount int
+	CapWarn   bool
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
@@ -39,12 +42,14 @@ type scheduleRow struct {
 }
 
 // scheduleProcessGroup は案件スケジュールの工程とそのタスク行です。
+// Capacity はアサイン人数×営業日の枠（目安）です。
 type scheduleProcessGroup struct {
 	ProcessID string
 	Process   string
 	Color     string
 	RowSpan   int
 	Tasks     []scheduleRow
+	Capacity  scheduleRow
 }
 
 // scheduleCapCell はプロジェクト単位のキャパまたは割当合計の1マスです。
@@ -223,6 +228,20 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, line := range lines {
 		linesByProject[line.ProjectID] = append(linesByProject[line.ProjectID], line)
 	}
+	assignmentsByLine := map[string][]store.Assignment{}
+	if in.Detail {
+		lineIDs := make([]string, 0, len(lines))
+		for _, line := range lines {
+			lineIDs = append(lineIDs, line.ID)
+		}
+		assigns, err := s.store.AssignmentsForLines(r.Context(), lineIDs)
+		if err != nil {
+			return schedulePage{}, err
+		}
+		for _, a := range assigns {
+			assignmentsByLine[a.ProjectProcessID] = append(assignmentsByLine[a.ProjectProcessID], a)
+		}
+	}
 
 	periodAllocated := map[string]int64{}
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
@@ -233,7 +252,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, assignmentsByLine, in.Months, currentYM, currentDec, allocMap, totals, std, bizDays, projectPeriod, periodAllocated)
 		} else {
 			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
 		}
@@ -362,17 +381,20 @@ func (s *Server) scheduleProcessRows(
 	return rows, len(rows) + 1
 }
 
-// scheduleTaskGroups は工程ごとのタスク行を作ります（案件スケジュール用）。
+// scheduleTaskGroups は工程ごとのタスク行と枠行を作ります（案件スケジュール用）。
 // タスクのない工程（開始・終了だけなど）は編集不可の1行として出します。
+// 枠は、その旬に期間が重なるアサイン人数 × 営業日（人日）です。
 func (s *Server) scheduleTaskGroups(
 	lines []store.ProcessLine,
 	tasks []store.Task,
+	assignmentsByLine map[string][]store.Assignment,
 	months []string,
 	currentYM string,
 	currentDec int,
 	allocMap map[string]int64,
 	totals map[string]int64,
 	std int64,
+	bizDays map[string]int,
 	projectPeriod map[string]int64,
 	periodAllocated map[string]int64,
 ) ([]scheduleProcessGroup, int) {
@@ -388,7 +410,9 @@ func (s *Server) scheduleTaskGroups(
 	for _, line := range lines {
 		color := schedule.NormalizeColor(line.ProcessColor)
 		lineTasks := tasksByProcess[line.ProcessID]
+		lineAssigns := assignmentsByLine[line.ID]
 		taskRows := make([]scheduleRow, 0, len(lineTasks))
+		periodMinutes := map[string]int64{}
 		for _, task := range lineTasks {
 			est := task.PlannedMinutes
 			allocated := totals[task.ID]
@@ -419,6 +443,7 @@ func (s *Server) scheduleTaskGroups(
 					periodKey := ym + "|" + strconv.Itoa(decade)
 					periodAllocated[periodKey] += minutes
 					projectPeriod[periodKey] += minutes
+					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,
 						InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
@@ -459,14 +484,45 @@ func (s *Server) scheduleTaskGroups(
 			}
 			taskRows = append(taskRows, row)
 		}
+		capacity := scheduleRow{
+			RowID:     line.ProcessID,
+			ProcessID: line.ProcessID,
+			Process:   line.ProcessName,
+			Name:      "枠",
+			Color:     color,
+		}
+		for _, ym := range months {
+			for decade := 1; decade <= 3; decade++ {
+				periodKey := ym + "|" + strconv.Itoa(decade)
+				heads := 0
+				for _, a := range lineAssigns {
+					if schedule.OverlapsDecade(ym, decade, a.StartDate, a.EndDate) {
+						heads++
+					}
+				}
+				capMinutes := int64(heads) * int64(bizDays[periodKey]) * std
+				cell := scheduleCell{
+					YM: ym, Decade: decade, Minutes: capMinutes,
+					Headcount: heads,
+					Current:   ym == currentYM && decade == currentDec,
+					CapWarn:   periodMinutes[periodKey] > capMinutes,
+				}
+				if capMinutes > 0 {
+					cell.Days = calc.FormatPersonDays(capMinutes, std)
+				}
+				capacity.Cells = append(capacity.Cells, cell)
+			}
+		}
+		span := len(taskRows) + 1
 		groups = append(groups, scheduleProcessGroup{
 			ProcessID: line.ProcessID,
 			Process:   line.ProcessName,
 			Color:     color,
-			RowSpan:   len(taskRows),
+			RowSpan:   span,
 			Tasks:     taskRows,
+			Capacity:  capacity,
 		})
-		rowCount += len(taskRows)
+		rowCount += span
 	}
 	return groups, rowCount
 }

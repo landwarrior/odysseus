@@ -474,6 +474,11 @@ func (s *Store) linesForProjects(ctx context.Context, projectIDs []string) ([]Pr
 	return scanLines(rows)
 }
 
+// AssignmentsForLines は lineIDs（工程明細の ID）に属するアサインを返します。
+func (s *Store) AssignmentsForLines(ctx context.Context, lineIDs []string) ([]Assignment, error) {
+	return s.assignmentsForLines(ctx, lineIDs)
+}
+
 // assignmentsForLines は lineIDs（工程明細の ID）に属するアサインを返します。
 func (s *Store) assignmentsForLines(ctx context.Context, lineIDs []string) ([]Assignment, error) {
 	if len(lineIDs) == 0 {

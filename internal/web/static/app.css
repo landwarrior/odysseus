@@ -1245,9 +1245,23 @@ main.page-schedule {
   background: var(--sticky-bg);
 }
 .schedule-table tfoot .summary-label,
-.schedule-table .project-summary .summary-label {
+.schedule-table .project-summary .summary-label,
+.schedule-table tr.phase-capacity .summary-label {
   text-align: right;
   font-weight: 600;
+}
+.schedule-table tr.phase-capacity td {
+  background: var(--thead-bg);
+  color: var(--muted);
+}
+.schedule-table tr.phase-capacity .sticky-col {
+  background: var(--thead-bg);
+}
+.schedule-table tr.phase-capacity .phase-cell {
+  color: var(--ink);
+}
+.schedule-table tr.phase-capacity .phase-cell.cap-warn {
+  color: var(--cap-warn-text);
 }
 .schedule-table tbody.project-block > tr > td:not(.sticky-col),
 .schedule-table tfoot td:not(.sticky-col) {
