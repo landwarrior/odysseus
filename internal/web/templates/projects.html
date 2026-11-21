@@ -172,7 +172,7 @@
           {{if not $block.Rows}}
           <tr>
             <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
-              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Name}}</a></div>
               <p class="project-links">
                 <a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>
                 <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
@@ -187,7 +187,7 @@
           <tr>
             {{if eq $i 0}}
             <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
-              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+              <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Name}}</a></div>
               <p class="project-links">
                 <a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>
                 <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
