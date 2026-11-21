@@ -170,22 +170,24 @@
   {{end}}
   <form method="post" action="{{if .IsNew}}/projects{{else}}/projects/{{.Project.ID}}{{end}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <div class="grid">
-      <label>プロジェクト番号<input name="code" value="{{.Project.Code}}" required></label>
-      <label>プロジェクト名<input name="name" value="{{.Project.Name}}" required></label>
-      <label>受注金額<input class="yen-input" name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
-      <label>状態
+    <div class="grid project-meta">
+      <label class="meta-code">プロジェクト番号<input name="code" value="{{.Project.Code}}" required></label>
+      <label class="meta-name">プロジェクト名<input name="name" value="{{.Project.Name}}" required></label>
+      <label class="meta-amount">受注金額<input class="yen-input" name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
+      <label class="meta-status">状態
         <select name="status">
           <option value="planning" {{if eq .Project.Status "planning"}}selected{{end}}>計画中</option>
           <option value="active" {{if eq .Project.Status "active"}}selected{{end}}>進行中</option>
           <option value="closed" {{if eq .Project.Status "closed"}}selected{{end}}>完了</option>
         </select>
       </label>
-      <label>開始日<input type="date" name="start_date" value="{{.Project.StartDate}}"></label>
-      <label>終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
+      <label class="meta-date">開始日<input type="date" name="start_date" value="{{.Project.StartDate}}"></label>
+      <label class="meta-date">終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
     </div>
-    <h2>工程とタスク</h2>
-    <p class="note">工程の下にタスクを登録すると、その見積時間がスケジュール表の「工程」「見積工数」の根拠になります。合計時間はタスクの見積時間の合計です。</p>
+    <div class="project-tasks-heading">
+      <h2>工程とタスク</h2>
+      <p class="note">工程の下にタスクを登録すると、その見積時間がスケジュール表の「工程」「見積工数」の根拠になります。合計時間はタスクの見積時間の合計です。</p>
+    </div>
     <div id="lines" class="project-lines">
       {{range .Lines}}
       {{$line := .}}
