@@ -1,0 +1,1 @@
+ALTER TABLE project_task ADD COLUMN remarks TEXT NOT NULL DEFAULT '';

@@ -142,6 +142,7 @@ type LineWrite struct {
 }
 
 // Task は工程明細を細分化した作業です。見積工数とスケジュール割当の単位です。
+// Remarks は任意の備考で、スケジュール表のホバーに出します。
 type Task struct {
 	ID               string
 	ProjectProcessID string
@@ -151,6 +152,7 @@ type Task struct {
 	ProcessSort      int64
 	ProcessColor     string
 	Name             string
+	Remarks          string
 	SortOrder        int64
 	PlannedMinutes   int64
 }
@@ -159,6 +161,7 @@ type Task struct {
 type TaskWrite struct {
 	ID             string
 	Name           string
+	Remarks        string
 	PlannedMinutes int64
 }
 

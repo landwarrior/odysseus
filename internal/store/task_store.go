@@ -11,7 +11,7 @@ import (
 
 const taskSelect = `
 	SELECT t.id, t.project_process_id, pp.project_id, pp.process_id, process.name, process.sort_order, process.color,
-		t.name, t.sort_order, t.planned_minutes
+		t.name, t.remarks, t.sort_order, t.planned_minutes
 	FROM project_task t
 	JOIN project_process pp ON pp.id = t.project_process_id
 	JOIN process ON process.id = pp.process_id`
@@ -97,19 +97,20 @@ func (s *Store) ReplaceTasksByProcess(ctx context.Context, projectID string, tas
 			hadNamed = true
 			order++
 			sum += in.PlannedMinutes
+			remarks := strings.TrimSpace(in.Remarks)
 			if ex, ok := byID[in.ID]; ok && in.ID != "" {
 				_, err = tx.Exec(ctx, `
 					UPDATE project_task
-					SET name = ?, sort_order = ?, planned_minutes = ?, updated_at = ?
+					SET name = ?, remarks = ?, sort_order = ?, planned_minutes = ?, updated_at = ?
 					WHERE id = ? AND project_process_id = ?`,
-					name, order, in.PlannedMinutes, stamp, ex.ID, line.ID)
+					name, remarks, order, in.PlannedMinutes, stamp, ex.ID, line.ID)
 				kept[ex.ID] = true
 			} else {
 				_, err = tx.Exec(ctx, `
 					INSERT INTO project_task (
-						id, project_process_id, name, sort_order, planned_minutes, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-					newID(), line.ID, name, order, in.PlannedMinutes, stamp, stamp)
+						id, project_process_id, name, remarks, sort_order, planned_minutes, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+					newID(), line.ID, name, remarks, order, in.PlannedMinutes, stamp, stamp)
 			}
 			if err != nil {
 				return mapWriteErr(err)
@@ -253,7 +254,7 @@ func scanTasks(rows *sql.Rows) ([]Task, error) {
 func scanTask(row *sql.Row) (Task, error) {
 	var t Task
 	err := row.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort, &t.ProcessColor,
-		&t.Name, &t.SortOrder, &t.PlannedMinutes)
+		&t.Name, &t.Remarks, &t.SortOrder, &t.PlannedMinutes)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -266,7 +267,7 @@ func scanTask(row *sql.Row) (Task, error) {
 func scanTaskRows(rows *sql.Rows) (Task, error) {
 	var t Task
 	err := rows.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort, &t.ProcessColor,
-		&t.Name, &t.SortOrder, &t.PlannedMinutes)
+		&t.Name, &t.Remarks, &t.SortOrder, &t.PlannedMinutes)
 	return t, err
 }
 

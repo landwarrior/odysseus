@@ -100,7 +100,7 @@
           {{end}}
           <td class="sticky-col col-phase">
             <span class="task-process">{{$task.Process}}</span>
-            <span class="task-name">{{$task.Name}}</span>
+            <span class="task-name"{{if $task.Remarks}} title="{{$task.Remarks}}"{{end}}>{{$task.Name}}</span>
           </td>
           <td class="sticky-col col-meta1 num" data-phase-total="{{$task.TaskID}}">{{$task.Estimate}}</td>
           <td class="sticky-col col-meta2 num" data-phase-allocated="{{$task.TaskID}}">{{$task.Allocated}}</td>
@@ -222,6 +222,7 @@
               <input type="hidden" name="task_process_id" class="task-process-id" value="{{$line.ProcessID}}">
               <input type="hidden" name="task_id" value="{{.ID}}">
               <label class="task-name-field">名前<input name="task_name" value="{{.Name}}" aria-label="タスク名"></label>
+              <label class="task-remarks-field">備考<input name="task_remarks" value="{{.Remarks}}" aria-label="タスク備考"></label>
               <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" value="{{.Hours}}" aria-label="タスク見積時間"></label>
               <button type="button" class="remove-task secondary">削除</button>
             </div>
@@ -269,6 +270,7 @@
             <input type="hidden" name="task_process_id" class="task-process-id" value="">
             <input type="hidden" name="task_id" value="">
             <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
+            <label class="task-remarks-field">備考<input name="task_remarks" aria-label="タスク備考"></label>
             <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
             <button type="button" class="remove-task secondary">削除</button>
           </div>
@@ -282,6 +284,7 @@
       <input type="hidden" name="task_process_id" class="task-process-id" value="">
       <input type="hidden" name="task_id" value="">
       <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
+      <label class="task-remarks-field">備考<input name="task_remarks" aria-label="タスク備考"></label>
       <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
       <button type="button" class="remove-task secondary">削除</button>
     </div>

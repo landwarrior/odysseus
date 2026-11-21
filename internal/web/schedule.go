@@ -25,6 +25,7 @@ type scheduleCell struct {
 type scheduleTaskRow struct {
 	TaskID    string
 	Name      string
+	Remarks   string
 	Process   string
 	Color     string
 	Estimate  string
@@ -163,6 +164,7 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 			row := scheduleTaskRow{
 				TaskID:    task.ID,
 				Name:      task.Name,
+				Remarks:   task.Remarks,
 				Process:   task.ProcessName,
 				Color:     schedule.NormalizeColor(task.ProcessColor),
 				Estimate:  calc.FormatPersonDays(est, std),

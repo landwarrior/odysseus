@@ -12,9 +12,10 @@ import (
 
 // taskForm は工程下のタスク入力欄です。
 type taskForm struct {
-	ID    string
-	Name  string
-	Hours string
+	ID      string
+	Name    string
+	Remarks string
+	Hours   string
 }
 
 // lineForm は工程明細の入力欄です。時間と予算は、まだ数値に変換する前の文字列です。
@@ -237,6 +238,9 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 			if m := limitRunes(stringsTrim(task.Name), "タスク名", 128); m != "" {
 				msg = firstMsg(msg, m)
 			}
+			if m := limitRunes(stringsTrim(task.Remarks), "タスク備考", 500); m != "" {
+				msg = firstMsg(msg, m)
+			}
 			taskMinutes, tm := parseOptionalHours(task.Hours)
 			msg = firstMsg(msg, tm)
 			if taskMinutes > 100000*60 {
@@ -285,6 +289,7 @@ func attachTasks(lines []lineForm, r *http.Request) {
 	processIDs := r.Form["task_process_id"]
 	ids := r.Form["task_id"]
 	names := r.Form["task_name"]
+	remarks := r.Form["task_remarks"]
 	hours := r.Form["task_hours"]
 	if len(processIDs) == 0 {
 		return
@@ -297,7 +302,7 @@ func attachTasks(lines []lineForm, r *http.Request) {
 			continue
 		}
 		byProcess[pid] = append(byProcess[pid], taskForm{
-			ID: at(ids, i), Name: at(names, i), Hours: at(hours, i),
+			ID: at(ids, i), Name: at(names, i), Remarks: at(remarks, i), Hours: at(hours, i),
 		})
 	}
 	for i := range lines {
@@ -348,7 +353,7 @@ func (s *Server) lineFormsWithTasks(r *http.Request, projectID string, lines []s
 	byProcess := map[string][]taskForm{}
 	for _, task := range tasks {
 		byProcess[task.ProcessID] = append(byProcess[task.ProcessID], taskForm{
-			ID: task.ID, Name: task.Name, Hours: calc.FormatHours(task.PlannedMinutes),
+			ID: task.ID, Name: task.Name, Remarks: task.Remarks, Hours: calc.FormatHours(task.PlannedMinutes),
 		})
 	}
 	for i := range forms {
@@ -373,7 +378,9 @@ func (s *Server) saveProjectTasks(r *http.Request, projectID string, forms []lin
 				continue
 			}
 			minutes, _ := parseOptionalHours(task.Hours)
-			writes = append(writes, store.TaskWrite{ID: task.ID, Name: name, PlannedMinutes: minutes})
+			writes = append(writes, store.TaskWrite{
+				ID: task.ID, Name: name, Remarks: stringsTrim(task.Remarks), PlannedMinutes: minutes,
+			})
 		}
 		// 工程行にタスク欄があったものだけ置き換える（空ならその工程のタスクを消す）。
 		if len(form.Tasks) > 0 {
