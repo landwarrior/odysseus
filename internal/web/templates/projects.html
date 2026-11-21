@@ -3,19 +3,33 @@
 {{template "nav" .}}
 <main class="page-schedule">
   <div class="title-row">
+    {{if .Detail}}
+    <h1>スケジュール</h1>
+    <a class="button" href="/projects?from={{.From}}&amp;to={{.To}}">一覧へ</a>
+    {{else}}
     <h1>プロジェクト</h1>
     <a class="button" href="/projects/new">新規作成</a>
+    {{end}}
   </div>
   {{template "alerts" .}}
+  {{if .Detail}}
+  <p class="note">{{.Project.Code}} {{.Project.Name}}（{{status .Project.Status}}）</p>
+  <p class="actions">
+    <a class="button" href="/projects/{{.Project.ID}}">編集</a>
+    <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
+    <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
+  </p>
+  {{else}}
   <p class="filters">
     <a href="/projects?from={{.From}}&amp;to={{.To}}" {{if eq .Status ""}}class="current"{{end}}>すべて</a>
     <a href="/projects?status=planning&amp;from={{.From}}&amp;to={{.To}}" {{if eq .Status "planning"}}class="current"{{end}}>計画中</a>
     <a href="/projects?status=active&amp;from={{.From}}&amp;to={{.To}}" {{if eq .Status "active"}}class="current"{{end}}>進行中</a>
     <a href="/projects?status=closed&amp;from={{.From}}&amp;to={{.To}}" {{if eq .Status "closed"}}class="current"{{end}}>完了</a>
   </p>
+  {{end}}
   <section class="toolbar schedule-toolbar">
-    <form class="inline-form schedule-range-form" method="get" action="/projects">
-      {{if .Status}}<input type="hidden" name="status" value="{{.Status}}">{{end}}
+    <form class="inline-form schedule-range-form" method="get" action="{{.RangeAction}}">
+      {{if and (not .Detail) .Status}}<input type="hidden" name="status" value="{{.Status}}">{{end}}
       <div class="range-control">
         <span class="range-label">表示期間</span>
         <div class="range-fields">
@@ -27,8 +41,13 @@
       <button type="submit">表示</button>
     </form>
     <p class="schedule-toolbar-notes field-help">
+      {{if .Detail}}
       行は工程を細分化したタスクです。見積工数はタスクの予定、割当済は旬セルの合計、差分は見積 − 割当済です（プラスは割当不足）。
-      営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。工数は人日（0.1 刻み）／工数セルは矢印キーで移動できます。
+      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
+      {{else}}
+      行は工程です。見積・割当・差分は工程内タスクの合計です。タスク単位の割当は各案件のスケジュールから行います。
+      {{end}}
+      営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。
     </p>
   </section>
   <div class="table-scroll" data-csrf="{{.CSRF}}">
@@ -44,7 +63,7 @@
       <thead>
         <tr>
           <th class="sticky-col col-project">プロジェクト</th>
-          <th class="sticky-col col-phase">工程</th>
+          <th class="sticky-col col-phase">{{if .Detail}}工程 / タスク{{else}}工程{{end}}</th>
           <th class="sticky-col col-meta1">見積工数</th>
           <th class="sticky-col col-meta2">割当済</th>
           <th class="sticky-col col-meta3">差分</th>
@@ -74,39 +93,46 @@
       {{range .Blocks}}
       {{$block := .}}
       <tbody class="project-block">
-        {{if not $block.Tasks}}
+        {{if not $block.Rows}}
         <tr>
           <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
             <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
             <p class="project-links">
+              {{if not $.Detail}}<a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>{{end}}
               <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
               <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
             </p>
           </th>
-          <td class="sticky-col col-phase" colspan="4"><span class="field-help">タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
+          <td class="sticky-col col-phase" colspan="4"><span class="field-help">{{if $.Detail}}タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）{{else}}工程未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）{{end}}</span></td>
           {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
         </tr>
         {{else}}
-        {{range $i, $task := $block.Tasks}}
-        <tr data-task-id="{{$task.TaskID}}">
+        {{range $i, $row := $block.Rows}}
+        <tr{{if $row.Editable}} data-task-id="{{$row.RowID}}"{{end}}>
           {{if eq $i 0}}
           <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
             <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
             <p class="project-links">
+              {{if not $.Detail}}<a href="/projects/{{$block.Project.ID}}/schedule">スケジュール</a>{{end}}
               <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
               <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
             </p>
           </th>
           {{end}}
           <td class="sticky-col col-phase">
-            <span class="task-process">{{$task.Process}}</span>
-            <span class="task-name"{{if $task.Remarks}} title="{{$task.Remarks}}"{{end}}>{{$task.Name}}</span>
+            {{if $row.Name}}
+            <span class="task-process">{{$row.Process}}</span>
+            <span class="task-name"{{if $row.Remarks}} title="{{$row.Remarks}}"{{end}}>{{$row.Name}}</span>
+            {{else}}
+            {{$row.Process}}
+            {{end}}
           </td>
-          <td class="sticky-col col-meta1 num" data-phase-total="{{$task.TaskID}}">{{$task.Estimate}}</td>
-          <td class="sticky-col col-meta2 num" data-phase-allocated="{{$task.TaskID}}">{{$task.Allocated}}</td>
-          <td class="sticky-col col-meta3 num {{$task.DiffClass}}" data-phase-diff="{{$task.TaskID}}">{{$task.Diff}}</td>
-          {{range $task.Cells}}
-          <td class="phase-cell color-{{$task.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">
+          <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
+          <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>{{$row.Allocated}}</td>
+          <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
+          {{range $row.Cells}}
+          <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">
+            {{if $row.Editable}}
             <label class="effort-field">
               <input
                 class="effort-input"
@@ -115,12 +141,15 @@
                 step="0.1"
                 value="{{.Days}}"
                 aria-label="割当工数"
-                data-task-id="{{$task.TaskID}}"
+                data-task-id="{{$row.RowID}}"
                 data-ym="{{.YM}}"
                 data-decade="{{.Decade}}"
                 data-estimate="{{.Days}}"
               >
             </label>
+            {{else}}
+            {{if .Days}}{{.Days}}{{end}}
+            {{end}}
           </td>
           {{end}}
         </tr>
@@ -163,7 +192,8 @@
   {{template "alerts" .}}
   {{if not .IsNew}}
   <p class="actions">
-    <a class="button" href="/projects">スケジュール</a>
+    <a class="button" href="/projects">一覧</a>
+    <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
     <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
     <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
   </p>
@@ -187,7 +217,7 @@
     </div>
     <div class="project-tasks-heading">
       <h2>工程とタスク</h2>
-      <p class="note">工程の下にタスクを登録すると、その見積時間がスケジュール表の「工程」「見積工数」の根拠になります。合計時間はタスクの見積時間の合計です。</p>
+      <p class="note">工程の下にタスクを登録すると、その見積時間が一覧の工程行と案件スケジュールの根拠になります。合計時間はタスクの見積時間の合計です。旬への割当は案件のスケジュール画面で行います。</p>
     </div>
     <div id="lines" class="project-lines">
       {{range .Lines}}

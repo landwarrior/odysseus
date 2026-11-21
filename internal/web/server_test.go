@@ -367,7 +367,7 @@ func TestRolePageSeparatesAddAndReorder(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	page := admin.getBody(t, "/roles")
-	for _, want := range []string{"役割を追加", "登録済みの役割", "上へ", "下へ", "disabled>上へ", `class="role-page"`} {
+	for _, want := range []string{"役割を追加", "登録済みの役割", `aria-label="上へ"`, `aria-label="下へ"`, `aria-label="上へ" disabled`, `class="role-page"`} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("roles page missing %s", want)
 		}
@@ -434,7 +434,7 @@ func TestProcessPageSeparatesAddAndReorder(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	page := admin.getBody(t, "/processes")
-	for _, want := range []string{"工程を追加", "登録済みの工程", "上へ", "下へ", "disabled>上へ"} {
+	for _, want := range []string{"工程を追加", "登録済みの工程", `aria-label="上へ"`, `aria-label="下へ"`, `aria-label="上へ" disabled`} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("processes page missing %s", want)
 		}

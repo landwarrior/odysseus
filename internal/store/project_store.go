@@ -125,6 +125,11 @@ func (s *Store) ListProcessLines(ctx context.Context, projectID string) ([]Proce
 	return listLines(ctx, s.db, projectID)
 }
 
+// ListProcessLinesForProjects は projectIDs の工程明細を、工程の並び順で返します。
+func (s *Store) ListProcessLinesForProjects(ctx context.Context, projectIDs []string) ([]ProcessLine, error) {
+	return s.linesForProjects(ctx, projectIDs)
+}
+
 // GetProcessLine は lineID の工程明細を返します。
 func (s *Store) GetProcessLine(ctx context.Context, lineID string) (ProcessLine, error) {
 	row := s.db.QueryRow(ctx, lineSelect+` WHERE pp.id = ?`, lineID)
