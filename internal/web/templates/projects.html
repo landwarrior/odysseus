@@ -28,8 +28,7 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       行は工程を細分化したタスクです。見積工数はタスクの予定、割当済は旬セルの合計、差分は見積 − 割当済です（プラスは割当不足）。
-      キャパは案件のアサイン人数 × 営業日です。祝日・休業日は<a href="/holidays">祝日・休業日マスタ</a>で登録します。
-      工数は人日（0.1 刻み）／工数セルは矢印キーで移動できます。
+      営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。工数は人日（0.1 刻み）／工数セルは矢印キーで移動できます。
     </p>
   </section>
   <div class="table-scroll" data-csrf="{{.CSRF}}">
@@ -128,15 +127,9 @@
         {{end}}
         {{end}}
         <tr class="project-summary">
-          <td class="sticky-col col-phase summary-label" colspan="4">キャパ（人日） {{$block.MemberCount}}人</td>
-          {{range $block.Capacity}}
-          <td class="num{{if .Current}} col-current{{end}}">{{.Days}}</td>
-          {{end}}
-        </tr>
-        <tr class="project-summary">
           <td class="sticky-col col-phase summary-label" colspan="4">割当合計（人日）</td>
           {{range $block.Allocated}}
-          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
+          <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
           {{end}}
         </tr>
       </tbody>

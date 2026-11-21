@@ -35,3 +35,12 @@ func TestColorForSort(t *testing.T) {
 		t.Fatal(ColorForSort(1), ColorForSort(5))
 	}
 }
+
+func TestNormalizeColor(t *testing.T) {
+	if NormalizeColor("orange") != "orange" {
+		t.Fatal(NormalizeColor("orange"))
+	}
+	if NormalizeColor("nope") != "cyan" {
+		t.Fatal(NormalizeColor("nope"))
+	}
+}

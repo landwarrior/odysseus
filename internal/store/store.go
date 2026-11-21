@@ -79,11 +79,13 @@ type Role struct {
 }
 
 // Process は要件定義や製造などの工程マスタです。案件ごとの期間や工数は別の型です。
+// Color はスケジュール表の背景色（cyan / orange / green / lavender）です。
 type Process struct {
 	ID        string
 	Name      string
 	SortOrder int64
 	Active    bool
+	Color     string
 }
 
 // Rate は人材と役割の時間単価です。FromDate 以降、次の単価が現れるまで有効です。
@@ -138,6 +140,7 @@ type Task struct {
 	ProcessID        string
 	ProcessName      string
 	ProcessSort      int64
+	ProcessColor     string
 	Name             string
 	SortOrder        int64
 	PlannedMinutes   int64
@@ -222,14 +225,14 @@ func (s *Store) Seed(ctx context.Context) (adminPassword string, created bool, e
 		return "", false, err
 	}
 	if err := s.seedNames(ctx, `SELECT COUNT(*) FROM process`, nil, []Process{
-		{Name: "提案", SortOrder: 10, Active: true},
-		{Name: "要件定義", SortOrder: 20, Active: true},
-		{Name: "基本設計", SortOrder: 30, Active: true},
-		{Name: "詳細設計", SortOrder: 40, Active: true},
-		{Name: "製造", SortOrder: 50, Active: true},
-		{Name: "単体テスト", SortOrder: 60, Active: true},
-		{Name: "結合テスト", SortOrder: 70, Active: true},
-		{Name: "シナリオテスト", SortOrder: 80, Active: true},
+		{Name: "提案", SortOrder: 10, Active: true, Color: "cyan"},
+		{Name: "要件定義", SortOrder: 20, Active: true, Color: "cyan"},
+		{Name: "基本設計", SortOrder: 30, Active: true, Color: "orange"},
+		{Name: "詳細設計", SortOrder: 40, Active: true, Color: "orange"},
+		{Name: "製造", SortOrder: 50, Active: true, Color: "green"},
+		{Name: "単体テスト", SortOrder: 60, Active: true, Color: "green"},
+		{Name: "結合テスト", SortOrder: 70, Active: true, Color: "lavender"},
+		{Name: "シナリオテスト", SortOrder: 80, Active: true, Color: "lavender"},
 	}); err != nil {
 		return "", false, err
 	}
@@ -569,7 +572,7 @@ func (s *Store) DeleteRole(ctx context.Context, roleID string) error {
 
 // ListProcesses は工程マスタを並び順、名前の順で返します。
 func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, name, sort_order, active FROM process ORDER BY sort_order, name`)
+	rows, err := s.db.Query(ctx, `SELECT id, name, sort_order, active, color FROM process ORDER BY sort_order, name`)
 	if err != nil {
 		return nil, err
 	}
@@ -578,10 +581,13 @@ func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
 	for rows.Next() {
 		var process Process
 		var active int
-		if err := rows.Scan(&process.ID, &process.Name, &process.SortOrder, &active); err != nil {
+		if err := rows.Scan(&process.ID, &process.Name, &process.SortOrder, &active, &process.Color); err != nil {
 			return nil, err
 		}
 		process.Active = active != 0
+		if process.Color == "" {
+			process.Color = "cyan"
+		}
 		out = append(out, process)
 	}
 	return out, rows.Err()
@@ -590,9 +596,12 @@ func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
 // InsertProcess は process を登録して、採番した ID を入れたものを返します。
 func (s *Store) InsertProcess(ctx context.Context, process Process) (Process, error) {
 	process.ID = id.New()
+	if process.Color == "" {
+		process.Color = "cyan"
+	}
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO process (id, name, sort_order, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		process.ID, process.Name, process.SortOrder, bint(process.Active), now(), now())
+		INSERT INTO process (id, name, sort_order, active, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		process.ID, process.Name, process.SortOrder, bint(process.Active), process.Color, now(), now())
 	if err != nil {
 		return Process{}, mapWriteErr(err)
 	}
@@ -646,11 +655,14 @@ func (s *Store) MoveProcess(ctx context.Context, id, direction string) (bool, er
 	return true, nil
 }
 
-// UpdateProcess は process.ID の工程を、process の名前、並び順、有効フラグで更新します。
+// UpdateProcess は process.ID の工程を、process の名前、並び順、有効フラグ、背景色で更新します。
 func (s *Store) UpdateProcess(ctx context.Context, process Process) error {
+	if process.Color == "" {
+		process.Color = "cyan"
+	}
 	res, err := s.db.Exec(ctx, `
-		UPDATE process SET name = ?, sort_order = ?, active = ?, updated_at = ? WHERE id = ?`,
-		process.Name, process.SortOrder, bint(process.Active), now(), process.ID)
+		UPDATE process SET name = ?, sort_order = ?, active = ?, color = ?, updated_at = ? WHERE id = ?`,
+		process.Name, process.SortOrder, bint(process.Active), process.Color, now(), process.ID)
 	if err != nil {
 		return mapWriteErr(err)
 	}

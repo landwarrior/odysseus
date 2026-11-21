@@ -10,7 +10,7 @@ import (
 )
 
 const taskSelect = `
-	SELECT t.id, t.project_process_id, pp.project_id, pp.process_id, process.name, process.sort_order,
+	SELECT t.id, t.project_process_id, pp.project_id, pp.process_id, process.name, process.sort_order, process.color,
 		t.name, t.sort_order, t.planned_minutes
 	FROM project_task t
 	JOIN project_process pp ON pp.id = t.project_process_id
@@ -252,7 +252,7 @@ func scanTasks(rows *sql.Rows) ([]Task, error) {
 
 func scanTask(row *sql.Row) (Task, error) {
 	var t Task
-	err := row.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort,
+	err := row.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort, &t.ProcessColor,
 		&t.Name, &t.SortOrder, &t.PlannedMinutes)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Task{}, ErrNotFound
@@ -265,7 +265,7 @@ func scanTask(row *sql.Row) (Task, error) {
 
 func scanTaskRows(rows *sql.Rows) (Task, error) {
 	var t Task
-	err := rows.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort,
+	err := rows.Scan(&t.ID, &t.ProjectProcessID, &t.ProjectID, &t.ProcessID, &t.ProcessName, &t.ProcessSort, &t.ProcessColor,
 		&t.Name, &t.SortOrder, &t.PlannedMinutes)
 	return t, err
 }

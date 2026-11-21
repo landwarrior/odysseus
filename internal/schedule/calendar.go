@@ -15,10 +15,28 @@ var DecadeLabels = map[int]string{
 	3: "下旬",
 }
 
-// PhaseColors は工程行の背景色です。工程の並びから循環して付けます。
+// PhaseColors は工程マスタで選べる背景色です。
 var PhaseColors = []string{"cyan", "orange", "green", "lavender"}
 
-// ColorForSort は sortOrder（工程マスタの並び）から背景色名を返します。
+// PhaseColorLabels は背景色の表示名です。
+var PhaseColorLabels = map[string]string{
+	"cyan":     "水色",
+	"orange":   "橙色",
+	"green":    "緑色",
+	"lavender": "藤色",
+}
+
+// NormalizeColor は value を許容色に揃えます。不正なら水色です。
+func NormalizeColor(value string) string {
+	for _, c := range PhaseColors {
+		if value == c {
+			return value
+		}
+	}
+	return "cyan"
+}
+
+// ColorForSort は sortOrder（工程マスタの並び）から背景色名を返します。色未設定時の仮です。
 func ColorForSort(sortOrder int64) string {
 	if sortOrder <= 0 {
 		return PhaseColors[0]

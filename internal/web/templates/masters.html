@@ -187,6 +187,16 @@
     <form method="post" action="/processes" class="process-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <label class="process-name">名前<input name="name" required></label>
+      <label class="process-color">背景色
+        <span class="phase-color-cell">
+          <select name="color">
+            {{range $color := .Colors}}
+            <option value="{{$color}}">{{index $.ColorLabels $color}}</option>
+            {{end}}
+          </select>
+          <span class="color-sample color-cyan" aria-hidden="true"></span>
+        </span>
+      </label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
       <button type="submit" class="primary">追加</button>
     </form>
@@ -212,14 +222,26 @@
             <button type="submit" class="secondary" {{if .Last}}disabled{{end}}>下へ</button>
           </form>
         </div>
-        <form id="process-{{.ID}}" method="post" action="/processes/{{.ID}}" class="process-edit">
+        {{$p := .}}
+        <form id="process-{{$p.ID}}" method="post" action="/processes/{{$p.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <input class="process-name" name="name" value="{{.Name}}" required aria-label="名前">
-          <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+          <input class="process-name" name="name" value="{{$p.Name}}" required aria-label="名前">
+          <label class="process-color">
+            <span class="sr-only">背景色</span>
+            <span class="phase-color-cell">
+              <select name="color" aria-label="背景色">
+                {{range $color := $.Colors}}
+                <option value="{{$color}}" {{if eq $p.Color $color}}selected{{end}}>{{index $.ColorLabels $color}}</option>
+                {{end}}
+              </select>
+              <span class="color-sample color-{{$p.Color}}" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="check"><input type="checkbox" name="active" value="1" {{if $p.Active}}checked{{end}}>有効</label>
         </form>
         <div class="button-pair">
-          <button type="submit" form="process-{{.ID}}" class="primary">保存</button>
-          <form method="post" action="/processes/{{.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
+          <button type="submit" form="process-{{$p.ID}}" class="primary">保存</button>
+          <form method="post" action="/processes/{{$p.ID}}/delete" onsubmit="return confirm('この工程を削除しますか？')">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
             <button type="submit" class="danger">削除</button>
           </form>
@@ -229,6 +251,16 @@
     </ol>
     {{end}}
   </section>
+  <script>
+    document.querySelectorAll(".phase-color-cell").forEach(function (cell) {
+      var select = cell.querySelector("select[name='color']");
+      var sample = cell.querySelector(".color-sample");
+      if (!select || !sample) return;
+      select.addEventListener("change", function () {
+        sample.className = "color-sample color-" + select.value;
+      });
+    });
+  </script>
 </main>
 {{template "foot" .}}
 {{end}}

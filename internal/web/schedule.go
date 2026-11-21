@@ -43,12 +43,10 @@ type scheduleCapCell struct {
 
 // scheduleProjectBlock は案件ごとの行の塊です。
 type scheduleProjectBlock struct {
-	Project     store.Project
-	Tasks       []scheduleTaskRow
-	RowCount    int
-	MemberCount int
-	Capacity    []scheduleCapCell
-	Allocated   []scheduleCapCell
+	Project   store.Project
+	Tasks     []scheduleTaskRow
+	RowCount  int
+	Allocated []scheduleCapCell
 }
 
 // schedulePeriodCol はフッターの旬列です。
@@ -115,11 +113,6 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	assignees, err := s.store.CountAssigneesByProjects(r.Context(), ids)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
 	holidays, err := s.store.ListHolidayDates(r.Context())
 	if err != nil {
 		s.fail(w, err)
@@ -149,15 +142,13 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 	blocks := make([]scheduleProjectBlock, 0, len(projects))
 	for _, project := range projects {
 		projectTasks := tasksByProject[project.ID]
-		members := assignees[project.ID]
 		projectPeriod := map[string]int64{}
 		block := scheduleProjectBlock{
-			Project:     project,
-			MemberCount: members,
-			RowCount:    len(projectTasks) + 2, // タスク行 + キャパ + 割当合計
+			Project:  project,
+			RowCount: len(projectTasks) + 1, // タスク行 + 割当合計
 		}
 		if len(projectTasks) == 0 {
-			block.RowCount = 3 // 未登録案内 + キャパ + 割当合計
+			block.RowCount = 2 // 未登録案内 + 割当合計
 		}
 		for _, task := range projectTasks {
 			est := task.PlannedMinutes
@@ -173,7 +164,7 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 				TaskID:    task.ID,
 				Name:      task.Name,
 				Process:   task.ProcessName,
-				Color:     schedule.ColorForSort(task.ProcessSort),
+				Color:     schedule.NormalizeColor(task.ProcessColor),
 				Estimate:  calc.FormatPersonDays(est, std),
 				Allocated: calc.FormatPersonDays(allocated, std),
 				Diff:      calc.FormatPersonDays(diff, std),
@@ -201,23 +192,9 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
-				days := bizDays[periodKey]
-				capacityMinutes := int64(days*members) * std
-				allocated := projectPeriod[periodKey]
-				capClass := ""
-				if capacityMinutes > 0 {
-					if allocated >= capacityMinutes {
-						capClass = "cap-over"
-					} else if allocated*100 > capacityMinutes*80 {
-						capClass = "cap-warn"
-					}
-				}
 				current := ym == currentYM && decade == currentDec
-				block.Capacity = append(block.Capacity, scheduleCapCell{
-					Days: calc.FormatPersonDays(capacityMinutes, std), Current: current,
-				})
 				block.Allocated = append(block.Allocated, scheduleCapCell{
-					Days: calc.FormatPersonDays(allocated, std), Current: current, CapClass: capClass,
+					Days: calc.FormatPersonDays(projectPeriod[periodKey], std), Current: current,
 				})
 			}
 		}
