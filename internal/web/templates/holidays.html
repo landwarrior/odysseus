@@ -33,12 +33,14 @@
                 <input name="name" value="{{.Name}}" placeholder="名称を入力" aria-label="{{.Date}}の名称" autocomplete="off">
               </form>
             </td>
-            <td class="actions">
-              <button type="submit" form="holiday-{{.Date}}" class="primary">更新</button>
-              <form method="post" action="/holidays/{{.Date}}/delete" onsubmit="return confirm('削除しますか？')">
-                <input type="hidden" name="csrf" value="{{$.CSRF}}">
-                <button type="submit" class="danger">削除</button>
-              </form>
+            <td>
+              <div class="button-pair">
+                <button type="submit" form="holiday-{{.Date}}" class="primary">更新</button>
+                <form method="post" action="/holidays/{{.Date}}/delete" onsubmit="return confirm('削除しますか？')">
+                  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                  <button type="submit" class="danger">削除</button>
+                </form>
+              </div>
             </td>
           </tr>
           {{end}}
