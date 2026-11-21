@@ -71,7 +71,7 @@ func TestSeedRateAndCascade(t *testing.T) {
 	}
 	if _, err := st.CreateAssignment(ctx, AssignmentWrite{
 		ProjectProcessID: lines[0].ID, PersonID: person.ID, RoleID: pg.ID,
-		StartDate: "2026-04-01", EndDate: "2026-04-30", PlannedMinutes: 4800, PlannedCostYen: 400000,
+		StartDate: "2026-04-01", EndDate: "2026-04-30", PlannedCostYen: 400000,
 	}); err != nil {
 		t.Fatal(err)
 	}

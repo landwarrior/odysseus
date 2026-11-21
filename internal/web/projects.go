@@ -663,18 +663,9 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if !ok {
 		return write, "この開始日に、その役割の単価（時間または月間）がありません。"
 	}
-	var minutes int64
-	if assignmentID != "" {
-		current, err := s.store.GetAssignment(r.Context(), assignmentID)
-		if err != nil {
-			return write, "アサインの取得に失敗しました。"
-		}
-		minutes = current.PlannedMinutes
-	}
 	write.StartDate = start
 	write.EndDate = end
-	write.PlannedMinutes = minutes
-	write.PlannedCostYen = calc.AssignmentPlannedCost(minutes, start, end, rate.HourlyYen, rate.MonthlyYen)
+	write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, rate.MonthlyYen)
 	return write, ""
 }
 

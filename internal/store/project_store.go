@@ -171,9 +171,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 	assignmentID := newID()
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO assignment (
-			id, project_process_id, person_id, role_id, start_date, end_date, planned_minutes, planned_cost_yen, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedMinutes, in.PlannedCostYen, now(), now())
+			id, project_process_id, person_id, role_id, start_date, end_date, planned_cost_yen, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedCostYen, now(), now())
 	if err != nil {
 		return "", mapWriteErr(err)
 	}
@@ -184,9 +184,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 func (s *Store) UpdateAssignment(ctx context.Context, assignmentID string, in AssignmentWrite) error {
 	res, err := s.db.Exec(ctx, `
 		UPDATE assignment
-		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, planned_minutes = ?, planned_cost_yen = ?, updated_at = ?
+		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, planned_cost_yen = ?, updated_at = ?
 		WHERE id = ?`,
-		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedMinutes, in.PlannedCostYen, now(), assignmentID)
+		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedCostYen, now(), assignmentID)
 	if err != nil {
 		return mapWriteErr(err)
 	}
@@ -218,7 +218,7 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName)
 			continue
 		}
-		cost := calc.AssignmentPlannedCost(a.PlannedMinutes, a.StartDate, a.EndDate, rate.HourlyYen, rate.MonthlyYen)
+		cost := calc.AssignmentPlannedCost(a.StartDate, a.EndDate, rate.MonthlyYen)
 		if _, err := s.db.Exec(ctx, `UPDATE assignment SET planned_cost_yen = ?, updated_at = ? WHERE id = ?`, cost, now(), a.ID); err != nil {
 			return updated, missingNames, err
 		}
@@ -518,7 +518,7 @@ const lineSelect = `
 const assignmentSelect = `
 	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code,
 		CASE WHEN person.name_kana = '' THEN person.name ELSE person.name || ' ' || person.name_kana END,
-		a.role_id, role.name, a.start_date, a.end_date, a.planned_minutes, a.planned_cost_yen
+		a.role_id, role.name, a.start_date, a.end_date, a.planned_cost_yen
 	FROM assignment a
 	JOIN project_process pp ON pp.id = a.project_process_id
 	JOIN process ON process.id = pp.process_id
@@ -629,7 +629,7 @@ func scanAssignment(row scanner) (Assignment, error) {
 	var a Assignment
 	err := row.Scan(
 		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProcessName, &a.PersonID, &a.PersonCode, &a.PersonName,
-		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.PlannedMinutes, &a.PlannedCostYen)
+		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.PlannedCostYen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Assignment{}, ErrNotFound
 	}

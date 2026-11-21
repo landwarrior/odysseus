@@ -189,7 +189,6 @@ type Assignment struct {
 	RoleName         string
 	StartDate        string
 	EndDate          string
-	PlannedMinutes   int64
 	PlannedCostYen   int64
 }
 
@@ -200,7 +199,6 @@ type AssignmentWrite struct {
 	RoleID           string
 	StartDate        string
 	EndDate          string
-	PlannedMinutes   int64
 	PlannedCostYen   int64
 }
 

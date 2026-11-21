@@ -9,7 +9,7 @@
   {{template "alerts" .}}
   {{if not .Groups}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
   {{if .Groups}}
-  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の単価（時間または月間）がある人だけです。予定時間はここでは入れません。予定原価は、月間単価があれば期間の暦月数 × 月間単価、残っている予定分と時間単価があればその積で計算します。</p>
+  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の単価（時間または月間）がある人だけです。予定時間はここでは入れません。予定原価は、月間単価があるとき期間の暦月数 × 月間単価です（請負は工程の予算で見ます）。</p>
   {{end}}
   {{range .Groups}}
   <section class="card">
@@ -120,7 +120,7 @@
     <table>
       <thead>
         <tr>
-          <th>工程</th><th>期間</th><th>工程の予定</th><th>アサイン予定</th><th>実績</th><th>差分</th><th>予算</th><th>予定原価</th><th>実績原価</th>
+          <th>工程</th><th>期間</th><th>見積</th><th>実績</th><th>差分（見積 − 実績）</th><th>予算</th><th>予定原価</th><th>実績原価</th>
         </tr>
       </thead>
       <tbody>
@@ -129,9 +129,8 @@
           <td>{{.Name}}</td>
           <td>{{day .StartDate}} 〜 {{day .EndDate}}</td>
           <td class="num">{{hours .PlannedMinutes}}</td>
-          <td class="num">{{hours .AssignmentMinutes}}</td>
           <td class="num">{{hours .ActualMinutes}}</td>
-          <td class="num">{{hours (sub .AssignmentMinutes .PlannedMinutes)}}</td>
+          <td class="num">{{hours (sub .PlannedMinutes .ActualMinutes)}}</td>
           <td class="num">{{yen .BudgetYen}}{{if .BudgetFromAssignments}} *{{end}}</td>
           <td class="num">{{yen .PlannedCostYen}}</td>
           <td class="num">{{yen .ActualCostYen}}{{if .UnsetMinutes}} ※{{end}}</td>
@@ -171,7 +170,7 @@
     <table>
       <thead>
         <tr>
-          <th>工程</th><th>人材</th><th>役割</th><th>期間</th><th>予定</th><th>実績</th><th>予定原価</th><th>実績原価</th><th>残予定原価</th>
+          <th>工程</th><th>人材</th><th>役割</th><th>期間</th><th>実績</th><th>予定原価</th><th>実績原価</th><th>残予定原価</th>
         </tr>
       </thead>
       <tbody>
@@ -181,7 +180,6 @@
           <td>{{.PersonCode}} {{.PersonName}}</td>
           <td>{{.RoleName}}</td>
           <td>{{.StartDate}} 〜 {{.EndDate}}</td>
-          <td class="num">{{hours .PlannedMinutes}}</td>
           <td class="num">{{hours .ActualMinutes}}</td>
           <td class="num">{{yen .PlannedCostYen}}</td>
           <td class="num">{{yen .ActualCostYen}}{{if .UnsetMinutes}} ※{{end}}</td>

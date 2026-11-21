@@ -49,16 +49,10 @@ func MonthlyCost(startDate, endDate string, monthlyYen int64) int64 {
 	return int64(months) * monthlyYen
 }
 
-// AssignmentPlannedCost はアサインの予定原価です。
-// 予定分と時間単価があれば請負として計算し、無ければ月間単価と期間（暦月）で準委任として計算します。
-func AssignmentPlannedCost(minutes int64, startDate, endDate string, hourlyYen, monthlyYen int64) int64 {
-	if minutes > 0 && hourlyYen > 0 {
-		return CostYen(minutes, hourlyYen)
-	}
-	if monthlyYen > 0 {
-		return MonthlyCost(startDate, endDate, monthlyYen)
-	}
-	return 0
+// AssignmentPlannedCost はアサインの予定原価です。月間単価 × 期間の暦月数です（準委任）。
+// 月間単価が無いときは 0 です（請負の予定原価は工程予算側で見ます）。
+func AssignmentPlannedCost(startDate, endDate string, monthlyYen int64) int64 {
+	return MonthlyCost(startDate, endDate, monthlyYen)
 }
 
 // RemainingCost は planned（予定原価）から actual（実績原価）を引いた残りです。

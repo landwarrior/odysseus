@@ -36,7 +36,6 @@ type ProcessRow struct {
 	StartDate             string
 	EndDate               string
 	PlannedMinutes        int64
-	AssignmentMinutes     int64
 	ActualMinutes         int64
 	BudgetYen             int64
 	BudgetFromAssignments bool
@@ -64,7 +63,6 @@ type PersonRow struct {
 	RoleName         string
 	StartDate        string
 	EndDate          string
-	PlannedMinutes   int64
 	ActualMinutes    int64
 	PlannedCostYen   int64
 	ActualCostYen    int64
@@ -96,6 +94,7 @@ func Build(b store.Bundle) Report {
 			PlannedMinutes: line.PlannedMinutes,
 		}
 		rep.ProcessPlannedMinutes += line.PlannedMinutes
+		rep.PlannedMinutes += line.PlannedMinutes
 		for _, a := range byLine[line.ID] {
 			person := PersonRow{
 				ProcessName:    line.ProcessName,
@@ -104,12 +103,9 @@ func Build(b store.Bundle) Report {
 				RoleName:       a.RoleName,
 				StartDate:      a.StartDate,
 				EndDate:        a.EndDate,
-				PlannedMinutes: a.PlannedMinutes,
 				PlannedCostYen: a.PlannedCostYen,
 			}
-			row.AssignmentMinutes += a.PlannedMinutes
 			row.PlannedCostYen += a.PlannedCostYen
-			rep.PlannedMinutes += a.PlannedMinutes
 			rep.PlannedCostYen += a.PlannedCostYen
 			for _, e := range entries[a.ID] {
 				person.ActualMinutes += e.Minutes

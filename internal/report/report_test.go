@@ -16,7 +16,7 @@ func TestBuildUsesLatestRateAndGrossMargin(t *testing.T) {
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", PersonCode: "m01", PersonName: "山田",
 			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30",
-			PlannedMinutes: 4800, PlannedCostYen: 400000,
+			PlannedCostYen: 400000,
 		}},
 		Entries: []store.TimeEntry{{
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 480,
@@ -53,7 +53,7 @@ func TestBuildLeavesUnsetRateOutOfYen(t *testing.T) {
 		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
-			PlannedMinutes: 480, PlannedCostYen: 40000,
+			PlannedCostYen: 40000,
 		}},
 		Entries: []store.TimeEntry{{ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 60}},
 	}
@@ -76,7 +76,7 @@ func TestBuildTaskActualAndOverPlan(t *testing.T) {
 		},
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
-			PlannedMinutes: 960, PlannedCostYen: 80000,
+			PlannedCostYen: 80000,
 		}},
 		Entries: []store.TimeEntry{
 			{ID: "e1", AssignmentID: "a", TaskID: "t1", WorkDate: "2026-04-01", Minutes: 600},
