@@ -13,7 +13,7 @@ import (
 )
 
 // scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
-// Headcount と CapWarn は工程の枠行用です。
+// Headcount と CapClass は工程の枠行用です。CapClass は cap-warn（枠の 80% 以上）か cap-over（枠以上）です。
 type scheduleCell struct {
 	YM        string
 	Decade    int
@@ -22,7 +22,7 @@ type scheduleCell struct {
 	InRange   bool
 	Current   bool
 	Headcount int
-	CapWarn   bool
+	CapClass  string
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
@@ -505,7 +505,7 @@ func (s *Server) scheduleTaskGroups(
 					YM: ym, Decade: decade, Minutes: capMinutes,
 					Headcount: heads,
 					Current:   ym == currentYM && decade == currentDec,
-					CapWarn:   periodMinutes[periodKey] > capMinutes,
+					CapClass:  capacityLoadClass(periodMinutes[periodKey], capMinutes),
 				}
 				if capMinutes > 0 {
 					cell.Days = calc.FormatPersonDays(capMinutes, std)
@@ -525,6 +525,24 @@ func (s *Server) scheduleTaskGroups(
 		rowCount += span
 	}
 	return groups, rowCount
+}
+
+// capacityLoadClass は割当分に対する枠の負荷クラスです。
+// 枠の 80% 以上なら cap-warn、枠以上（枠 0 で割当ありを含む）なら cap-over です。
+func capacityLoadClass(allocated, capacity int64) string {
+	if capacity <= 0 {
+		if allocated > 0 {
+			return "cap-over"
+		}
+		return ""
+	}
+	if allocated >= capacity {
+		return "cap-over"
+	}
+	if allocated*10 >= capacity*8 {
+		return "cap-warn"
+	}
+	return ""
 }
 
 // handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分を JSON で返します。

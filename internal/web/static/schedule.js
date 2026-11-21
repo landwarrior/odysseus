@@ -249,7 +249,16 @@
         allocated += Number.isNaN(value) ? 0 : value;
       });
       const capacity = Number(cell.dataset.capacity || 0);
-      cell.classList.toggle("cap-warn", allocated > capacity);
+      cell.classList.remove("cap-warn", "cap-over");
+      if (capacity <= 0) {
+        if (allocated > 0) {
+          cell.classList.add("cap-over");
+        }
+      } else if (allocated >= capacity) {
+        cell.classList.add("cap-over");
+      } else if (allocated >= capacity * 0.8) {
+        cell.classList.add("cap-warn");
+      }
     });
   }
 
