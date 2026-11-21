@@ -97,14 +97,16 @@ type Process struct {
 	Color     string
 }
 
-// Rate は人材と役割の時間単価です。FromDate 以降、次の単価が現れるまで有効です。
+// Rate は人材と役割の単価です。FromDate 以降、次の単価が現れるまで有効です。
+// HourlyYen は請負向けの円/時、MonthlyYen は準委任向けの円/月です。どちらか一方以上を持ちます。
 type Rate struct {
-	ID        string
-	PersonID  string
-	RoleID    string
-	RoleName  string
-	FromDate  string
-	HourlyYen int64
+	ID         string
+	PersonID   string
+	RoleID     string
+	RoleName   string
+	FromDate   string
+	HourlyYen  int64
+	MonthlyYen int64
 }
 
 // Project は案件です。Status は planning、active、closed のいずれかです。
@@ -731,10 +733,10 @@ func (s *Store) LatestRoleNames(ctx context.Context, date string) (map[string]st
 	return out, rows.Err()
 }
 
-// ListRates は personID の時間単価を、適用開始日の順で返します。
+// ListRates は personID の単価を、適用開始日の順で返します。
 func (s *Store) ListRates(ctx context.Context, personID string) ([]Rate, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT r.id, r.person_id, r.role_id, role.name, r.from_date, r.hourly_yen
+		SELECT r.id, r.person_id, r.role_id, role.name, r.from_date, r.hourly_yen, r.monthly_yen
 		FROM person_rate r
 		JOIN role ON role.id = r.role_id
 		WHERE r.person_id = ?
@@ -750,9 +752,9 @@ func (s *Store) ListRates(ctx context.Context, personID string) ([]Rate, error) 
 func (s *Store) InsertRate(ctx context.Context, rate Rate) (Rate, error) {
 	rate.ID = id.New()
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO person_rate (id, person_id, role_id, from_date, hourly_yen, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, rate.HourlyYen, now(), now())
+		INSERT INTO person_rate (id, person_id, role_id, from_date, hourly_yen, monthly_yen, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, rate.HourlyYen, rate.MonthlyYen, now(), now())
 	if err != nil {
 		return Rate{}, mapWriteErr(err)
 	}
@@ -768,23 +770,34 @@ func (s *Store) DeleteRate(ctx context.Context, personID, rateID string) error {
 	return missing(res)
 }
 
-// FindHourly はその日以前で最も新しい適用開始日の時間単価です。
-// FindHourly は personID と roleID について、date 以前で最も新しい時間単価を返します。
+// FindRate は personID と roleID について、date 以前で最も新しい単価を返します。
 // 該当が無いときは false です。
-func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (int64, bool, error) {
-	var yen int64
+func (s *Store) FindRate(ctx context.Context, personID, roleID, date string) (Rate, bool, error) {
+	var rate Rate
 	err := s.db.QueryRow(ctx, `
-		SELECT hourly_yen FROM person_rate
+		SELECT id, person_id, role_id, '', from_date, hourly_yen, monthly_yen
+		FROM person_rate
 		WHERE person_id = ? AND role_id = ? AND from_date <= ?
 		ORDER BY from_date DESC
-		LIMIT 1`, personID, roleID, date).Scan(&yen)
+		LIMIT 1`, personID, roleID, date).Scan(
+		&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen, &rate.MonthlyYen)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, false, nil
+		return Rate{}, false, nil
 	}
 	if err != nil {
+		return Rate{}, false, err
+	}
+	return rate, true, nil
+}
+
+// FindHourly は personID と roleID について、date 以前で最も新しい時間単価を返します。
+// 該当が無いとき、または時間単価が 0 のときは false です。
+func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (int64, bool, error) {
+	rate, ok, err := s.FindRate(ctx, personID, roleID, date)
+	if err != nil || !ok || rate.HourlyYen <= 0 {
 		return 0, false, err
 	}
-	return yen, true, nil
+	return rate.HourlyYen, true, nil
 }
 
 const personSelect = `SELECT id, code, name, name_kana, is_admin, active, remarks, must_change_password, theme FROM person`
@@ -817,7 +830,7 @@ func scanRates(rows *sql.Rows) ([]Rate, error) {
 	var out []Rate
 	for rows.Next() {
 		var rate Rate
-		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen); err != nil {
+		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen, &rate.MonthlyYen); err != nil {
 			return nil, err
 		}
 		out = append(out, rate)

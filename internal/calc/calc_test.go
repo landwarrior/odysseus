@@ -25,6 +25,24 @@ func TestCostYen(t *testing.T) {
 	}
 }
 
+func TestMonthlyAndAssignmentCost(t *testing.T) {
+	if got := MonthlyCost("2026-04-01", "2026-04-30", 400000); got != 400000 {
+		t.Fatalf("one month = %d", got)
+	}
+	if got := MonthlyCost("2026-04-15", "2026-06-10", 100000); got != 300000 {
+		t.Fatalf("three months = %d", got)
+	}
+	if got := AssignmentPlannedCost(4800, "2026-04-01", "2026-04-30", 5000, 400000); got != 400000 {
+		t.Fatalf("prefer hourly with minutes = %d", got)
+	}
+	if got := AssignmentPlannedCost(0, "2026-04-01", "2026-04-30", 5000, 400000); got != 400000 {
+		t.Fatalf("monthly when no minutes = %d", got)
+	}
+	if got := AssignmentPlannedCost(0, "2026-04-01", "2026-04-30", 5000, 0); got != 0 {
+		t.Fatalf("hourly only without minutes = %d", got)
+	}
+}
+
 func TestRemainingAndGross(t *testing.T) {
 	if got := RemainingCost(400000, 40000); got != 360000 {
 		t.Fatalf("remaining = %d", got)

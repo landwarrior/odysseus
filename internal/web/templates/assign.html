@@ -9,12 +9,12 @@
   {{template "alerts" .}}
   {{if not .Groups}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
   {{if .Groups}}
-  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の時間単価がある人だけです。予定原価は、その開始日の単価で計算して保存します。</p>
+  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の単価（時間または月間）がある人だけです。予定時間はここでは入れません。予定原価は、月間単価があれば期間の暦月数 × 月間単価、残っている予定分と時間単価があればその積で計算します。</p>
   {{end}}
   {{range .Groups}}
   <section class="card">
     <h2>{{.Line.ProcessName}}</h2>
-    <p class="note">工程の予定 {{hours .Line.PlannedMinutes}} 時間。工程の期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
+    <p class="note">工程の見積 {{hours .Line.PlannedMinutes}} 時間。工程の期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
     <h3>登録済みのアサイン</h3>
     {{if not .Rows}}<p>アサインはありません。</p>{{end}}
     {{if .Rows}}
@@ -38,7 +38,6 @@
           </label>
           <label class="field"><input type="date" name="start_date" value="{{.Assignment.StartDate}}" required><span class="field-label">開始</span></label>
           <label class="field"><input type="date" name="end_date" value="{{.Assignment.EndDate}}" required><span class="field-label">終了</span></label>
-          <label class="field"><input name="hours" value="{{.Hours}}" placeholder=" " required><span class="field-label">予定時間</span></label>
           <div class="field field-display">
             <span class="field-value">{{yen .Assignment.PlannedCostYen}}</span>
             <span class="field-label">予定原価</span>
@@ -76,7 +75,6 @@
         </label>
         <label class="field"><input type="date" name="start_date" value="{{.Line.StartDate}}" required><span class="field-label">開始</span></label>
         <label class="field"><input type="date" name="end_date" value="{{.Line.EndDate}}" required><span class="field-label">終了</span></label>
-        <label class="field"><input name="hours" placeholder=" " required><span class="field-label">予定時間</span></label>
         <button type="submit" class="primary">追加</button>
       </form>
       {{end}}

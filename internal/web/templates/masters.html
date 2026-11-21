@@ -59,7 +59,7 @@
       <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
     </div>
     <label class="field"><textarea name="remarks" rows="3" placeholder=" ">{{.Person.Remarks}}</textarea><span class="field-label">備考</span></label>
-    {{if .IsNew}}<p class="note">時間単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
+    {{if .IsNew}}<p class="note">単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
     <button type="submit" class="primary">登録</button>
   </form>
   <script>
@@ -75,7 +75,8 @@
   </script>
   {{if not .IsNew}}
   <section class="card">
-    <h2>時間単価</h2>
+    <h2>単価</h2>
+    <p class="note">円 / 時は請負向け、円 / 月は準委任向けです。どちらか一方でも、両方でも登録できます。実績原価の計算には時間単価を使います。</p>
     {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
     {{if .Rates}}
     <div class="rate-list">
@@ -89,9 +90,13 @@
           <span class="field-value">{{.FromDate}}</span>
           <span class="field-label">適用開始日</span>
         </div>
-        <div class="field field-display rate-yen">
-          <span class="field-value">{{yen .HourlyYen}}</span>
+        <div class="field field-display rate-hourly">
+          <span class="field-value">{{if .HourlyYen}}{{yen .HourlyYen}}{{else}}—{{end}}</span>
           <span class="field-label">円 / 時</span>
+        </div>
+        <div class="field field-display rate-monthly">
+          <span class="field-value">{{if .MonthlyYen}}{{yen .MonthlyYen}}{{else}}—{{end}}</span>
+          <span class="field-label">円 / 月</span>
         </div>
         <div class="rate-actions">
           <form method="post" action="/people/{{$.Person.ID}}/rates/{{.ID}}/delete">
@@ -112,7 +117,8 @@
         <span class="field-label">役割</span>
       </label>
       <label class="field rate-date"><input type="date" name="from_date" required><span class="field-label">適用開始日</span></label>
-      <label class="field rate-yen"><input class="yen-input" name="hourly_yen" inputmode="numeric" placeholder=" " required><span class="field-label">円 / 時</span></label>
+      <label class="field rate-hourly"><input class="yen-input" name="hourly_yen" inputmode="numeric" placeholder=" "><span class="field-label">円 / 時</span></label>
+      <label class="field rate-monthly"><input class="yen-input" name="monthly_yen" inputmode="numeric" placeholder=" "><span class="field-label">円 / 月</span></label>
       <div class="rate-actions">
         <button type="submit" class="primary">単価を追加</button>
       </div>

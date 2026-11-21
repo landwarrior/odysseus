@@ -80,7 +80,7 @@ func (s *Server) handlePersonCreate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	s.redirect(w, r, "/people/"+person.ID, "登録しました。続けて時間単価を登録してください。")
+	s.redirect(w, r, "/people/"+person.ID, "登録しました。続けて単価を登録してください。")
 }
 
 // handlePersonEdit はパスの人材 ID の編集画面を出します。
@@ -155,7 +155,7 @@ func (s *Server) handlePersonDelete(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/people", "削除しました。")
 }
 
-// handleRateCreate はパスの人材に、役割、適用開始日、時間単価を追加します。
+// handleRateCreate はパスの人材に、役割、適用開始日、時間単価・月間単価を追加します。
 func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if _, err := s.store.GetPerson(r.Context(), id); err != nil {
@@ -167,9 +167,23 @@ func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	date, msg := normalizeDate(r.FormValue("from_date"), true)
-	yen, yerr := calc.ParseYen(r.FormValue("hourly_yen"))
-	if yerr != nil || yen == nil {
-		msg = firstMsg(msg, "時間単価は 0 以上の整数で入力してください。")
+	hourly, herr := calc.ParseYen(r.FormValue("hourly_yen"))
+	if herr != nil {
+		msg = firstMsg(msg, "時間単価（円 / 時）は 0 以上の整数で入力してください。")
+	}
+	monthly, merr := calc.ParseYen(r.FormValue("monthly_yen"))
+	if merr != nil {
+		msg = firstMsg(msg, "月間単価（円 / 月）は 0 以上の整数で入力してください。")
+	}
+	var hourlyYen, monthlyYen int64
+	if hourly != nil {
+		hourlyYen = *hourly
+	}
+	if monthly != nil {
+		monthlyYen = *monthly
+	}
+	if hourlyYen == 0 && monthlyYen == 0 {
+		msg = firstMsg(msg, "時間単価か月間単価のどちらかを入力してください。")
 	}
 	roleID := formText(r, "role_id")
 	if roleID == "" {
@@ -180,7 +194,7 @@ func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.store.InsertRate(r.Context(), store.Rate{
-		PersonID: id, RoleID: roleID, FromDate: date, HourlyYen: *yen,
+		PersonID: id, RoleID: roleID, FromDate: date, HourlyYen: hourlyYen, MonthlyYen: monthlyYen,
 	}); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			s.redirectWarn(w, r, "/people/"+id, "同じ役割と適用開始日の単価が既にあります。")

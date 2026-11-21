@@ -713,7 +713,7 @@ main.person-page {
 }
 .rate-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
@@ -724,7 +724,8 @@ main.person-page {
 }
 .rate-row > .rate-role,
 .rate-row > .rate-date,
-.rate-row > .rate-yen {
+.rate-row > .rate-hourly,
+.rate-row > .rate-monthly {
   min-width: 0;
 }
 .rate-row .field.field-display > .field-value,

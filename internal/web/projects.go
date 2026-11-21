@@ -458,12 +458,11 @@ type assignGroup struct {
 	Hours string
 }
 
-// assignRow は既存アサイン1件と、選択肢、予定時間の表示文字列です。
+// assignRow は既存アサイン1件と、選択肢です。
 type assignRow struct {
 	Assignment store.Assignment
 	People     []opt
 	Roles      []opt
-	Hours      string
 }
 
 // opt はプルダウンの1件です。ID が送信値、Label が画面の文言です。
@@ -514,8 +513,8 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		group := assignGroup{Line: line, Hours: calc.FormatHours(line.PlannedMinutes)}
 		for _, a := range byLine[line.ID] {
 			group.Rows = append(group.Rows, assignRow{
-				Assignment: a, Hours: calc.FormatHours(a.PlannedMinutes),
-				People: personOpts(people, a), Roles: roleOpts(roles, a),
+				Assignment: a,
+				People:     personOpts(people, a), Roles: roleOpts(roles, a),
 			})
 		}
 		page.Groups = append(page.Groups, group)
@@ -619,10 +618,6 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if m := dateOrder(start, end, "開始日", "終了日"); m != "" {
 		return write, m
 	}
-	minutes, msg := parseRequiredHours(r.FormValue("hours"))
-	if msg != "" {
-		return write, msg
-	}
 	person, err := s.store.GetPerson(r.Context(), write.PersonID)
 	if err != nil {
 		return write, "人材が不正です。"
@@ -661,17 +656,25 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if !role.Active && assignmentID == "" {
 		return write, "無効な役割は新しく割り当てられません。"
 	}
-	yen, ok, err := s.store.FindHourly(r.Context(), person.ID, role.ID, start)
+	rate, ok, err := s.store.FindRate(r.Context(), person.ID, role.ID, start)
 	if err != nil {
 		return write, "単価の取得に失敗しました。"
 	}
 	if !ok {
-		return write, "この開始日に、その役割の時間単価がありません。"
+		return write, "この開始日に、その役割の単価（時間または月間）がありません。"
+	}
+	var minutes int64
+	if assignmentID != "" {
+		current, err := s.store.GetAssignment(r.Context(), assignmentID)
+		if err != nil {
+			return write, "アサインの取得に失敗しました。"
+		}
+		minutes = current.PlannedMinutes
 	}
 	write.StartDate = start
 	write.EndDate = end
 	write.PlannedMinutes = minutes
-	write.PlannedCostYen = calc.CostYen(minutes, yen)
+	write.PlannedCostYen = calc.AssignmentPlannedCost(minutes, start, end, rate.HourlyYen, rate.MonthlyYen)
 	return write, ""
 }
 

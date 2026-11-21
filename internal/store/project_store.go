@@ -210,7 +210,7 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 		return 0, nil, err
 	}
 	for _, a := range assignments {
-		yen, ok, err := s.FindHourly(ctx, a.PersonID, a.RoleID, a.StartDate)
+		rate, ok, err := s.FindRate(ctx, a.PersonID, a.RoleID, a.StartDate)
 		if err != nil {
 			return updated, missingNames, err
 		}
@@ -218,7 +218,7 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName)
 			continue
 		}
-		cost := calc.CostYen(a.PlannedMinutes, yen)
+		cost := calc.AssignmentPlannedCost(a.PlannedMinutes, a.StartDate, a.EndDate, rate.HourlyYen, rate.MonthlyYen)
 		if _, err := s.db.Exec(ctx, `UPDATE assignment SET planned_cost_yen = ?, updated_at = ? WHERE id = ?`, cost, now(), a.ID); err != nil {
 			return updated, missingNames, err
 		}
@@ -498,7 +498,7 @@ func (s *Store) ratesForPeople(ctx context.Context, personIDs []string) ([]Rate,
 		return nil, nil
 	}
 	rows, err := s.db.Query(ctx, `
-		SELECT id, person_id, role_id, '', from_date, hourly_yen
+		SELECT id, person_id, role_id, '', from_date, hourly_yen, monthly_yen
 		FROM person_rate
 		WHERE person_id IN (`+placeholders(len(personIDs))+`)`, argsOf(personIDs)...)
 	if err != nil {

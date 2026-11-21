@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -28,6 +29,36 @@ func CostYen(minutes, hourlyYen int64) int64 {
 		q++
 	}
 	return q
+}
+
+// MonthlyCost は startDate〜endDate（YYYY-MM-DD）に掛かる暦月数 × monthlyYen です。
+// 開始月と終了月を含みます。日付が不正、終了が開始より前、単価が 0 以下なら 0 です。
+func MonthlyCost(startDate, endDate string, monthlyYen int64) int64 {
+	if monthlyYen <= 0 {
+		return 0
+	}
+	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
+	if err != nil {
+		return 0
+	}
+	end, err := time.ParseInLocation("2006-01-02", endDate, time.UTC)
+	if err != nil || end.Before(start) {
+		return 0
+	}
+	months := (end.Year()-start.Year())*12 + int(end.Month()-start.Month()) + 1
+	return int64(months) * monthlyYen
+}
+
+// AssignmentPlannedCost はアサインの予定原価です。
+// 予定分と時間単価があれば請負として計算し、無ければ月間単価と期間（暦月）で準委任として計算します。
+func AssignmentPlannedCost(minutes int64, startDate, endDate string, hourlyYen, monthlyYen int64) int64 {
+	if minutes > 0 && hourlyYen > 0 {
+		return CostYen(minutes, hourlyYen)
+	}
+	if monthlyYen > 0 {
+		return MonthlyCost(startDate, endDate, monthlyYen)
+	}
+	return 0
 }
 
 // RemainingCost は planned（予定原価）から actual（実績原価）を引いた残りです。

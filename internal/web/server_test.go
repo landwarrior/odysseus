@@ -56,7 +56,7 @@ func TestForecastFlow(t *testing.T) {
 		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"},
 		"password": {"memberpass"}, "active": {"1"},
 	})
-	if !strings.Contains(body, "時間単価") {
+	if !strings.Contains(body, "単価") {
 		t.Fatalf("person page:\n%s", body)
 	}
 	roles, err := st.ListRoles(ctx)
@@ -70,7 +70,8 @@ func TestForecastFlow(t *testing.T) {
 		}
 	}
 	body = admin.submit(t, "/people/"+personID(t, st, "m01")+"/rates", url.Values{
-		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"5000"},
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"},
+		"hourly_yen": {"5000"}, "monthly_yen": {"400000"},
 	})
 	processes, err := st.ListProcesses(ctx)
 	if err != nil {
@@ -95,7 +96,7 @@ func TestForecastFlow(t *testing.T) {
 	body = admin.submit(t, "/projects/"+project.ID+"/assignments", url.Values{
 		"csrf": {csrfOf(t, body)}, "project_process_id": {lines[0].ID},
 		"person_id": {personID(t, st, "m01")}, "role_id": {pg},
-		"start_date": {"2026-04-01"}, "end_date": {"2026-04-30"}, "hours": {"80"},
+		"start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
 	})
 	if !strings.Contains(body, "¥400,000") {
 		t.Fatalf("assignment cost missing:\n%s", body)

@@ -183,10 +183,13 @@ func indexRates(rates []store.Rate) map[string][]store.Rate {
 }
 
 // hourlyAt は idx から、personID と roleID について date 以前で最も新しい時間単価を返します。
-// 該当が無いときは false です。0 円としては返しません。
+// 該当が無いとき、または時間単価が 0 のときは false です。
 func hourlyAt(idx map[string][]store.Rate, personID, roleID, date string) (int64, bool) {
 	for _, r := range idx[personID+"\x00"+roleID] {
 		if r.FromDate <= date {
+			if r.HourlyYen <= 0 {
+				return 0, false
+			}
 			return r.HourlyYen, true
 		}
 	}
