@@ -15,8 +15,8 @@
   {{template "alerts" .}}
   {{if .Hint}}<p class="banner">{{.Hint}}</p>{{end}}
   <form method="post" action="/login" class="stack">
-    <label>ユーザーコード<input name="code" value="{{.Code}}" autocomplete="username" required></label>
-    <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label>
+    <label class="field"><input name="code" value="{{.Code}}" placeholder=" " autocomplete="username" required><span class="field-label">ユーザーコード</span></label>
+    <label class="field"><input type="password" name="password" placeholder=" " autocomplete="current-password" required><span class="field-label">パスワード</span></label>
     <button type="submit" class="primary">ログイン</button>
   </form>
 </main>
@@ -32,9 +32,9 @@
   {{if .Me.MustChangePassword}}<p class="banner">続ける前にパスワードを変更してください。</p>{{end}}
   <form method="post" action="/password" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <label>現在のパスワード<input type="password" name="current_password" autocomplete="current-password" required></label>
-    <label>新しいパスワード<input type="password" name="new_password" autocomplete="new-password" required></label>
-    <label>新しいパスワード（確認）<input type="password" name="confirm_password" autocomplete="new-password" required></label>
+    <label class="field"><input type="password" name="current_password" placeholder=" " autocomplete="current-password" required><span class="field-label">現在のパスワード</span></label>
+    <label class="field"><input type="password" name="new_password" placeholder=" " autocomplete="new-password" required><span class="field-label">新しいパスワード</span></label>
+    <label class="field"><input type="password" name="confirm_password" placeholder=" " autocomplete="new-password" required><span class="field-label">新しいパスワード（確認）</span></label>
     <button type="submit" class="primary">変更する</button>
   </form>
 </main>

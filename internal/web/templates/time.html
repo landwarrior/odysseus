@@ -33,12 +33,13 @@
   <form method="get" action="/time/{{.Project.ID}}" class="inline">
     <input type="hidden" name="month" value="{{.Month}}">
     <input type="hidden" name="date" value="{{.Date}}">
-    <label>人材
+    <label class="field">
       <select name="person" onchange="this.form.submit()">
         {{range .People}}
         <option value="{{.ID}}" {{if eq .ID $.PersonID}}selected{{end}}>{{.Code}} {{.Name}}</option>
         {{end}}
       </select>
+      <span class="field-label">人材</span>
     </label>
   </form>
   {{else if .ShowPerson}}
@@ -52,11 +53,12 @@
   <form method="post" action="/time/{{.Project.ID}}?month={{.Month}}&person={{.PersonID}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <input type="hidden" name="person_id" value="{{.PersonID}}">
-    <label>日付<input type="date" name="work_date" value="{{.Date}}" required></label>
+    <label class="field"><input type="date" name="work_date" value="{{.Date}}" required><span class="field-label">日付</span></label>
     <div class="grid">
       {{range .Columns}}
-      <label>{{.Label}}（{{.StartDate}} 〜 {{.EndDate}}）
-        <input name="minutes_{{.Key}}" inputmode="decimal" value="{{index $.Cells .Key}}" placeholder="時間">
+      <label class="field">
+        <input name="minutes_{{.Key}}" inputmode="decimal" value="{{index $.Cells .Key}}" placeholder=" ">
+        <span class="field-label">{{.Label}}（{{.StartDate}} 〜 {{.EndDate}}）</span>
       </label>
       {{end}}
     </div>

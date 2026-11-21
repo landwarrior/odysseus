@@ -38,25 +38,27 @@
   <form method="post" action="{{if .IsNew}}/people{{else}}/people/{{.Person.ID}}{{end}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="grid">
-      <label>ユーザーコード<input name="code" value="{{.Person.Code}}" required></label>
-      <label>姓<input name="name" value="{{.Person.Name}}" required autocomplete="family-name"></label>
-      <label>名<input name="name_kana" value="{{.Person.NameKana}}" autocomplete="given-name"></label>
-      <label>
-        <span class="label-row">
-          パスワード
-          <details class="help">
-            <summary aria-label="パスワードの説明">?</summary>
-            <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
-          </details>
+      <label class="field"><input name="code" value="{{.Person.Code}}" placeholder=" " required><span class="field-label">ユーザーコード</span></label>
+      <label class="field"><input name="name" value="{{.Person.Name}}" placeholder=" " required autocomplete="family-name"><span class="field-label">姓</span></label>
+      <label class="field"><input name="name_kana" value="{{.Person.NameKana}}" placeholder=" " autocomplete="given-name"><span class="field-label">名</span></label>
+      <label class="field">
+        <input type="password" name="password" placeholder=" " autocomplete="new-password" {{if .IsNew}}required{{end}}>
+        <span class="field-label">
+          <span class="label-row">
+            パスワード
+            <details class="help">
+              <summary aria-label="パスワードの説明">?</summary>
+              <p class="help-tip">{{if .IsNew}}入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{else}}空のままなら今のパスワードは変わりません。入力したパスワードは仮パスワードです（8 文字以上）。本人が仮パスワードでログイン後、パスワード変更が必須になります。{{end}}</p>
+            </details>
+          </span>
         </span>
-        <input type="password" name="password" autocomplete="new-password" {{if .IsNew}}required{{end}}>
       </label>
     </div>
     <div class="inline checks">
       <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
       <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
     </div>
-    <label>備考<textarea name="remarks" rows="3">{{.Person.Remarks}}</textarea></label>
+    <label class="field"><textarea name="remarks" rows="3" placeholder=" ">{{.Person.Remarks}}</textarea><span class="field-label">備考</span></label>
     {{if .IsNew}}<p class="note">時間単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
     <button type="submit" class="primary">登録</button>
   </form>
@@ -93,13 +95,14 @@
     {{end}}
     <form method="post" action="/people/{{.Person.ID}}/rates" class="grid rates-form">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label>役割
+      <label class="field">
         <select name="role_id" required>
           {{range .Roles}}{{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}{{end}}
         </select>
+        <span class="field-label">役割</span>
       </label>
-      <label>適用開始日<input type="date" name="from_date" required></label>
-      <label>円 / 時<input class="yen-input" name="hourly_yen" inputmode="numeric" required></label>
+      <label class="field"><input type="date" name="from_date" required><span class="field-label">適用開始日</span></label>
+      <label class="field"><input class="yen-input" name="hourly_yen" inputmode="numeric" placeholder=" " required><span class="field-label">円 / 時</span></label>
       <button type="submit" class="primary">単価を追加</button>
     </form>
   </section>
@@ -108,7 +111,7 @@
     <p>アサインがある人材は削除できません。無効にしてください。</p>
     <form method="post" action="/people/{{.Person.ID}}/delete" class="person-delete">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input name="confirm_code" placeholder="ユーザーコード" required>
+      <label class="field"><input name="confirm_code" placeholder=" " required><span class="field-label">ユーザーコード</span></label>
       <button type="submit" class="danger">削除</button>
     </form>
   </section>
@@ -128,7 +131,7 @@
     <p class="note">追加した役割は、一覧の一番下に入ります。</p>
     <form method="post" action="/roles" class="process-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label class="process-name">名前<input name="name" required></label>
+      <label class="field process-name"><input name="name" placeholder=" " required><span class="field-label">名前</span></label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
       <button type="submit" class="primary">追加</button>
     </form>
@@ -186,8 +189,8 @@
     <p class="note">追加した工程は、一覧の一番下に入ります。</p>
     <form method="post" action="/processes" class="process-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label class="process-name">名前<input name="name" required></label>
-      <label class="process-color">背景色
+      <label class="field process-name"><input name="name" placeholder=" " required><span class="field-label">名前</span></label>
+      <label class="field process-color">
         <span class="phase-color-cell">
           <select name="color">
             {{range $color := .Colors}}
@@ -196,6 +199,7 @@
           </select>
           <span class="color-sample color-cyan" aria-hidden="true"></span>
         </span>
+        <span class="field-label">背景色</span>
       </label>
       <label class="check"><input type="checkbox" name="active" value="1" checked>有効</label>
       <button type="submit" class="primary">追加</button>

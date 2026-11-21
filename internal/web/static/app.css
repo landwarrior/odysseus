@@ -329,13 +329,100 @@ button:disabled:hover,
   cursor: not-allowed;
 }
 
-label { display: flex; flex-direction: column; gap: 0.25rem; color: var(--muted); font-size: 0.92rem; }
+/* フローティングラベル（入力欄と一体の1ブロックとして折り返す） */
+label.field,
+.field.field-display {
+  position: relative;
+  display: block;
+  min-width: 0;
+  color: inherit;
+  font-size: inherit;
+}
+label.field > .field-label,
+.field.field-display > .field-label {
+  position: absolute;
+  z-index: 1;
+  left: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: calc(100% - 0.9rem);
+  padding: 0 0.25rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transition: top 0.12s ease, transform 0.12s ease, font-size 0.12s ease, color 0.12s ease, background-color 0.12s ease;
+}
+label.field:focus-within > .field-label,
+label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+label.field:has(select) > .field-label,
+label.field:has(input[type="date"]) > .field-label,
+label.field:has(input[type="month"]) > .field-label,
+label.field:has(.help) > .field-label,
+label.field:has(.phase-color-cell) > .field-label,
+.field.field-display > .field-label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  background: var(--field);
+}
+label.field:focus-within > .field-label {
+  color: var(--accent);
+}
+label.field > :is(input, select, textarea),
+label.field > .phase-color-cell,
+.field.field-display > .field-value {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.95rem 0.55rem 0.35rem;
+}
+label.field > .phase-color-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+label.field > .phase-color-cell select {
+  min-height: 0;
+  width: auto;
+  flex: 1 1 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+label.field > textarea {
+  min-height: 5.5rem;
+  padding-top: 1.15rem;
+  resize: vertical;
+}
+.field.field-display > .field-value {
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  color: var(--ink);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
 .label-row {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  max-width: 100%;
 }
-label:has(.help) { position: relative; }
+label.field:has(.help) { position: relative; }
+label.field > .field-label .help { pointer-events: auto; }
 .help {
   position: static;
   display: inline;
@@ -369,7 +456,7 @@ label:has(.help) { position: relative; }
   z-index: 8;
   left: 0;
   right: 0;
-  top: 1.75rem;
+  top: calc(100% + 0.35rem);
   width: auto;
   max-width: none;
   box-sizing: border-box;
@@ -383,6 +470,7 @@ label:has(.help) { position: relative; }
   font-weight: 400;
   line-height: 1.45;
   white-space: normal;
+  pointer-events: auto;
 }
 label.check {
   display: inline-flex;
@@ -406,12 +494,16 @@ label.check:hover {
 input, select, textarea {
   width: 100%;
   max-width: 100%;
+  min-height: 2.75rem;
   font: inherit;
   color: var(--ink);
   background: var(--field);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 0.45rem 0.55rem;
+  padding: 0.55rem;
+}
+input.process-name {
+  padding-top: 0.55rem;
 }
 label.check input {
   appearance: none;
@@ -436,24 +528,33 @@ label.check input:checked {
 
 .stack { display: grid; gap: 0.8rem; }
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem 1rem;
   align-items: end;
 }
-.grid.rates-form {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.grid > .field,
+.grid > label.field {
+  flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
 }
-@media (max-width: 56rem) {
-  .grid.rates-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.grid.rates-form > .field {
+  flex: 1 1 10rem;
+  min-width: min(100%, 10rem);
 }
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .title-row h1, .title-row h2 { margin-right: auto; }
 .filters a.current { font-weight: 700; }
+.inline > .field {
+  flex: 1 1 14rem;
+  min-width: min(100%, 12rem);
+}
 .inline.checks { gap: 0.75rem 1.5rem; }
 .inline.checks .check { flex: 0 0 auto; }
+.grid > button {
+  flex: 0 0 auto;
+  align-self: end;
+}
 
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; background: var(--paper); }
@@ -505,7 +606,6 @@ section.danger { border-color: var(--danger-line); }
 .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.75rem; margin: 1rem 0; }
 .summary div { background: var(--paper); border: 1px solid var(--line); padding: 0.65rem 0.75rem; }
 .summary span { display: block; color: var(--muted); font-size: 0.8rem; }
-.cost { margin: 0; align-self: end; }
 .assign-list {
   display: grid;
   gap: 0.75rem;
@@ -519,6 +619,10 @@ section.danger { border-color: var(--danger-line); }
   background: var(--bg);
 }
 .assign-row { margin: 0; }
+.assign-row > .field {
+  flex: 1 1 9rem;
+  min-width: min(100%, 9rem);
+}
 .assign-item .button-pair {
   justify-self: start;
 }
@@ -545,35 +649,25 @@ section.danger { border-color: var(--danger-line); }
 }
 .line-process {
   flex: 1 1 14rem;
-  min-width: 14rem;
+  min-width: min(100%, 12rem);
 }
 .line-dates,
 .line-amounts {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: end;
   gap: 0.75rem;
-  flex: 0 0 auto;
-  min-width: max-content;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
-.line-dates label,
-.line-amounts label {
-  width: 9.5rem;
-  min-width: 9.5rem;
-}
-.line-hours-sum {
-  display: block;
-  box-sizing: border-box;
-  min-height: 2.4rem;
-  padding: 0.45rem 0.55rem;
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.4;
+.line-dates > .field,
+.line-amounts > .field {
+  flex: 1 1 8.5rem;
+  min-width: min(100%, 8.5rem);
+  max-width: 12rem;
 }
 .line-remove {
   flex: 0 0 auto;
-  min-width: max-content;
 }
 
 main.process-page,
@@ -584,19 +678,44 @@ main.person-page {
   padding-right: 24px;
   font-size: 16px;
 }
-main.process-page label,
-main.role-page label,
-main.person-page label { font-size: 16px; }
+main.process-page label.field > .field-label,
+main.role-page label.field > .field-label,
+main.person-page label.field > .field-label,
+main.process-page .field.field-display > .field-label,
+main.role-page .field.field-display > .field-label,
+main.person-page .field.field-display > .field-label {
+  font-size: 16px;
+}
+main.process-page label.field:focus-within > .field-label,
+main.process-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.process-page label.field:has(select) > .field-label,
+main.process-page label.field:has(input[type="date"]) > .field-label,
+main.process-page label.field:has(.help) > .field-label,
+main.process-page label.field:has(.phase-color-cell) > .field-label,
+main.role-page label.field:focus-within > .field-label,
+main.role-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.role-page label.field:has(select) > .field-label,
+main.role-page label.field:has(input[type="date"]) > .field-label,
+main.role-page label.field:has(.help) > .field-label,
+main.person-page label.field:focus-within > .field-label,
+main.person-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.person-page label.field:has(select) > .field-label,
+main.person-page label.field:has(input[type="date"]) > .field-label,
+main.person-page label.field:has(.help) > .field-label,
+main.process-page .field.field-display > .field-label,
+main.role-page .field.field-display > .field-label,
+main.person-page .field.field-display > .field-label {
+  font-size: 12px;
+}
 .person-delete {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: end;
   gap: 10px;
 }
-.person-delete input[name="confirm_code"] {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
+.person-delete > .field {
+  flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
 }
 .person-delete > button {
   width: 126px;
@@ -622,12 +741,16 @@ main.role-page label.check input {
 }
 .process-add, .process-edit {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: end;
   gap: 16px;
   min-width: 0;
 }
-label.process-color {
+label.process-color.field {
+  flex: 0 1 10rem;
+  min-width: min(100%, 8rem);
+}
+label.process-color:not(.field) {
   flex: 0 0 auto;
   min-width: 8rem;
 }
@@ -672,21 +795,21 @@ label.process-color {
   flex: 1 1 0;
   min-width: 0;
 }
-label.process-name {
-  flex: 1 1 0;
+label.process-name.field {
+  flex: 1 1 14rem;
   width: auto;
-  min-width: 0;
+  min-width: min(100%, 14rem);
   max-width: none;
 }
-label.process-name input {
+label.process-name.field input {
   width: 100%;
   min-width: 0;
   max-width: none;
 }
 input.process-name {
-  flex: 1 1 0;
+  flex: 1 1 14rem;
   width: auto;
-  min-width: 0;
+  min-width: min(100%, 14rem);
   max-width: none;
 }
 .process-add > button,
@@ -700,7 +823,7 @@ input.process-name {
 }
 .button-pair {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: end;
   gap: 10px;
   flex: 0 0 auto;
@@ -708,7 +831,7 @@ input.process-name {
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
@@ -795,20 +918,17 @@ input.process-name {
   align-items: end;
   gap: 0.6rem 0.75rem;
 }
-.task-name-field { flex: 0 0 18rem; min-width: 15rem; max-width: 20rem; }
-.task-remarks-field { flex: 1 1 14rem; min-width: 10rem; }
-.task-hours-field { flex: 0 0 8rem; }
+.task-name-field { flex: 1 1 16rem; min-width: min(100%, 14rem); max-width: 22rem; }
+.task-remarks-field { flex: 2 1 12rem; min-width: min(100%, 10rem); }
+.task-hours-field { flex: 0 1 8rem; min-width: min(100%, 7rem); }
+.task-row > .remove-task { flex: 0 0 auto; }
 
 /* プロジェクト編集の基本項目（基準幅 16rem に対する比率） */
-.grid.project-meta {
-  grid-template-columns:
-    minmax(0, 10.67rem) /* 番号 2/3 */
-    minmax(12rem, 1fr)  /* 名称は余白を使う */
-    minmax(0, 8rem)     /* 受注金額 1/2 */
-    minmax(0, 8rem)     /* 状態 1/2 */
-    minmax(0, 10.67rem) /* 開始 2/3 */
-    minmax(0, 10.67rem); /* 終了 2/3 */
-}
+.grid.project-meta > .meta-code { flex: 1 1 9rem; max-width: 10.67rem; min-width: min(100%, 8rem); }
+.grid.project-meta > .meta-name { flex: 2 1 14rem; min-width: min(100%, 12rem); max-width: none; }
+.grid.project-meta > .meta-amount { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
+.grid.project-meta > .meta-status { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
+.grid.project-meta > .meta-date { flex: 1 1 9rem; max-width: 10.67rem; min-width: min(100%, 8rem); }
 .project-tasks-heading {
   display: grid;
   gap: 0.2rem;
@@ -816,11 +936,6 @@ input.process-name {
 .project-tasks-heading h2,
 .project-tasks-heading .note {
   margin: 0;
-}
-@media (max-width: 52rem) {
-  .grid.project-meta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* スケジュール表（schedule_manager の表レイアウトに揃える） */
@@ -1156,6 +1271,6 @@ main.page-schedule {
 .schedule-table td.col-current {
   box-shadow: inset 0 0 0 9999px var(--current-col-tint);
 }
-.holiday-add label { min-width: 10rem; }
+.holiday-add > .field { flex: 1 1 10rem; min-width: min(100%, 10rem); }
 .holiday-name-form { margin: 0; }
 .holiday-name-form input { width: min(100%, 16rem); }

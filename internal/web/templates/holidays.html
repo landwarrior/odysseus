@@ -9,8 +9,8 @@
     <h2>祝日・休業日を追加</h2>
     <form method="post" action="/holidays" class="process-add holiday-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label>日付<input type="date" name="date" required></label>
-      <label>名称（任意）<input name="name" placeholder="後から入力できます" autocomplete="off"></label>
+      <label class="field"><input type="date" name="date" required><span class="field-label">日付</span></label>
+      <label class="field"><input name="name" placeholder=" " autocomplete="off"><span class="field-label">名称（任意）</span></label>
       <button type="submit" class="primary">追加</button>
     </form>
   </section>

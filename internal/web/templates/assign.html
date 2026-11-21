@@ -21,20 +21,25 @@
       <div class="assign-item">
         <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <label>人材
+          <label class="field">
             <select name="person_id">
               {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
             </select>
+            <span class="field-label">人材</span>
           </label>
-          <label>役割
+          <label class="field">
             <select name="role_id">
               {{range .Roles}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.RoleID}}selected{{end}}>{{.Label}}</option>{{end}}
             </select>
+            <span class="field-label">役割</span>
           </label>
-          <label>開始<input type="date" name="start_date" value="{{.Assignment.StartDate}}" required></label>
-          <label>終了<input type="date" name="end_date" value="{{.Assignment.EndDate}}" required></label>
-          <label>予定時間<input name="hours" value="{{.Hours}}" required></label>
-          <p class="cost">予定原価 {{yen .Assignment.PlannedCostYen}}</p>
+          <label class="field"><input type="date" name="start_date" value="{{.Assignment.StartDate}}" required><span class="field-label">開始</span></label>
+          <label class="field"><input type="date" name="end_date" value="{{.Assignment.EndDate}}" required><span class="field-label">終了</span></label>
+          <label class="field"><input name="hours" value="{{.Hours}}" placeholder=" " required><span class="field-label">予定時間</span></label>
+          <div class="field field-display">
+            <span class="field-value">{{yen .Assignment.PlannedCostYen}}</span>
+            <span class="field-label">予定原価</span>
+          </div>
         </form>
         <div class="button-pair">
           <button type="submit" form="assign-{{.Assignment.ID}}" class="primary">保存</button>
@@ -55,19 +60,21 @@
       <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
         <input type="hidden" name="csrf" value="{{$.CSRF}}">
         <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
-        <label>人材
+        <label class="field">
           <select name="person_id" required>
             {{range $.People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
           </select>
+          <span class="field-label">人材</span>
         </label>
-        <label>役割
+        <label class="field">
           <select name="role_id" required>
             {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
           </select>
+          <span class="field-label">役割</span>
         </label>
-        <label>開始<input type="date" name="start_date" value="{{.Line.StartDate}}" required></label>
-        <label>終了<input type="date" name="end_date" value="{{.Line.EndDate}}" required></label>
-        <label>予定時間<input name="hours" required></label>
+        <label class="field"><input type="date" name="start_date" value="{{.Line.StartDate}}" required><span class="field-label">開始</span></label>
+        <label class="field"><input type="date" name="end_date" value="{{.Line.EndDate}}" required><span class="field-label">終了</span></label>
+        <label class="field"><input name="hours" placeholder=" " required><span class="field-label">予定時間</span></label>
         <button type="submit" class="primary">追加</button>
       </form>
       {{end}}

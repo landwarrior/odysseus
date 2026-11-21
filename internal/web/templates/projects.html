@@ -171,18 +171,19 @@
   <form method="post" action="{{if .IsNew}}/projects{{else}}/projects/{{.Project.ID}}{{end}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="grid project-meta">
-      <label class="meta-code">プロジェクト番号<input name="code" value="{{.Project.Code}}" required></label>
-      <label class="meta-name">プロジェクト名<input name="name" value="{{.Project.Name}}" required></label>
-      <label class="meta-amount">受注金額<input class="yen-input" name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}"></label>
-      <label class="meta-status">状態
+      <label class="field meta-code"><input name="code" value="{{.Project.Code}}" placeholder=" " required><span class="field-label">プロジェクト番号</span></label>
+      <label class="field meta-name"><input name="name" value="{{.Project.Name}}" placeholder=" " required><span class="field-label">プロジェクト名</span></label>
+      <label class="field meta-amount"><input class="yen-input" name="order_amount" inputmode="numeric" value="{{nump .Project.OrderAmount}}" placeholder=" "><span class="field-label">受注金額</span></label>
+      <label class="field meta-status">
         <select name="status">
           <option value="planning" {{if eq .Project.Status "planning"}}selected{{end}}>計画中</option>
           <option value="active" {{if eq .Project.Status "active"}}selected{{end}}>進行中</option>
           <option value="closed" {{if eq .Project.Status "closed"}}selected{{end}}>完了</option>
         </select>
+        <span class="field-label">状態</span>
       </label>
-      <label class="meta-date">開始日<input type="date" name="start_date" value="{{.Project.StartDate}}"></label>
-      <label class="meta-date">終了日<input type="date" name="end_date" value="{{.Project.EndDate}}"></label>
+      <label class="field meta-date"><input type="date" name="start_date" value="{{.Project.StartDate}}"><span class="field-label">開始日</span></label>
+      <label class="field meta-date"><input type="date" name="end_date" value="{{.Project.EndDate}}"><span class="field-label">終了日</span></label>
     </div>
     <div class="project-tasks-heading">
       <h2>工程とタスク</h2>
@@ -193,25 +194,27 @@
       {{$line := .}}
       <div class="project-line">
         <div class="line-process">
-          <label>工程
+          <label class="field">
             <select name="process_id" class="process-select">
               <option value="">選択</option>
               {{range $.Processes}}
               <option value="{{.ID}}" {{if eq .ID $line.ProcessID}}selected{{end}}>{{.Name}}{{if not .Active}}（無効）{{end}}</option>
               {{end}}
             </select>
+            <span class="field-label">工程</span>
           </label>
         </div>
         <div class="line-dates">
-          <label>開始<input type="date" name="line_start" value="{{$line.Start}}"></label>
-          <label>終了<input type="date" name="line_end" value="{{$line.End}}"></label>
+          <label class="field"><input type="date" name="line_start" value="{{$line.Start}}"><span class="field-label">開始</span></label>
+          <label class="field"><input type="date" name="line_end" value="{{$line.End}}"><span class="field-label">終了</span></label>
         </div>
         <div class="line-amounts">
-          <label class="line-hours-field">合計時間
+          <div class="field field-display line-hours-field">
             <input type="hidden" name="line_hours" class="line-hours-input" value="{{$line.Hours}}">
-            <span class="line-hours-sum">{{if $line.Hours}}{{$line.Hours}}{{else}}0{{end}}</span>
-          </label>
-          <label>予算<input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}"></label>
+            <span class="field-value line-hours-sum">{{if $line.Hours}}{{$line.Hours}}{{else}}0{{end}}</span>
+            <span class="field-label">合計時間</span>
+          </div>
+          <label class="field"><input class="yen-input" name="line_budget" inputmode="numeric" value="{{$line.Budget}}" placeholder=" "><span class="field-label">予算</span></label>
         </div>
         <div class="line-remove">
           <button type="button" class="remove-line secondary">行削除</button>
@@ -223,9 +226,9 @@
             <div class="task-row">
               <input type="hidden" name="task_process_id" class="task-process-id" value="{{$line.ProcessID}}">
               <input type="hidden" name="task_id" value="{{.ID}}">
-              <label class="task-name-field">名前<input name="task_name" value="{{.Name}}" aria-label="タスク名"></label>
-              <label class="task-remarks-field">備考<input name="task_remarks" value="{{.Remarks}}" aria-label="タスク備考"></label>
-              <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" value="{{.Hours}}" aria-label="タスク見積時間"></label>
+              <label class="field task-name-field"><input name="task_name" value="{{.Name}}" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
+              <label class="field task-remarks-field"><input name="task_remarks" value="{{.Remarks}}" placeholder=" " aria-label="タスク備考"><span class="field-label">備考</span></label>
+              <label class="field task-hours-field"><input name="task_hours" inputmode="decimal" value="{{.Hours}}" placeholder=" " aria-label="タスク見積時間"><span class="field-label">見積時間</span></label>
               <button type="button" class="remove-task secondary">削除</button>
             </div>
             {{end}}
@@ -242,25 +245,27 @@
   <template id="line-row">
     <div class="project-line">
       <div class="line-process">
-        <label>工程
+        <label class="field">
           <select name="process_id" class="process-select">
             <option value="">選択</option>
             {{range .Processes}}
             {{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
             {{end}}
           </select>
+          <span class="field-label">工程</span>
         </label>
       </div>
       <div class="line-dates">
-        <label>開始<input type="date" name="line_start"></label>
-        <label>終了<input type="date" name="line_end"></label>
+        <label class="field"><input type="date" name="line_start"><span class="field-label">開始</span></label>
+        <label class="field"><input type="date" name="line_end"><span class="field-label">終了</span></label>
       </div>
       <div class="line-amounts">
-        <label class="line-hours-field">合計時間
+        <div class="field field-display line-hours-field">
           <input type="hidden" name="line_hours" class="line-hours-input" value="0">
-          <span class="line-hours-sum">0</span>
-        </label>
-        <label>予算<input class="yen-input" name="line_budget" inputmode="numeric"></label>
+          <span class="field-value line-hours-sum">0</span>
+          <span class="field-label">合計時間</span>
+        </div>
+        <label class="field"><input class="yen-input" name="line_budget" inputmode="numeric" placeholder=" "><span class="field-label">予算</span></label>
       </div>
       <div class="line-remove">
         <button type="button" class="remove-line secondary">行削除</button>
@@ -271,9 +276,9 @@
           <div class="task-row">
             <input type="hidden" name="task_process_id" class="task-process-id" value="">
             <input type="hidden" name="task_id" value="">
-            <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
-            <label class="task-remarks-field">備考<input name="task_remarks" aria-label="タスク備考"></label>
-            <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
+            <label class="field task-name-field"><input name="task_name" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
+            <label class="field task-remarks-field"><input name="task_remarks" placeholder=" " aria-label="タスク備考"><span class="field-label">備考</span></label>
+            <label class="field task-hours-field"><input name="task_hours" inputmode="decimal" placeholder=" " aria-label="タスク見積時間"><span class="field-label">見積時間</span></label>
             <button type="button" class="remove-task secondary">削除</button>
           </div>
         </div>
@@ -285,9 +290,9 @@
     <div class="task-row">
       <input type="hidden" name="task_process_id" class="task-process-id" value="">
       <input type="hidden" name="task_id" value="">
-      <label class="task-name-field">名前<input name="task_name" aria-label="タスク名"></label>
-      <label class="task-remarks-field">備考<input name="task_remarks" aria-label="タスク備考"></label>
-      <label class="task-hours-field">見積時間<input name="task_hours" inputmode="decimal" aria-label="タスク見積時間"></label>
+      <label class="field task-name-field"><input name="task_name" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
+      <label class="field task-remarks-field"><input name="task_remarks" placeholder=" " aria-label="タスク備考"><span class="field-label">備考</span></label>
+      <label class="field task-hours-field"><input name="task_hours" inputmode="decimal" placeholder=" " aria-label="タスク見積時間"><span class="field-label">見積時間</span></label>
       <button type="button" class="remove-task secondary">削除</button>
     </div>
   </template>
