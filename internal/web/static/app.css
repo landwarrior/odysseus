@@ -612,10 +612,15 @@ main.role-page label.check input {
   flex-wrap: nowrap;
   align-items: end;
   gap: 16px;
+  min-width: 0;
 }
 label.process-color {
   flex: 0 0 auto;
   min-width: 8rem;
+}
+.process-add > .check,
+.process-edit > .check {
+  flex: 0 0 auto;
 }
 .phase-color-cell {
   display: flex;
@@ -651,13 +656,13 @@ label.process-color {
   border: 0;
 }
 .process-edit {
-  flex: 1 1 225px;
-  min-width: max-content;
+  flex: 1 1 0;
+  min-width: 0;
 }
 label.process-name {
-  flex: 1 1 225px;
+  flex: 1 1 0;
   width: auto;
-  min-width: 225px;
+  min-width: 0;
   max-width: none;
 }
 label.process-name input {
@@ -666,9 +671,9 @@ label.process-name input {
   max-width: none;
 }
 input.process-name {
-  flex: 1 1 225px;
+  flex: 1 1 0;
   width: auto;
-  min-width: 225px;
+  min-width: 0;
   max-width: none;
 }
 .process-add > button,
@@ -690,7 +695,7 @@ input.process-name {
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
