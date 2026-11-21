@@ -998,6 +998,10 @@ label.process-name.field input {
   flex-wrap: wrap;
   align-items: end;
   gap: 0.6rem 0.75rem;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
 }
 .task-move {
   display: flex;
