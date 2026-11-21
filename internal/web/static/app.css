@@ -768,6 +768,9 @@ label.process-color.field {
 .process-side > .check,
 .process-item > .check {
   flex: 0 0 auto;
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
 }
 .process-side {
   display: flex;
@@ -910,6 +913,10 @@ label.process-name.field input {
   .process-item > .check,
   .process-item .button-pair {
     grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .process-item .process-name.field {
+    justify-self: stretch;
   }
 }
 
