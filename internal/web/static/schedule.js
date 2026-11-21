@@ -253,48 +253,6 @@
     }
   }
 
-  function updateProcessSummary(processId) {
-    if (!processId) {
-      return;
-    }
-    const taskRows = [...table.querySelectorAll(`tr[data-task-id][data-process-id="${processId}"]`)];
-    let estimate = 0;
-    let allocated = 0;
-    taskRows.forEach((row) => {
-      const taskId = row.getAttribute("data-task-id");
-      const estCell = table.querySelector(`[data-phase-total="${taskId}"]`);
-      const allocCell = table.querySelector(`[data-phase-allocated="${taskId}"]`);
-      estimate += Number(estCell ? estCell.textContent : 0) || 0;
-      allocated += Number(allocCell ? allocCell.textContent : 0) || 0;
-    });
-    const diff = estimate - allocated;
-    const estCell = table.querySelector(`[data-process-total="${processId}"]`);
-    const allocCell = table.querySelector(`[data-process-allocated="${processId}"]`);
-    const diffCell = table.querySelector(`[data-process-diff="${processId}"]`);
-    if (estCell) {
-      estCell.textContent = formatSum(estimate);
-    }
-    if (allocCell) {
-      allocCell.textContent = formatSum(allocated);
-    }
-    if (diffCell) {
-      diffCell.textContent = formatSum(diff);
-      applyDiffClass(diffCell, diff);
-    }
-    const periodTotals = {};
-    table.querySelectorAll(`.effort-input[data-process-id="${processId}"]`).forEach((input) => {
-      const key = `${input.dataset.ym}|${input.dataset.decade}`;
-      const value = Number(input.value || 0);
-      periodTotals[key] = (periodTotals[key] || 0) + (Number.isNaN(value) ? 0 : value);
-    });
-    table.querySelectorAll(`[data-process-cell^="${processId}|"]`).forEach((cell) => {
-      const key = cell.getAttribute("data-process-cell").slice(processId.length + 1);
-      const value = periodTotals[key] || 0;
-      cell.textContent = value > 0 ? formatSum(value) : "";
-      cell.classList.toggle("active", value > 0 || cell.dataset.inRange === "1");
-    });
-  }
-
   function cellIsActive(cell, hasEffort) {
     return Boolean(hasEffort) || cell.dataset.inRange === "1";
   }
@@ -324,7 +282,6 @@
         cell.classList.toggle("active", cellIsActive(cell, input.value));
       }
       applyTaskMeta(data.task_id, data.allocated, data.diff, data.diff_sign);
-      updateProcessSummary(input.dataset.processId || "");
       updatePeriodTotals();
     }).catch((err) => {
       window.alert(err.message || "保存に失敗しました");

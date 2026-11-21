@@ -42,8 +42,8 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      タスク行で旬に工数を割り当てます。工程の集計行に、その工程の見積合計・割当合計・差分と旬ごとの割当合計が出ます。差分のプラスは割当不足です。
-      工程に開始日・終了日がある旬は背景色が付きます。工数を入れた旬も同様です。工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
+      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程に開始日・終了日がある旬は背景色が付きます。工数を入れた旬も同様です。
+      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
       行は工程です。見積・割当・差分は工程内タスクの合計です。開始日・終了日がある旬と、割当がある旬に背景色が付きます。タスク単位の割当は各案件のスケジュールから行います。
       {{end}}
@@ -112,7 +112,7 @@
           {{else}}
           {{range $gi, $group := $block.Groups}}
             {{range $ti, $row := $group.Tasks}}
-            <tr data-task-id="{{$row.RowID}}" data-process-id="{{$group.ProcessID}}">
+            <tr{{if $row.Editable}} data-task-id="{{$row.RowID}}" data-process-id="{{$group.ProcessID}}"{{end}}>
               {{if and (eq $gi 0) (eq $ti 0)}}
               <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
                 <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
@@ -126,11 +126,12 @@
               <td class="sticky-col col-phase" rowspan="{{$group.RowSpan}}">{{$group.Process}}</td>
               {{end}}
               <td class="sticky-col col-task"><span class="task-name"{{if $row.Remarks}} title="{{$row.Remarks}}"{{end}}>{{$row.Name}}</span></td>
-              <td class="sticky-col col-meta1 num" data-phase-total="{{$row.RowID}}">{{$row.Estimate}}</td>
-              <td class="sticky-col col-meta2 num" data-phase-allocated="{{$row.RowID}}">{{$row.Allocated}}</td>
-              <td class="sticky-col col-meta3 num {{$row.DiffClass}}" data-phase-diff="{{$row.RowID}}">{{$row.Diff}}</td>
+              <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
+              <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>{{$row.Allocated}}</td>
+              <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
               {{range $row.Cells}}
               <td class="phase-cell color-{{$row.Color}} {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}"{{if .InRange}} data-in-range="1"{{end}}>
+                {{if $row.Editable}}
                 <label class="effort-field">
                   <input
                     class="effort-input"
@@ -146,32 +147,11 @@
                     data-estimate="{{.Days}}"
                   >
                 </label>
+                {{else}}{{if .Days}}{{.Days}}{{end}}{{end}}
               </td>
               {{end}}
             </tr>
             {{end}}
-            {{$sum := $group.Summary}}
-            <tr class="phase-summary" data-process-id="{{$group.ProcessID}}">
-              {{if and (eq $gi 0) (not $group.Tasks)}}
-              <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
-                <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
-                <p class="project-links">
-                  <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
-                  <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
-                </p>
-              </th>
-              {{end}}
-              {{if not $group.Tasks}}
-              <td class="sticky-col col-phase" rowspan="{{$group.RowSpan}}">{{$group.Process}}</td>
-              {{end}}
-              <td class="sticky-col col-task summary-label">{{$sum.Name}}</td>
-              <td class="sticky-col col-meta1 num" data-process-total="{{$group.ProcessID}}">{{$sum.Estimate}}</td>
-              <td class="sticky-col col-meta2 num" data-process-allocated="{{$group.ProcessID}}">{{$sum.Allocated}}</td>
-              <td class="sticky-col col-meta3 num {{$sum.DiffClass}}" data-process-diff="{{$group.ProcessID}}">{{$sum.Diff}}</td>
-              {{range $sum.Cells}}
-              <td class="phase-cell color-{{$sum.Color}} num {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}" data-process-cell="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}"{{if .InRange}} data-in-range="1"{{end}}>{{if .Days}}{{.Days}}{{end}}</td>
-              {{end}}
-            </tr>
           {{end}}
           {{end}}
           <tr class="project-summary">

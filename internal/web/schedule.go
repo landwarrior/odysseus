@@ -22,7 +22,7 @@ type scheduleCell struct {
 	Current bool
 }
 
-// scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクまたは工程集計です。
+// scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
 type scheduleRow struct {
 	RowID     string
 	ProcessID string
@@ -35,7 +35,6 @@ type scheduleRow struct {
 	Diff      string
 	DiffClass string
 	Editable  bool
-	Summary   bool
 	Cells     []scheduleCell
 }
 
@@ -46,7 +45,6 @@ type scheduleProcessGroup struct {
 	Color     string
 	RowSpan   int
 	Tasks     []scheduleRow
-	Summary   scheduleRow
 }
 
 // scheduleCapCell はプロジェクト単位のキャパまたは割当合計の1マスです。
@@ -364,8 +362,8 @@ func (s *Server) scheduleProcessRows(
 	return rows, len(rows) + 1
 }
 
-// scheduleTaskGroups は工程ごとのタスク行と集計行を作ります（案件スケジュール用）。
-// タスクのない工程（開始・終了だけなど）も1行の集計として出します。
+// scheduleTaskGroups は工程ごとのタスク行を作ります（案件スケジュール用）。
+// タスクのない工程（開始・終了だけなど）は編集不可の1行として出します。
 func (s *Server) scheduleTaskGroups(
 	lines []store.ProcessLine,
 	tasks []store.Task,
@@ -390,14 +388,10 @@ func (s *Server) scheduleTaskGroups(
 	for _, line := range lines {
 		color := schedule.NormalizeColor(line.ProcessColor)
 		lineTasks := tasksByProcess[line.ProcessID]
-		var estTotal, allocTotal int64
-		periodMinutes := map[string]int64{}
 		taskRows := make([]scheduleRow, 0, len(lineTasks))
 		for _, task := range lineTasks {
 			est := task.PlannedMinutes
 			allocated := totals[task.ID]
-			estTotal += est
-			allocTotal += allocated
 			diff := est - allocated
 			diffClass := ""
 			if diff > 0 {
@@ -425,7 +419,6 @@ func (s *Server) scheduleTaskGroups(
 					periodKey := ym + "|" + strconv.Itoa(decade)
 					periodAllocated[periodKey] += minutes
 					projectPeriod[periodKey] += minutes
-					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,
 						InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
@@ -439,57 +432,41 @@ func (s *Server) scheduleTaskGroups(
 			}
 			taskRows = append(taskRows, row)
 		}
-		if len(lineTasks) == 0 {
-			estTotal = line.PlannedMinutes
-		}
-		diffTotal := estTotal - allocTotal
-		diffClass := ""
-		if diffTotal > 0 {
-			diffClass = "warn"
-		} else if diffTotal < 0 {
-			diffClass = "diff-over"
-		}
-		summaryLabel := "合計"
 		if len(taskRows) == 0 {
-			summaryLabel = "—"
-		}
-		summary := scheduleRow{
-			RowID:     line.ProcessID,
-			ProcessID: line.ProcessID,
-			Process:   line.ProcessName,
-			Name:      summaryLabel,
-			Color:     color,
-			Estimate:  calc.FormatPersonDays(estTotal, std),
-			Allocated: calc.FormatPersonDays(allocTotal, std),
-			Diff:      calc.FormatPersonDays(diffTotal, std),
-			DiffClass: diffClass,
-			Summary:   true,
-		}
-		for _, ym := range months {
-			for decade := 1; decade <= 3; decade++ {
-				periodKey := ym + "|" + strconv.Itoa(decade)
-				minutes := periodMinutes[periodKey]
-				cell := scheduleCell{
-					YM: ym, Decade: decade, Minutes: minutes,
-					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
-					Current: ym == currentYM && decade == currentDec,
-				}
-				if minutes > 0 {
-					cell.Days = calc.FormatPersonDays(minutes, std)
-				}
-				summary.Cells = append(summary.Cells, cell)
+			est := line.PlannedMinutes
+			row := scheduleRow{
+				RowID:     line.ID,
+				ProcessID: line.ProcessID,
+				Process:   line.ProcessName,
+				Name:      "—",
+				Color:     color,
+				Estimate:  calc.FormatPersonDays(est, std),
+				Allocated: calc.FormatPersonDays(0, std),
+				Diff:      calc.FormatPersonDays(est, std),
+				Editable:  false,
 			}
+			if est > 0 {
+				row.DiffClass = "warn"
+			}
+			for _, ym := range months {
+				for decade := 1; decade <= 3; decade++ {
+					row.Cells = append(row.Cells, scheduleCell{
+						YM: ym, Decade: decade,
+						InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
+						Current: ym == currentYM && decade == currentDec,
+					})
+				}
+			}
+			taskRows = append(taskRows, row)
 		}
-		span := len(taskRows) + 1
 		groups = append(groups, scheduleProcessGroup{
 			ProcessID: line.ProcessID,
 			Process:   line.ProcessName,
 			Color:     color,
-			RowSpan:   span,
+			RowSpan:   len(taskRows),
 			Tasks:     taskRows,
-			Summary:   summary,
 		})
-		rowCount += span
+		rowCount += len(taskRows)
 	}
 	return groups, rowCount
 }

@@ -1239,13 +1239,6 @@ main.page-schedule {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.schedule-table tr.phase-summary td {
-  font-weight: 600;
-  background: var(--thead-bg);
-}
-.schedule-table tr.phase-summary .sticky-col {
-  background: var(--thead-bg);
-}
 .schedule-table thead .sticky-col { z-index: 4; }
 .schedule-table tfoot .sticky-col {
   z-index: 3;
