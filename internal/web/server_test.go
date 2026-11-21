@@ -118,6 +118,20 @@ func TestForecastFlow(t *testing.T) {
 	if err != nil || len(assignments) != 1 {
 		t.Fatal(err)
 	}
+	memberID := personID(t, st, "m01")
+	adminTimeList := admin.getBody(t, "/time")
+	if !strings.Contains(adminTimeList, "P1") {
+		t.Fatalf("admin time list missing project:\n%s", adminTimeList)
+	}
+	adminTime := admin.getBody(t, "/time/"+project.ID+"?month=2026-04&person="+memberID)
+	if !strings.Contains(adminTime, "入力対象: m01 山田") {
+		t.Fatalf("admin time form missing person:\n%s", adminTime)
+	}
+	admin.submit(t, "/time/"+project.ID+"?month=2026-04&person="+memberID, url.Values{
+		"csrf": {csrfOf(t, adminTime)}, "person_id": {memberID}, "work_date": {"2026-04-01"},
+		"minutes_" + assignments[0].ID: {"4"},
+	})
+
 	timePage := member.getBody(t, "/time/"+project.ID+"?month=2026-04")
 	member.submit(t, "/time/"+project.ID+"?month=2026-04", url.Values{
 		"csrf": {csrfOf(t, timePage)}, "work_date": {"2026-04-02"},
@@ -125,7 +139,7 @@ func TestForecastFlow(t *testing.T) {
 	})
 
 	forecast := admin.getBody(t, "/projects/"+project.ID+"/forecast")
-	for _, want := range []string{"¥1,000,000", "¥400,000", "¥40,000", "¥360,000", "¥600,000"} {
+	for _, want := range []string{"¥1,000,000", "¥400,000", "¥60,000", "¥340,000", "¥600,000"} {
 		if !strings.Contains(forecast, want) {
 			t.Fatalf("forecast missing %s\n%s", want, forecast)
 		}

@@ -305,6 +305,23 @@ func (s *Store) ListAssignedProjects(ctx context.Context, personID string) ([]Pr
 	return scanProjects(rows)
 }
 
+// ListOpenProjectsWithAssignments はアサインがあり、まだ完了していない案件を返します。
+// 管理者が他人の実績を入れるときの一覧に使います。
+func (s *Store) ListOpenProjectsWithAssignments(ctx context.Context) ([]Project, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT p.id, p.code, p.name, p.order_amount, p.start_date, p.end_date, p.status
+		FROM project p
+		JOIN project_process pp ON pp.project_id = p.id
+		JOIN assignment a ON a.project_process_id = pp.id
+		WHERE p.status <> 'closed'
+		ORDER BY p.code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanProjects(rows)
+}
+
 // LoadBundle は projectID の予実計算に必要な明細をまとめて返します。
 func (s *Store) LoadBundle(ctx context.Context, projectID string) (Bundle, error) {
 	project, err := s.GetProject(ctx, projectID)

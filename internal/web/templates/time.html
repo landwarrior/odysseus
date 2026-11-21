@@ -4,7 +4,11 @@
 <main>
   <h1>実績</h1>
   {{template "alerts" .}}
+  {{if .AsAdmin}}
+  <p>アサインがある、完了前のプロジェクトです。開いて人材を選び、本人の代わりに実績を登録できます。</p>
+  {{else}}
   <p>自分がアサインされている、完了前のプロジェクトです。</p>
+  {{end}}
   {{if not .Projects}}<p>入力できるプロジェクトはありません。</p>{{end}}
   <ul>
     {{range .Projects}}
@@ -25,13 +29,29 @@
   </div>
   <p>{{.Project.Code}} {{.Project.Name}}</p>
   {{template "alerts" .}}
+  {{if .CanPickPerson}}
+  <form method="get" action="/time/{{.Project.ID}}" class="inline">
+    <input type="hidden" name="month" value="{{.Month}}">
+    <input type="hidden" name="date" value="{{.Date}}">
+    <label>人材
+      <select name="person" onchange="this.form.submit()">
+        {{range .People}}
+        <option value="{{.ID}}" {{if eq .ID $.PersonID}}selected{{end}}>{{.Code}} {{.Name}}</option>
+        {{end}}
+      </select>
+    </label>
+  </form>
+  {{else if .ShowPerson}}
+  {{range .People}}{{if eq .ID $.PersonID}}<p class="note">入力対象: {{.Code}} {{.Name}}</p>{{end}}{{end}}
+  {{end}}
   <p class="filters">
-    <a href="/time/{{.Project.ID}}?month={{.Prev}}">前月</a>
+    <a href="/time/{{.Project.ID}}?month={{.Prev}}&person={{.PersonID}}">前月</a>
     <strong>{{.Month}}</strong>
-    <a href="/time/{{.Project.ID}}?month={{.Next}}">翌月</a>
+    <a href="/time/{{.Project.ID}}?month={{.Next}}&person={{.PersonID}}">翌月</a>
   </p>
-  <form method="post" action="/time/{{.Project.ID}}?month={{.Month}}" class="stack">
+  <form method="post" action="/time/{{.Project.ID}}?month={{.Month}}&person={{.PersonID}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="person_id" value="{{.PersonID}}">
     <label>日付<input type="date" name="work_date" value="{{.Date}}" required></label>
     <div class="grid">
       {{range .Columns}}
@@ -57,7 +77,7 @@
       <tbody>
         {{range .Saved}}
         <tr>
-          <td><a href="/time/{{$.Project.ID}}?month={{$.Month}}&date={{.Date}}">{{.Date}}</a></td>
+          <td><a href="{{printf "/time/%s?month=%s&date=%s&person=%s" $.Project.ID $.Month .Date $.PersonID}}">{{.Date}}</a></td>
           {{range .Hours}}<td class="num">{{if .}}{{.}} 時間{{end}}</td>{{end}}
         </tr>
         {{end}}
