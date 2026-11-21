@@ -561,9 +561,7 @@ section.danger { border-color: var(--danger-line); }
   width: 9.5rem;
   min-width: 9.5rem;
 }
-.line-hours-field .line-hours-sum { display: none; }
-.line-hours-field.is-sum .line-hours-input { display: none; }
-.line-hours-field.is-sum .line-hours-sum {
+.line-hours-sum {
   display: block;
   box-sizing: border-box;
   min-height: 2.4rem;

@@ -202,7 +202,7 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 	var lines []store.LineWrite
 	for i := range forms {
 		form := &forms[i]
-		emptyLine := form.ProcessID == "" && form.Start == "" && form.End == "" && form.Hours == "" && form.Budget == "" && !hasNamedTask(form.Tasks)
+		emptyLine := form.ProcessID == "" && form.Start == "" && form.End == "" && form.Budget == "" && !hasNamedTask(form.Tasks)
 		if emptyLine {
 			continue
 		}
@@ -225,11 +225,6 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 		le, m := normalizeDate(form.End, false)
 		msg = firstMsg(msg, m)
 		msg = firstMsg(msg, dateOrder(ls, le, process.Name+"の開始日", "終了日"))
-		minutes, m := parseOptionalHours(form.Hours)
-		msg = firstMsg(msg, m)
-		if minutes > 100000*60 {
-			msg = firstMsg(msg, "合計時間が大きすぎます。")
-		}
 		budget, berr := calc.ParseYen(form.Budget)
 		if berr != nil {
 			msg = firstMsg(msg, "予算は 0 以上の整数で入力してください。")
@@ -249,12 +244,12 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 			}
 			taskSum += taskMinutes
 		}
-		if hasNamedTask(form.Tasks) {
-			minutes = taskSum
-			form.Hours = calc.FormatHours(taskSum)
+		if taskSum > 100000*60 {
+			msg = firstMsg(msg, "合計時間が大きすぎます。")
 		}
+		form.Hours = calc.FormatHours(taskSum)
 		lines = append(lines, store.LineWrite{
-			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: minutes, BudgetYen: budget,
+			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: taskSum, BudgetYen: budget,
 		})
 	}
 	if len(forms) == 0 {
