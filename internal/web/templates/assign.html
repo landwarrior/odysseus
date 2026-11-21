@@ -8,10 +8,13 @@
   </div>
   {{template "alerts" .}}
   {{if not .Groups}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
+  {{if .Groups}}
+  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の時間単価がある人だけです。予定原価は、その開始日の単価で計算して保存します。</p>
+  {{end}}
   {{range .Groups}}
   <section class="card">
     <h2>{{.Line.ProcessName}}</h2>
-    <p class="note">工程の予定 {{hours .Line.PlannedMinutes}} 時間。工程の期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}（プロジェクト編集で登録。スケジュール表の帯表示用で、空でもアサインできます）</p>
+    <p class="note">工程の予定 {{hours .Line.PlannedMinutes}} 時間。工程の期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
     <h3>登録済みのアサイン</h3>
     {{if not .Rows}}<p>アサインはありません。</p>{{end}}
     {{if .Rows}}
@@ -56,7 +59,6 @@
       <h3>アサインを追加</h3>
       {{if not $.People}}<p>有効な人材がいません。</p>{{end}}
       {{if $.People}}
-      <p class="note">追加したアサインは、上の登録済み一覧に入ります。ここでの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠になります。選べるのは、開始日時点でその役割の時間単価がある人材です。予定原価は、その開始日の単価で計算して保存します。工程の期間が入っているときは、追加フォームの初期値に使います。</p>
       <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
         <input type="hidden" name="csrf" value="{{$.CSRF}}">
         <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
