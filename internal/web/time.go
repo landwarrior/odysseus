@@ -24,7 +24,18 @@ type timePerson struct {
 	Name string
 }
 
-// timePage は1案件の月次の実績入力です。Cells はフォームの日付に既にある時間です。
+// timeColumn は実績入力の1欄です。タスクがある工程はタスクごと、無い工程はアサイン1欄です。
+type timeColumn struct {
+	Key          string
+	AssignmentID string
+	TaskID       string
+	ProcessName  string
+	Label        string
+	StartDate    string
+	EndDate      string
+}
+
+// timePage は1案件の月次の実績入力です。Cells はフォームの日付に既にある時間です（キーは Columns.Key）。
 // PersonID は入力対象の人材、People は管理者が選べる人材です。
 type timePage struct {
 	base
@@ -37,7 +48,7 @@ type timePage struct {
 	People        []timePerson
 	ShowPerson    bool
 	CanPickPerson bool
-	Columns       []store.Assignment
+	Columns       []timeColumn
 	Cells         map[string]string
 	Saved         []savedDay
 }
@@ -77,8 +88,8 @@ func (s *Server) handleTimeEdit(w http.ResponseWriter, r *http.Request) {
 	s.render(w, http.StatusOK, "time_form", page)
 }
 
-// handleTimeSave はフォームの日付と工程ごとの時間を、対象人材のアサインに保存します。
-// 空欄と 0 は削除、24 時間を超える入力と期間外の入力は拒否します。
+// handleTimeSave はフォームの日付とタスク（または工程）ごとの時間を保存します。
+// 空欄と 0 は削除、1 日の合計が 24 時間を超える入力と期間外の入力は拒否します。
 func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 	page, columns, ok := s.timeContext(w, r)
 	if !ok {
@@ -91,35 +102,39 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var cells []store.DayCell
+	var dayTotal int64
 	for _, column := range columns {
-		raw := r.FormValue("minutes_" + column.ID)
+		raw := r.FormValue("minutes_" + column.Key)
 		var minutes int64
 		if raw != "" {
 			parsed, errText := parseOptionalHours(raw)
 			if errText != "" {
 				page.Date = date
-				page.Warn = column.ProcessName + "の" + errText
+				page.Warn = column.Label + "の" + errText
 				s.render(w, http.StatusBadRequest, "time_form", page)
 				return
 			}
 			minutes = parsed
 		}
-		if minutes > 24*60 {
-			page.Date = date
-			page.Warn = "1 日の入力は 24 時間までです。"
-			s.render(w, http.StatusBadRequest, "time_form", page)
-			return
-		}
 		inRange := date >= column.StartDate && date <= column.EndDate
 		if minutes > 0 && !inRange {
 			page.Date = date
-			page.Warn = column.ProcessName + "は " + column.StartDate + " から " + column.EndDate + " の範囲で入力してください。"
+			page.Warn = column.Label + "は " + column.StartDate + " から " + column.EndDate + " の範囲で入力してください。"
 			s.render(w, http.StatusBadRequest, "time_form", page)
 			return
 		}
+		dayTotal += minutes
 		if minutes > 0 || inRange {
-			cells = append(cells, store.DayCell{AssignmentID: column.ID, WorkDate: date, Minutes: minutes})
+			cells = append(cells, store.DayCell{
+				AssignmentID: column.AssignmentID, TaskID: column.TaskID, WorkDate: date, Minutes: minutes,
+			})
 		}
+	}
+	if dayTotal > 24*60 {
+		page.Date = date
+		page.Warn = "1 日の入力は合計 24 時間までです。"
+		s.render(w, http.StatusBadRequest, "time_form", page)
+		return
 	}
 	if err := s.store.SaveDay(r.Context(), cells); err != nil {
 		s.fail(w, err)
@@ -138,9 +153,9 @@ func (s *Server) prepareTime(w http.ResponseWriter, r *http.Request, errMsg stri
 	return page, true
 }
 
-// timeContext はパスの案件と、入力対象人材のアサイン、指定月の実績を読みます。
+// timeContext はパスの案件と、入力対象人材のアサイン・タスク、指定月の実績を読みます。
 // 管理者は person / person_id で人材を選べます。完了した案件やアサインが無い案件では false です。
-func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, []store.Assignment, bool) {
+func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, []timeColumn, bool) {
 	project, err := s.store.GetProject(r.Context(), r.PathValue("projectID"))
 	if errors.Is(err, store.ErrNotFound) {
 		http.Error(w, "見つかりません。", http.StatusNotFound)
@@ -170,13 +185,18 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		s.redirectWarn(w, r, "/time", "このプロジェクトへのアサインがありません。")
 		return timePage{}, nil, false
 	}
-	columns, err := s.store.ListPersonAssignments(r.Context(), project.ID, personID)
+	assignments, err := s.store.ListPersonAssignments(r.Context(), project.ID, personID)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
 	}
-	if len(columns) == 0 {
+	if len(assignments) == 0 {
 		s.redirectWarn(w, r, "/time", "このプロジェクトへのアサインがありません。")
+		return timePage{}, nil, false
+	}
+	tasks, err := s.store.ListTasksByProject(r.Context(), project.ID)
+	if err != nil {
+		s.fail(w, err)
 		return timePage{}, nil, false
 	}
 	month := time.Now().Format("2006-01")
@@ -185,15 +205,22 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	}
 	start, _ := time.Parse("2006-01", month)
 	next := start.AddDate(0, 1, 0)
-	ids := make([]string, len(columns))
-	for i, column := range columns {
-		ids[i] = column.ID
+	ids := make([]string, len(assignments))
+	for i, a := range assignments {
+		ids[i] = a.ID
 	}
 	entries, err := s.store.ListEntries(r.Context(), ids, start.Format("2006-01-02"), next.Format("2006-01-02"))
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
 	}
+	legacy := map[string]bool{}
+	for _, entry := range entries {
+		if entry.TaskID == "" {
+			legacy[entry.AssignmentID] = true
+		}
+	}
+	columns := buildTimeColumns(assignments, tasks, legacy)
 	date := r.URL.Query().Get("date")
 	if _, msg := normalizeDate(date, true); msg != "" {
 		today := time.Now().Format("2006-01-02")
@@ -206,13 +233,14 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	cells := map[string]string{}
 	byDate := map[string]map[string]int64{}
 	for _, entry := range entries {
+		key := entryKey(entry.AssignmentID, entry.TaskID, entry.TaskID == "" && hasTasksForAssignment(assignments, tasks, entry.AssignmentID))
 		if entry.WorkDate == date {
-			cells[entry.AssignmentID] = calc.FormatHours(entry.Minutes)
+			cells[key] = calc.FormatHours(entry.Minutes)
 		}
 		if byDate[entry.WorkDate] == nil {
 			byDate[entry.WorkDate] = map[string]int64{}
 		}
-		byDate[entry.WorkDate][entry.AssignmentID] = entry.Minutes
+		byDate[entry.WorkDate][key] = entry.Minutes
 	}
 	var dates []string
 	for d := range byDate {
@@ -223,7 +251,7 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	for _, d := range dates {
 		row := savedDay{Date: d, Hours: make([]string, len(columns))}
 		for i, column := range columns {
-			if minutes, ok := byDate[d][column.ID]; ok {
+			if minutes, ok := byDate[d][column.Key]; ok {
 				row.Hours[i] = calc.FormatHours(minutes)
 			}
 		}
@@ -237,6 +265,72 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		Columns: columns, Cells: cells, Saved: saved,
 	}
 	return page, columns, true
+}
+
+// buildTimeColumns はアサインとタスクから入力欄を作ります。
+// タスクがある工程はタスクごと。無い工程はアサイン1欄。タスクがあるのに task_id 無しの実績があるアサインは「未分類」欄を足します。
+func buildTimeColumns(assignments []store.Assignment, tasks []store.Task, legacy map[string]bool) []timeColumn {
+	byLine := map[string][]store.Task{}
+	for _, task := range tasks {
+		byLine[task.ProjectProcessID] = append(byLine[task.ProjectProcessID], task)
+	}
+	var out []timeColumn
+	for _, a := range assignments {
+		lineTasks := byLine[a.ProjectProcessID]
+		if len(lineTasks) == 0 {
+			out = append(out, timeColumn{
+				Key: a.ID, AssignmentID: a.ID, ProcessName: a.ProcessName,
+				Label: a.ProcessName, StartDate: a.StartDate, EndDate: a.EndDate,
+			})
+			continue
+		}
+		for _, task := range lineTasks {
+			out = append(out, timeColumn{
+				Key: a.ID + "_" + task.ID, AssignmentID: a.ID, TaskID: task.ID,
+				ProcessName: a.ProcessName, Label: a.ProcessName + " / " + task.Name,
+				StartDate: a.StartDate, EndDate: a.EndDate,
+			})
+		}
+		if legacy[a.ID] {
+			out = append(out, timeColumn{
+				Key: a.ID + "_legacy", AssignmentID: a.ID,
+				ProcessName: a.ProcessName, Label: a.ProcessName + " / （未分類）",
+				StartDate: a.StartDate, EndDate: a.EndDate,
+			})
+		}
+	}
+	return out
+}
+
+// hasTasksForAssignment は assignmentID の工程にタスクがあるとき真です。
+func hasTasksForAssignment(assignments []store.Assignment, tasks []store.Task, assignmentID string) bool {
+	var lineID string
+	for _, a := range assignments {
+		if a.ID == assignmentID {
+			lineID = a.ProjectProcessID
+			break
+		}
+	}
+	if lineID == "" {
+		return false
+	}
+	for _, task := range tasks {
+		if task.ProjectProcessID == lineID {
+			return true
+		}
+	}
+	return false
+}
+
+// entryKey は実績行をフォーム欄のキーにします。asLegacy が真なら未分類欄です。
+func entryKey(assignmentID, taskID string, asLegacy bool) string {
+	if taskID != "" {
+		return assignmentID + "_" + taskID
+	}
+	if asLegacy {
+		return assignmentID + "_legacy"
+	}
+	return assignmentID
 }
 
 // assigneesOf は assignments に出てくる人材を、コード順の重複なしで返します。

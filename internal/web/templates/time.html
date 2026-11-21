@@ -55,12 +55,12 @@
     <label>日付<input type="date" name="work_date" value="{{.Date}}" required></label>
     <div class="grid">
       {{range .Columns}}
-      <label>{{.ProcessName}}（{{.StartDate}} 〜 {{.EndDate}}）
-        <input name="minutes_{{.ID}}" inputmode="decimal" value="{{index $.Cells .ID}}" placeholder="時間">
+      <label>{{.Label}}（{{.StartDate}} 〜 {{.EndDate}}）
+        <input name="minutes_{{.Key}}" inputmode="decimal" value="{{index $.Cells .Key}}" placeholder="時間">
       </label>
       {{end}}
     </div>
-    <p class="note">空欄または 0 にすると、その日の実績を消します。入力できるのは、各アサインの期間内です。</p>
+    <p class="note">タスクがある工程はタスクごとに入力します。空欄または 0 にすると、その日の実績を消します。入力できるのは、各アサインの期間内です。1 日の合計は 24 時間までです。</p>
     <button type="submit" class="primary">登録</button>
   </form>
   <h2>この月の実績</h2>
@@ -71,7 +71,7 @@
       <thead>
         <tr>
           <th>日付</th>
-          {{range .Columns}}<th>{{.ProcessName}}</th>{{end}}
+          {{range .Columns}}<th>{{.Label}}</th>{{end}}
         </tr>
       </thead>
       <tbody>

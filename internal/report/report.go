@@ -24,11 +24,13 @@ type Report struct {
 	ActualMinutes         int64
 	DerivedBudget         bool
 	Processes             []ProcessRow
+	Tasks                 []TaskRow
 	People                []PersonRow
 }
 
 // ProcessRow は工程1行の予実です。
 // BudgetFromAssignments が真のときは、手入力の予算が空なので予定原価を予算にしています。
+// OverPlan が真のときは、実績工数が工程の予定工数を超えています。
 type ProcessRow struct {
 	Name                  string
 	StartDate             string
@@ -42,6 +44,16 @@ type ProcessRow struct {
 	ActualCostYen         int64
 	UnsetMinutes          int64
 	OverBudget            bool
+	OverPlan              bool
+}
+
+// TaskRow はタスク1行の見積と実績です。OverPlan が真のときは実績が見積を超えています。
+type TaskRow struct {
+	ProcessName    string
+	Name           string
+	PlannedMinutes int64
+	ActualMinutes  int64
+	OverPlan       bool
 }
 
 // PersonRow はアサイン1件の予実です。同じ人が複数工程にいると、行も複数になります。
@@ -129,7 +141,24 @@ func Build(b store.Bundle) Report {
 		}
 		rep.BudgetYen += row.BudgetYen
 		row.OverBudget = row.ActualMinutes > 0 && row.ActualCostYen > row.BudgetYen
+		row.OverPlan = row.ActualMinutes > row.PlannedMinutes
 		rep.Processes = append(rep.Processes, row)
+	}
+	actualByTask := map[string]int64{}
+	for _, e := range b.Entries {
+		if e.TaskID != "" {
+			actualByTask[e.TaskID] += e.Minutes
+		}
+	}
+	for _, task := range b.Tasks {
+		actual := actualByTask[task.ID]
+		rep.Tasks = append(rep.Tasks, TaskRow{
+			ProcessName:    task.ProcessName,
+			Name:           task.Name,
+			PlannedMinutes: task.PlannedMinutes,
+			ActualMinutes:  actual,
+			OverPlan:       actual > task.PlannedMinutes,
+		})
 	}
 	if rep.OrderAmount != nil {
 		g := calc.GrossMargin(*rep.OrderAmount, rep.ActualCostYen, rep.RemainingCostYen)

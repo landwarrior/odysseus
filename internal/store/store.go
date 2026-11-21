@@ -190,16 +190,20 @@ type AssignmentWrite struct {
 }
 
 // TimeEntry はアサインに対する1日の実績です。Minutes は 0 より大きい分です。
+// TaskID が空のときは、タスク未分割（工程＝アサイン単位）の実績です。
 type TimeEntry struct {
 	ID           string
 	AssignmentID string
+	TaskID       string
 	WorkDate     string
 	Minutes      int64
 }
 
 // DayCell は1日の保存指示です。Minutes が 0 以下のときは、その日の実績を削除します。
+// TaskID が空のときは task_id IS NULL の行を対象にします。
 type DayCell struct {
 	AssignmentID string
+	TaskID       string
 	WorkDate     string
 	Minutes      int64
 }
@@ -208,6 +212,7 @@ type DayCell struct {
 type Bundle struct {
 	Project     Project
 	Lines       []ProcessLine
+	Tasks       []Task
 	Assignments []Assignment
 	Entries     []TimeEntry
 	Rates       []Rate

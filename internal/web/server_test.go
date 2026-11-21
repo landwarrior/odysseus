@@ -119,6 +119,16 @@ func TestForecastFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	memberID := personID(t, st, "m01")
+	if err := st.ReplaceTasksByProcess(ctx, project.ID, map[string][]store.TaskWrite{
+		build: {{Name: "画面", PlannedMinutes: 40 * 60}, {Name: "API", PlannedMinutes: 40 * 60}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tasks, err := st.ListTasksByProject(ctx, project.ID)
+	if err != nil || len(tasks) != 2 {
+		t.Fatalf("tasks: %+v %v", tasks, err)
+	}
+
 	adminTimeList := admin.getBody(t, "/time")
 	if !strings.Contains(adminTimeList, "P1") {
 		t.Fatalf("admin time list missing project:\n%s", adminTimeList)
@@ -127,16 +137,23 @@ func TestForecastFlow(t *testing.T) {
 	if !strings.Contains(adminTime, "入力対象: m01 山田") {
 		t.Fatalf("admin time form missing person:\n%s", adminTime)
 	}
+	if !strings.Contains(adminTime, "製造 / 画面") {
+		t.Fatalf("admin time form missing task column:\n%s", adminTime)
+	}
 	admin.submit(t, "/time/"+project.ID+"?month=2026-04&person="+memberID, url.Values{
 		"csrf": {csrfOf(t, adminTime)}, "person_id": {memberID}, "work_date": {"2026-04-01"},
-		"minutes_" + assignments[0].ID: {"4"},
+		"minutes_" + assignments[0].ID + "_" + tasks[0].ID: {"4"},
 	})
 
 	timePage := member.getBody(t, "/time/"+project.ID+"?month=2026-04")
 	member.submit(t, "/time/"+project.ID+"?month=2026-04", url.Values{
 		"csrf": {csrfOf(t, timePage)}, "work_date": {"2026-04-02"},
-		"minutes_" + assignments[0].ID: {"8"},
+		"minutes_" + assignments[0].ID + "_" + tasks[1].ID: {"8"},
 	})
+	forecastPage := admin.getBody(t, "/projects/"+project.ID+"/forecast")
+	if !strings.Contains(forecastPage, "タスク") || !strings.Contains(forecastPage, "画面") {
+		t.Fatalf("forecast missing tasks:\n%s", forecastPage)
+	}
 
 	forecast := admin.getBody(t, "/projects/"+project.ID+"/forecast")
 	for _, want := range []string{"¥1,000,000", "¥400,000", "¥60,000", "¥340,000", "¥600,000"} {

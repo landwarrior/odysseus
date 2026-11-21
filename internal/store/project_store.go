@@ -229,7 +229,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 		return nil, nil
 	}
 	query := `
-		SELECT id, assignment_id, work_date, minutes
+		SELECT id, assignment_id, task_id, work_date, minutes
 		FROM time_entry
 		WHERE assignment_id IN (` + placeholders(len(assignmentIDs)) + `)`
 	args := argsOf(assignmentIDs)
@@ -241,7 +241,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 		query += ` AND work_date < ?`
 		args = append(args, until)
 	}
-	query += ` ORDER BY work_date, assignment_id`
+	query += ` ORDER BY work_date, assignment_id, task_id`
 	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -250,8 +250,12 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 	var out []TimeEntry
 	for rows.Next() {
 		var e TimeEntry
-		if err := rows.Scan(&e.ID, &e.AssignmentID, &e.WorkDate, &e.Minutes); err != nil {
+		var taskID sql.NullString
+		if err := rows.Scan(&e.ID, &e.AssignmentID, &taskID, &e.WorkDate, &e.Minutes); err != nil {
 			return nil, err
+		}
+		if taskID.Valid {
+			e.TaskID = taskID.String
 		}
 		out = append(out, e)
 	}
@@ -259,6 +263,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 }
 
 // SaveDay は cells を1つのトランザクションで保存します。分が 0 以下の要素は削除です。
+// 同じアサイン・作業日でも、タスクが違えば別行です。TaskID が空なら task_id IS NULL を対象にします。
 func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -268,17 +273,17 @@ func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 	stamp := now()
 	for _, cell := range cells {
 		if cell.Minutes <= 0 {
-			if _, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ?`, cell.AssignmentID, cell.WorkDate); err != nil {
+			if err := deleteDayCell(ctx, tx, cell); err != nil {
 				return err
 			}
 			continue
 		}
-		var entryID string
-		err := tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ?`, cell.AssignmentID, cell.WorkDate).Scan(&entryID)
+		entryID, err := findDayCellID(ctx, tx, cell)
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO time_entry (id, assignment_id, work_date, minutes, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?)`, newID(), cell.AssignmentID, cell.WorkDate, cell.Minutes, stamp, stamp)
+				INSERT INTO time_entry (id, assignment_id, task_id, work_date, minutes, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				newID(), cell.AssignmentID, nullIfEmpty(cell.TaskID), cell.WorkDate, cell.Minutes, stamp, stamp)
 		} else if err == nil {
 			_, err = tx.Exec(ctx, `UPDATE time_entry SET minutes = ?, updated_at = ? WHERE id = ?`, cell.Minutes, stamp, entryID)
 		}
@@ -287,6 +292,40 @@ func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// deleteDayCell は cell に対応する実績行を消します。
+func deleteDayCell(ctx context.Context, tx *db.Tx, cell DayCell) error {
+	if cell.TaskID == "" {
+		_, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id IS NULL`,
+			cell.AssignmentID, cell.WorkDate)
+		return err
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id = ?`,
+		cell.AssignmentID, cell.WorkDate, cell.TaskID)
+	return err
+}
+
+// findDayCellID は cell に対応する実績行の ID を返します。無ければ sql.ErrNoRows です。
+func findDayCellID(ctx context.Context, tx *db.Tx, cell DayCell) (string, error) {
+	var entryID string
+	var err error
+	if cell.TaskID == "" {
+		err = tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id IS NULL`,
+			cell.AssignmentID, cell.WorkDate).Scan(&entryID)
+	} else {
+		err = tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id = ?`,
+			cell.AssignmentID, cell.WorkDate, cell.TaskID).Scan(&entryID)
+	}
+	return entryID, err
+}
+
+// nullIfEmpty は value が空なら NULL、そうでなければ value を返します（SQL バインド用）。
+func nullIfEmpty(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 // ListAssignedProjects は personID がアサインされ、まだ完了していない案件を返します。
@@ -367,6 +406,13 @@ func (s *Store) loadBundles(ctx context.Context, projects []Project) ([]Bundle, 
 		out[index[line.ProjectID]].Lines = append(out[index[line.ProjectID]].Lines, line)
 		lineIDs = append(lineIDs, line.ID)
 		lineProject[line.ID] = line.ProjectID
+	}
+	tasks, err := s.ListTasksForProjects(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, task := range tasks {
+		out[index[task.ProjectID]].Tasks = append(out[index[task.ProjectID]].Tasks, task)
 	}
 	assignments, err := s.assignmentsForLines(ctx, lineIDs)
 	if err != nil {

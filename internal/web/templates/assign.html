@@ -108,6 +108,7 @@
     <button type="submit" class="primary">現在の単価で予定原価を再計算</button>
   </form>
   <h2>工程</h2>
+  <p class="note">赤い行は予算超過、または実績工数が工程の予定を超えています。</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -117,7 +118,7 @@
       </thead>
       <tbody>
         {{range .Report.Processes}}
-        <tr {{if .OverBudget}}class="over"{{end}}>
+        <tr {{if or .OverBudget .OverPlan}}class="over"{{end}}>
           <td>{{.Name}}</td>
           <td>{{day .StartDate}} 〜 {{day .EndDate}}</td>
           <td class="num">{{hours .PlannedMinutes}}</td>
@@ -132,6 +133,30 @@
       </tbody>
     </table>
   </div>
+  {{if .Report.Tasks}}
+  <h2>タスク</h2>
+  <p class="note">見積と実績を突き合わせます。赤い行は実績が見積を超えています。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>工程</th><th>タスク</th><th>見積</th><th>実績</th><th>差分（見積 − 実績）</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Report.Tasks}}
+        <tr {{if .OverPlan}}class="over"{{end}}>
+          <td>{{.ProcessName}}</td>
+          <td>{{.Name}}</td>
+          <td class="num">{{hours .PlannedMinutes}}</td>
+          <td class="num">{{hours .ActualMinutes}}</td>
+          <td class="num">{{hours (sub .PlannedMinutes .ActualMinutes)}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
   <h2>人材</h2>
   {{if not .Report.People}}<p>アサインはありません。</p>{{end}}
   {{if .Report.People}}

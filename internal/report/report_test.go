@@ -66,6 +66,42 @@ func TestBuildLeavesUnsetRateOutOfYen(t *testing.T) {
 	}
 }
 
+func TestBuildTaskActualAndOverPlan(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 960}},
+		Tasks: []store.Task{
+			{ID: "t1", ProjectProcessID: "l", ProcessName: "製造", Name: "画面", PlannedMinutes: 480},
+			{ID: "t2", ProjectProcessID: "l", ProcessName: "製造", Name: "API", PlannedMinutes: 480},
+		},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			PlannedMinutes: 960, PlannedCostYen: 80000,
+		}},
+		Entries: []store.TimeEntry{
+			{ID: "e1", AssignmentID: "a", TaskID: "t1", WorkDate: "2026-04-01", Minutes: 600},
+			{ID: "e2", AssignmentID: "a", TaskID: "t2", WorkDate: "2026-04-02", Minutes: 120},
+		},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 5000}},
+	}
+	got := Build(b)
+	if got.ActualMinutes != 720 {
+		t.Fatalf("actual minutes = %d", got.ActualMinutes)
+	}
+	if len(got.Tasks) != 2 {
+		t.Fatalf("tasks = %d", len(got.Tasks))
+	}
+	if !got.Tasks[0].OverPlan || got.Tasks[0].ActualMinutes != 600 {
+		t.Fatalf("task1: %+v", got.Tasks[0])
+	}
+	if got.Tasks[1].OverPlan || got.Tasks[1].ActualMinutes != 120 {
+		t.Fatalf("task2: %+v", got.Tasks[1])
+	}
+	if got.Processes[0].OverPlan {
+		t.Fatalf("process over plan = true, actual=%d planned=%d", got.Processes[0].ActualMinutes, got.Processes[0].PlannedMinutes)
+	}
+}
+
 func TestHourlyAtPicksNewestNotCheapest(t *testing.T) {
 	idx := indexRates([]store.Rate{
 		{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 3000},

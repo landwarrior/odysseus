@@ -79,8 +79,24 @@ func TestSeedRateAndCascade(t *testing.T) {
 	if err != nil || len(assignments) != 1 {
 		t.Fatal(err)
 	}
-	if err := st.SaveDay(ctx, []DayCell{{AssignmentID: assignments[0].ID, WorkDate: "2026-04-02", Minutes: 480}}); err != nil {
+	if err := st.ReplaceTasksByProcess(ctx, projectID, map[string][]TaskWrite{
+		build.ID: {{Name: "画面", PlannedMinutes: 240}, {Name: "API", PlannedMinutes: 240}},
+	}); err != nil {
 		t.Fatal(err)
+	}
+	tasks, err := st.ListTasksByProject(ctx, projectID)
+	if err != nil || len(tasks) != 2 {
+		t.Fatalf("tasks: %+v %v", tasks, err)
+	}
+	if err := st.SaveDay(ctx, []DayCell{
+		{AssignmentID: assignments[0].ID, TaskID: tasks[0].ID, WorkDate: "2026-04-02", Minutes: 120},
+		{AssignmentID: assignments[0].ID, TaskID: tasks[1].ID, WorkDate: "2026-04-02", Minutes: 180},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("entries: %+v %v", entries, err)
 	}
 	if err := st.DeletePerson(ctx, person.ID); err != ErrInUse && !isInUse(err) {
 		t.Fatalf("delete person: %v", err)
@@ -88,7 +104,7 @@ func TestSeedRateAndCascade(t *testing.T) {
 	if err := st.DeleteProject(ctx, projectID); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
+	entries, err = st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
