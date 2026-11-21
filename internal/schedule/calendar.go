@@ -16,7 +16,7 @@ var DecadeLabels = map[int]string{
 }
 
 // PhaseColors は工程マスタで選べる背景色です。
-var PhaseColors = []string{"cyan", "orange", "green", "lavender"}
+var PhaseColors = []string{"cyan", "orange", "green", "lavender", "rose", "yellow"}
 
 // PhaseColorLabels は背景色の表示名です。
 var PhaseColorLabels = map[string]string{
@@ -24,6 +24,8 @@ var PhaseColorLabels = map[string]string{
 	"orange":   "橙色",
 	"green":    "緑色",
 	"lavender": "藤色",
+	"rose":     "桃色",
+	"yellow":   "黄色",
 }
 
 // NormalizeColor は value を許容色に揃えます。不正なら水色です。

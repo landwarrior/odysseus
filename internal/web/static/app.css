@@ -623,6 +623,8 @@ label.process-color {
 .color-sample.color-orange { background: var(--phase-orange-bg); }
 .color-sample.color-green { background: var(--phase-green-bg); }
 .color-sample.color-lavender { background: var(--phase-lavender-bg); }
+.color-sample.color-rose { background: var(--phase-rose-bg); }
+.color-sample.color-yellow { background: var(--phase-yellow-bg); }
 .sr-only {
   position: absolute;
   width: 1px;
@@ -775,6 +777,10 @@ input.process-name {
   --phase-green-text: #166534;
   --phase-lavender-bg: #d8cff5;
   --phase-lavender-text: #4c1d95;
+  --phase-rose-bg: #fce7f3;
+  --phase-rose-text: #9d174d;
+  --phase-yellow-bg: #fef3c7;
+  --phase-yellow-text: #92400e;
   --current-col-bg: #d5ddec;
   --current-col-tint: rgba(37, 99, 235, 0.07);
   --sticky-bg: #e8e8e8;
@@ -793,6 +799,10 @@ html[data-theme="dark"] {
   --phase-green-text: #bbf7d0;
   --phase-lavender-bg: #5c5685;
   --phase-lavender-text: #ede9fe;
+  --phase-rose-bg: #4a2030;
+  --phase-rose-text: #fbcfe8;
+  --phase-yellow-bg: #5b4a16;
+  --phase-yellow-text: #fde68a;
   --current-col-bg: #32373e;
   --current-col-tint: rgba(6, 12, 22, 0.24);
   --sticky-bg: #2e2e2e;
@@ -1021,6 +1031,14 @@ main.page-schedule {
 .phase-cell.color-lavender.active {
   background: var(--phase-lavender-bg);
   color: var(--phase-lavender-text);
+}
+.phase-cell.color-rose.active {
+  background: var(--phase-rose-bg);
+  color: var(--phase-rose-text);
+}
+.phase-cell.color-yellow.active {
+  background: var(--phase-yellow-bg);
+  color: var(--phase-yellow-text);
 }
 .phase-cell.active { font-weight: 700; }
 .effort-input {

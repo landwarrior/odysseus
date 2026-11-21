@@ -31,14 +31,20 @@ func TestBusinessDays(t *testing.T) {
 }
 
 func TestColorForSort(t *testing.T) {
-	if ColorForSort(1) != "cyan" || ColorForSort(5) != "cyan" {
-		t.Fatal(ColorForSort(1), ColorForSort(5))
+	if ColorForSort(1) != "cyan" || ColorForSort(5) != "rose" || ColorForSort(7) != "cyan" {
+		t.Fatal(ColorForSort(1), ColorForSort(5), ColorForSort(7))
 	}
 }
 
 func TestNormalizeColor(t *testing.T) {
 	if NormalizeColor("orange") != "orange" {
 		t.Fatal(NormalizeColor("orange"))
+	}
+	if NormalizeColor("rose") != "rose" {
+		t.Fatal(NormalizeColor("rose"))
+	}
+	if NormalizeColor("yellow") != "yellow" {
+		t.Fatal(NormalizeColor("yellow"))
 	}
 	if NormalizeColor("nope") != "cyan" {
 		t.Fatal(NormalizeColor("nope"))

@@ -79,7 +79,7 @@ type Role struct {
 }
 
 // Process は要件定義や製造などの工程マスタです。案件ごとの期間や工数は別の型です。
-// Color はスケジュール表の背景色（cyan / orange / green / lavender）です。
+// Color はスケジュール表の背景色（cyan / orange / green / lavender / rose / yellow）です。
 type Process struct {
 	ID        string
 	Name      string
