@@ -506,7 +506,7 @@ func (s *Store) ratesForPeople(ctx context.Context, personIDs []string) ([]Rate,
 const projectSelect = `SELECT id, code, name, order_amount, start_date, end_date, status FROM project`
 
 const lineSelect = `
-	SELECT pp.id, pp.project_id, pp.process_id, process.name, pp.start_date, pp.end_date, pp.planned_minutes, pp.budget_yen, process.sort_order
+	SELECT pp.id, pp.project_id, pp.process_id, process.name, process.color, pp.start_date, pp.end_date, pp.planned_minutes, pp.budget_yen, process.sort_order
 	FROM project_process pp
 	JOIN process ON process.id = pp.process_id`
 
@@ -586,7 +586,7 @@ func scanLine(row scanner) (ProcessLine, error) {
 	var line ProcessLine
 	var start, end sql.NullString
 	var budget sql.NullInt64
-	err := row.Scan(&line.ID, &line.ProjectID, &line.ProcessID, &line.ProcessName, &start, &end, &line.PlannedMinutes, &budget, &line.SortOrder)
+	err := row.Scan(&line.ID, &line.ProjectID, &line.ProcessID, &line.ProcessName, &line.ProcessColor, &start, &end, &line.PlannedMinutes, &budget, &line.SortOrder)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProcessLine{}, ErrNotFound
 	}

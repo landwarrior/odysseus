@@ -156,6 +156,46 @@ func DecadeDayRange(year, month, decade int) (int, int, error) {
 	}
 }
 
+// OverlapsDecade は startDate〜endDate（YYYY-MM-DD、どちらか空可）が ym の decade 旬と重なるかです。
+// 両方空なら false です。開始だけならその日以降、終了だけならその日以前とみなします。
+func OverlapsDecade(ym string, decade int, startDate, endDate string) bool {
+	startDate = strings.TrimSpace(startDate)
+	endDate = strings.TrimSpace(endDate)
+	if startDate == "" && endDate == "" {
+		return false
+	}
+	year, month, err := ParseYM(ym)
+	if err != nil {
+		return false
+	}
+	startDay, endDay, err := DecadeDayRange(year, month, decade)
+	if err != nil {
+		return false
+	}
+	decadeStart := time.Date(year, time.Month(month), startDay, 0, 0, 0, 0, time.UTC)
+	decadeEnd := time.Date(year, time.Month(month), endDay, 0, 0, 0, 0, time.UTC)
+	rangeStart := time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+	rangeEnd := time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
+	if startDate != "" {
+		t, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
+		if err != nil {
+			return false
+		}
+		rangeStart = t
+	}
+	if endDate != "" {
+		t, err := time.ParseInLocation("2006-01-02", endDate, time.UTC)
+		if err != nil {
+			return false
+		}
+		rangeEnd = t
+	}
+	if rangeStart.After(rangeEnd) {
+		return false
+	}
+	return !rangeStart.After(decadeEnd) && !rangeEnd.Before(decadeStart)
+}
+
 // BusinessDays は ym の decade 旬にある平日数です。holidays は YYYY-MM-DD の祝日です。
 func BusinessDays(ym string, decade int, holidays []string) (int, error) {
 	year, month, err := ParseYM(ym)

@@ -43,9 +43,9 @@
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
       タスク行で旬に工数を割り当てます。工程の集計行に、その工程の見積合計・割当合計・差分と旬ごとの割当合計が出ます。差分のプラスは割当不足です。
-      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
+      工程に開始日・終了日がある旬は背景色が付きます。工数を入れた旬も同様です。工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
-      行は工程です。見積・割当・差分は工程内タスクの合計です。タスク単位の割当は各案件のスケジュールから行います。
+      行は工程です。見積・割当・差分は工程内タスクの合計です。開始日・終了日がある旬と、割当がある旬に背景色が付きます。タスク単位の割当は各案件のスケジュールから行います。
       {{end}}
       営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。
     </p>
@@ -106,7 +106,7 @@
                 <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
               </p>
             </th>
-            <td class="sticky-col col-phase" colspan="5"><span class="field-help">タスク未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
+            <td class="sticky-col col-phase" colspan="5"><span class="field-help">工程未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
             {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
           </tr>
           {{else}}
@@ -130,7 +130,7 @@
               <td class="sticky-col col-meta2 num" data-phase-allocated="{{$row.RowID}}">{{$row.Allocated}}</td>
               <td class="sticky-col col-meta3 num {{$row.DiffClass}}" data-phase-diff="{{$row.RowID}}">{{$row.Diff}}</td>
               {{range $row.Cells}}
-              <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">
+              <td class="phase-cell color-{{$row.Color}} {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}"{{if .InRange}} data-in-range="1"{{end}}>
                 <label class="effort-field">
                   <input
                     class="effort-input"
@@ -152,12 +152,24 @@
             {{end}}
             {{$sum := $group.Summary}}
             <tr class="phase-summary" data-process-id="{{$group.ProcessID}}">
-              <td class="sticky-col col-task summary-label">合計</td>
+              {{if and (eq $gi 0) (not $group.Tasks)}}
+              <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
+                <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
+                <p class="project-links">
+                  <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
+                  <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
+                </p>
+              </th>
+              {{end}}
+              {{if not $group.Tasks}}
+              <td class="sticky-col col-phase" rowspan="{{$group.RowSpan}}">{{$group.Process}}</td>
+              {{end}}
+              <td class="sticky-col col-task summary-label">{{$sum.Name}}</td>
               <td class="sticky-col col-meta1 num" data-process-total="{{$group.ProcessID}}">{{$sum.Estimate}}</td>
               <td class="sticky-col col-meta2 num" data-process-allocated="{{$group.ProcessID}}">{{$sum.Allocated}}</td>
               <td class="sticky-col col-meta3 num {{$sum.DiffClass}}" data-process-diff="{{$group.ProcessID}}">{{$sum.Diff}}</td>
               {{range $sum.Cells}}
-              <td class="phase-cell color-{{$sum.Color}} num {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}" data-process-cell="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}">{{if .Days}}{{.Days}}{{end}}</td>
+              <td class="phase-cell color-{{$sum.Color}} num {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}" data-process-cell="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}"{{if .InRange}} data-in-range="1"{{end}}>{{if .Days}}{{.Days}}{{end}}</td>
               {{end}}
             </tr>
           {{end}}
@@ -200,7 +212,7 @@
             <td class="sticky-col col-meta2 num">{{$row.Allocated}}</td>
             <td class="sticky-col col-meta3 num {{$row.DiffClass}}">{{$row.Diff}}</td>
             {{range $row.Cells}}
-            <td class="phase-cell color-{{$row.Color}} {{if .Days}}active{{end}}{{if .Current}} col-current{{end}}">{{if .Days}}{{.Days}}{{end}}</td>
+            <td class="phase-cell color-{{$row.Color}} {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}">{{if .Days}}{{.Days}}{{end}}</td>
             {{end}}
           </tr>
           {{end}}
@@ -268,7 +280,7 @@
     </div>
     <div class="project-tasks-heading">
       <h2>工程とタスク</h2>
-      <p class="note">工程の下にタスクを登録すると、その見積時間が一覧の工程行と案件スケジュールの根拠になります。合計時間はタスクの見積時間の合計です。旬への割当は案件のスケジュール画面で行います。タスクの並びは矢印で入れ替えられ、上にあるほどスケジュールでも先に表示されます。</p>
+      <p class="note">工程の下にタスクを登録すると、その見積時間が一覧の工程行と案件スケジュールの根拠になります。合計時間はタスクの見積時間の合計です。旬への割当は案件のスケジュール画面で行います。開始日と終了日だけを入れた工程（他社担当など）は、スケジュール表でその期間に背景色が付きます。タスクの並びは矢印で入れ替えられ、上にあるほどスケジュールでも先に表示されます。</p>
     </div>
     <div id="lines" class="project-lines">
       {{range .Lines}}

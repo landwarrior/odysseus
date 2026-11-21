@@ -36,6 +36,24 @@ func TestColorForSort(t *testing.T) {
 	}
 }
 
+func TestOverlapsDecade(t *testing.T) {
+	if !OverlapsDecade("2026-11", 1, "2026-11-01", "2026-11-05") {
+		t.Fatal("should overlap early November")
+	}
+	if OverlapsDecade("2026-11", 3, "2026-11-01", "2026-11-05") {
+		t.Fatal("should not overlap late November")
+	}
+	if !OverlapsDecade("2026-11", 2, "2026-11-10", "2026-11-15") {
+		t.Fatal("should overlap mid November")
+	}
+	if OverlapsDecade("2026-11", 1, "", "") {
+		t.Fatal("empty range is not active")
+	}
+	if !OverlapsDecade("2026-12", 1, "2026-11-01", "") {
+		t.Fatal("open end should keep overlapping")
+	}
+}
+
 func TestNormalizeColor(t *testing.T) {
 	if NormalizeColor("orange") != "orange" {
 		t.Fatal(NormalizeColor("orange"))

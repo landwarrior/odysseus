@@ -125,6 +125,7 @@ type ProcessLine struct {
 	ProjectID      string
 	ProcessID      string
 	ProcessName    string
+	ProcessColor   string
 	StartDate      string
 	EndDate        string
 	PlannedMinutes int64

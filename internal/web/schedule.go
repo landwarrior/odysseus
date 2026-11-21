@@ -12,12 +12,13 @@ import (
 	"odysseus/internal/store"
 )
 
-// scheduleCell は旬1マスです。
+// scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
 type scheduleCell struct {
 	YM      string
 	Decade  int
 	Minutes int64
 	Days    string
+	InRange bool
 	Current bool
 }
 
@@ -234,7 +235,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
 		} else {
 			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
 		}
@@ -311,7 +312,7 @@ func (s *Server) scheduleProcessRows(
 	for _, line := range lines {
 		lineTasks := tasksByLine[line.ID]
 		var est, allocated int64
-		color := schedule.ColorForSort(line.SortOrder)
+		color := schedule.NormalizeColor(line.ProcessColor)
 		if len(lineTasks) == 0 {
 			est = line.PlannedMinutes
 		} else {
@@ -349,6 +350,7 @@ func (s *Server) scheduleProcessRows(
 				projectPeriod[periodKey] += minutes
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
+					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
 					Current: ym == currentYM && decade == currentDec,
 				}
 				if minutes > 0 {
@@ -363,7 +365,9 @@ func (s *Server) scheduleProcessRows(
 }
 
 // scheduleTaskGroups は工程ごとのタスク行と集計行を作ります（案件スケジュール用）。
+// タスクのない工程（開始・終了だけなど）も1行の集計として出します。
 func (s *Server) scheduleTaskGroups(
+	lines []store.ProcessLine,
 	tasks []store.Task,
 	months []string,
 	currentYM string,
@@ -374,30 +378,18 @@ func (s *Server) scheduleTaskGroups(
 	projectPeriod map[string]int64,
 	periodAllocated map[string]int64,
 ) ([]scheduleProcessGroup, int) {
-	if len(tasks) == 0 {
+	if len(lines) == 0 {
 		return nil, 2
 	}
-	type processKey struct {
-		id    string
-		name  string
-		color string
-	}
-	order := make([]processKey, 0)
 	tasksByProcess := map[string][]store.Task{}
-	seen := map[string]bool{}
 	for _, task := range tasks {
 		tasksByProcess[task.ProcessID] = append(tasksByProcess[task.ProcessID], task)
-		if !seen[task.ProcessID] {
-			seen[task.ProcessID] = true
-			order = append(order, processKey{
-				id: task.ProcessID, name: task.ProcessName, color: schedule.NormalizeColor(task.ProcessColor),
-			})
-		}
 	}
-	groups := make([]scheduleProcessGroup, 0, len(order))
+	groups := make([]scheduleProcessGroup, 0, len(lines))
 	rowCount := 1 // プロジェクト割当合計
-	for _, key := range order {
-		lineTasks := tasksByProcess[key.id]
+	for _, line := range lines {
+		color := schedule.NormalizeColor(line.ProcessColor)
+		lineTasks := tasksByProcess[line.ProcessID]
 		var estTotal, allocTotal int64
 		periodMinutes := map[string]int64{}
 		taskRows := make([]scheduleRow, 0, len(lineTasks))
@@ -415,11 +407,11 @@ func (s *Server) scheduleTaskGroups(
 			}
 			row := scheduleRow{
 				RowID:     task.ID,
-				ProcessID: key.id,
-				Process:   key.name,
+				ProcessID: line.ProcessID,
+				Process:   line.ProcessName,
 				Name:      task.Name,
 				Remarks:   task.Remarks,
-				Color:     key.color,
+				Color:     color,
 				Estimate:  calc.FormatPersonDays(est, std),
 				Allocated: calc.FormatPersonDays(allocated, std),
 				Diff:      calc.FormatPersonDays(diff, std),
@@ -436,6 +428,7 @@ func (s *Server) scheduleTaskGroups(
 					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,
+						InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
 						Current: ym == currentYM && decade == currentDec,
 					}
 					if minutes > 0 {
@@ -446,6 +439,9 @@ func (s *Server) scheduleTaskGroups(
 			}
 			taskRows = append(taskRows, row)
 		}
+		if len(lineTasks) == 0 {
+			estTotal = line.PlannedMinutes
+		}
 		diffTotal := estTotal - allocTotal
 		diffClass := ""
 		if diffTotal > 0 {
@@ -453,12 +449,16 @@ func (s *Server) scheduleTaskGroups(
 		} else if diffTotal < 0 {
 			diffClass = "diff-over"
 		}
+		summaryLabel := "合計"
+		if len(taskRows) == 0 {
+			summaryLabel = "—"
+		}
 		summary := scheduleRow{
-			RowID:     key.id,
-			ProcessID: key.id,
-			Process:   key.name,
-			Name:      "合計",
-			Color:     key.color,
+			RowID:     line.ProcessID,
+			ProcessID: line.ProcessID,
+			Process:   line.ProcessName,
+			Name:      summaryLabel,
+			Color:     color,
 			Estimate:  calc.FormatPersonDays(estTotal, std),
 			Allocated: calc.FormatPersonDays(allocTotal, std),
 			Diff:      calc.FormatPersonDays(diffTotal, std),
@@ -471,6 +471,7 @@ func (s *Server) scheduleTaskGroups(
 				minutes := periodMinutes[periodKey]
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
+					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
 					Current: ym == currentYM && decade == currentDec,
 				}
 				if minutes > 0 {
@@ -479,15 +480,16 @@ func (s *Server) scheduleTaskGroups(
 				summary.Cells = append(summary.Cells, cell)
 			}
 		}
+		span := len(taskRows) + 1
 		groups = append(groups, scheduleProcessGroup{
-			ProcessID: key.id,
-			Process:   key.name,
-			Color:     key.color,
-			RowSpan:   len(taskRows) + 1,
+			ProcessID: line.ProcessID,
+			Process:   line.ProcessName,
+			Color:     color,
+			RowSpan:   span,
 			Tasks:     taskRows,
 			Summary:   summary,
 		})
-		rowCount += len(taskRows) + 1
+		rowCount += span
 	}
 	return groups, rowCount
 }

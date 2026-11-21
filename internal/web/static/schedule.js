@@ -291,8 +291,12 @@
       const key = cell.getAttribute("data-process-cell").slice(processId.length + 1);
       const value = periodTotals[key] || 0;
       cell.textContent = value > 0 ? formatSum(value) : "";
-      cell.classList.toggle("active", value > 0);
+      cell.classList.toggle("active", value > 0 || cell.dataset.inRange === "1");
     });
+  }
+
+  function cellIsActive(cell, hasEffort) {
+    return Boolean(hasEffort) || cell.dataset.inRange === "1";
   }
 
   function saveAllocation(input) {
@@ -317,7 +321,7 @@
       input.dataset.estimate = input.value;
       const cell = input.closest(".phase-cell");
       if (cell) {
-        cell.classList.toggle("active", Boolean(input.value));
+        cell.classList.toggle("active", cellIsActive(cell, input.value));
       }
       applyTaskMeta(data.task_id, data.allocated, data.diff, data.diff_sign);
       updateProcessSummary(input.dataset.processId || "");
@@ -345,7 +349,7 @@
     input.addEventListener("input", () => {
       const cell = input.closest(".phase-cell");
       if (cell) {
-        cell.classList.toggle("active", Boolean(input.value) && Number(input.value) > 0);
+        cell.classList.toggle("active", cellIsActive(cell, input.value && Number(input.value) > 0));
       }
       queueSave(input);
     });
