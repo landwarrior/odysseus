@@ -78,36 +78,44 @@
     <h2>時間単価</h2>
     {{if not .Rates}}<p>単価はまだありません。</p>{{end}}
     {{if .Rates}}
-    <table class="rates">
-      <thead><tr><th>役割</th><th>適用開始日</th><th>円 / 時</th><th></th></tr></thead>
-      <tbody>
-        {{range .Rates}}
-        <tr>
-          <td>{{.RoleName}}</td>
-          <td>{{.FromDate}}</td>
-          <td class="num">{{yen .HourlyYen}}</td>
-          <td>
-            <form method="post" action="/people/{{$.Person.ID}}/rates/{{.ID}}/delete">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button type="submit" class="danger">削除</button>
-            </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+    <div class="rate-list">
+      {{range .Rates}}
+      <div class="rate-row">
+        <div class="field field-display rate-role">
+          <span class="field-value">{{.RoleName}}</span>
+          <span class="field-label">役割</span>
+        </div>
+        <div class="field field-display rate-date">
+          <span class="field-value">{{.FromDate}}</span>
+          <span class="field-label">適用開始日</span>
+        </div>
+        <div class="field field-display rate-yen">
+          <span class="field-value">{{yen .HourlyYen}}</span>
+          <span class="field-label">円 / 時</span>
+        </div>
+        <div class="rate-actions">
+          <form method="post" action="/people/{{$.Person.ID}}/rates/{{.ID}}/delete">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button type="submit" class="danger">削除</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
     {{end}}
-    <form method="post" action="/people/{{.Person.ID}}/rates" class="grid rates-form">
+    <form method="post" action="/people/{{.Person.ID}}/rates" class="rate-row rate-add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <label class="field">
+      <label class="field rate-role">
         <select name="role_id" required>
           {{range .Roles}}{{if .Active}}<option value="{{.ID}}">{{.Name}}</option>{{end}}{{end}}
         </select>
         <span class="field-label">役割</span>
       </label>
-      <label class="field"><input type="date" name="from_date" required><span class="field-label">適用開始日</span></label>
-      <label class="field"><input class="yen-input" name="hourly_yen" inputmode="numeric" placeholder=" " required><span class="field-label">円 / 時</span></label>
-      <button type="submit" class="primary">単価を追加</button>
+      <label class="field rate-date"><input type="date" name="from_date" required><span class="field-label">適用開始日</span></label>
+      <label class="field rate-yen"><input class="yen-input" name="hourly_yen" inputmode="numeric" placeholder=" " required><span class="field-label">円 / 時</span></label>
+      <div class="rate-actions">
+        <button type="submit" class="primary">単価を追加</button>
+      </div>
     </form>
   </section>
   <section class="danger">

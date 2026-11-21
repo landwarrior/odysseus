@@ -572,10 +572,6 @@ label.check input:checked {
   flex: 1 1 12rem;
   min-width: min(100%, 12rem);
 }
-.grid.rates-form > .field {
-  flex: 1 1 10rem;
-  min-width: min(100%, 10rem);
-}
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .title-row h1, .title-row h2 { margin-right: auto; }
 .filters a.current { font-weight: 700; }
@@ -612,10 +608,6 @@ td.person-fullname {
   white-space: nowrap;
 }
 th.mark, td.mark { text-align: center; width: 4.5rem; }
-table.rates {
-  table-layout: fixed;
-  width: 100%;
-}
 .mark-check {
   display: inline-block;
   width: 1.15rem;
@@ -711,6 +703,55 @@ main.person-page {
   padding-left: 24px;
   padding-right: 24px;
   font-size: 16px;
+}
+.rate-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.rate-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.rate-row > .rate-role,
+.rate-row > .rate-date,
+.rate-row > .rate-yen {
+  min-width: 0;
+}
+.rate-row .field.field-display > .field-value,
+.rate-row .field.field-display > .field-label {
+  background: var(--field);
+}
+.rate-row > .rate-actions {
+  display: flex;
+  align-items: end;
+  min-width: 0;
+}
+.rate-row > .rate-actions > form {
+  display: flex;
+  width: 100%;
+}
+.rate-row > .rate-actions button {
+  width: 100%;
+  box-sizing: border-box;
+}
+.rate-row.rate-add {
+  margin-top: 0.75rem;
+}
+@media (max-width: 40rem) {
+  .rate-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rate-row > .rate-actions {
+    grid-column: 1 / -1;
+  }
 }
 main.process-page label.field > .field-label,
 main.role-page label.field > .field-label,
