@@ -268,7 +268,7 @@
     </div>
     <div class="project-tasks-heading">
       <h2>工程とタスク</h2>
-      <p class="note">工程の下にタスクを登録すると、その見積時間が一覧の工程行と案件スケジュールの根拠になります。合計時間はタスクの見積時間の合計です。旬への割当は案件のスケジュール画面で行います。</p>
+      <p class="note">工程の下にタスクを登録すると、その見積時間が一覧の工程行と案件スケジュールの根拠になります。合計時間はタスクの見積時間の合計です。旬への割当は案件のスケジュール画面で行います。タスクの並びは矢印で入れ替えられ、上にあるほどスケジュールでも先に表示されます。</p>
     </div>
     <div id="lines" class="project-lines">
       {{range .Lines}}
@@ -305,6 +305,10 @@
           <div class="task-list">
             {{range $line.Tasks}}
             <div class="task-row">
+              <div class="task-move">
+                <button type="button" class="secondary move-btn move-task-up" aria-label="上へ"><span class="move-icon move-up" aria-hidden="true"></span></button>
+                <button type="button" class="secondary move-btn move-task-down" aria-label="下へ"><span class="move-icon move-down" aria-hidden="true"></span></button>
+              </div>
               <input type="hidden" name="task_process_id" class="task-process-id" value="{{$line.ProcessID}}">
               <input type="hidden" name="task_id" value="{{.ID}}">
               <label class="field task-name-field"><input name="task_name" value="{{.Name}}" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
@@ -355,6 +359,10 @@
         <h3>タスク</h3>
         <div class="task-list">
           <div class="task-row">
+            <div class="task-move">
+              <button type="button" class="secondary move-btn move-task-up" aria-label="上へ" disabled><span class="move-icon move-up" aria-hidden="true"></span></button>
+              <button type="button" class="secondary move-btn move-task-down" aria-label="下へ" disabled><span class="move-icon move-down" aria-hidden="true"></span></button>
+            </div>
             <input type="hidden" name="task_process_id" class="task-process-id" value="">
             <input type="hidden" name="task_id" value="">
             <label class="field task-name-field"><input name="task_name" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
@@ -369,6 +377,10 @@
   </template>
   <template id="task-row">
     <div class="task-row">
+      <div class="task-move">
+        <button type="button" class="secondary move-btn move-task-up" aria-label="上へ"><span class="move-icon move-up" aria-hidden="true"></span></button>
+        <button type="button" class="secondary move-btn move-task-down" aria-label="下へ"><span class="move-icon move-down" aria-hidden="true"></span></button>
+      </div>
       <input type="hidden" name="task_process_id" class="task-process-id" value="">
       <input type="hidden" name="task_id" value="">
       <label class="field task-name-field"><input name="task_name" placeholder=" " aria-label="タスク名"><span class="field-label">名前</span></label>
@@ -385,6 +397,7 @@
         input.value = pid;
       });
       syncTaskSum(line);
+      refreshTaskMoves(line.querySelector(".task-list"));
     }
     function syncTaskSum(line) {
       var hours = line.querySelector(".line-hours-input");
@@ -402,21 +415,35 @@
       hours.value = text;
       sumEl.textContent = text;
     }
+    function refreshTaskMoves(list) {
+      if (!list) return;
+      var rows = list.querySelectorAll(".task-row");
+      rows.forEach(function (row, i) {
+        var up = row.querySelector(".move-task-up");
+        var down = row.querySelector(".move-task-down");
+        if (up) up.disabled = i === 0;
+        if (down) down.disabled = i === rows.length - 1;
+      });
+    }
     document.getElementById("add-line").addEventListener("click", function () {
       var node = document.getElementById("line-row").content.cloneNode(true);
       document.getElementById("lines").appendChild(node);
+      var line = document.getElementById("lines").lastElementChild;
+      refreshTaskMoves(line.querySelector(".task-list"));
     });
     document.getElementById("lines").addEventListener("click", function (event) {
-      if (event.target.classList.contains("remove-line")) {
+      if (event.target.closest(".remove-line")) {
         event.target.closest(".project-line").remove();
+        return;
       }
-      if (event.target.classList.contains("add-task")) {
+      if (event.target.closest(".add-task")) {
         var line = event.target.closest(".project-line");
         var node = document.getElementById("task-row").content.cloneNode(true);
         line.querySelector(".task-list").appendChild(node);
         syncTaskProcessIds(line);
+        return;
       }
-      if (event.target.classList.contains("remove-task")) {
+      if (event.target.closest(".remove-task")) {
         var line = event.target.closest(".project-line");
         var list = line.querySelector(".task-list");
         event.target.closest(".task-row").remove();
@@ -424,8 +451,25 @@
           var node = document.getElementById("task-row").content.cloneNode(true);
           list.appendChild(node);
           syncTaskProcessIds(line);
+        } else {
+          syncTaskSum(line);
+          refreshTaskMoves(list);
         }
-        syncTaskSum(line);
+        return;
+      }
+      var up = event.target.closest(".move-task-up");
+      var down = event.target.closest(".move-task-down");
+      if (up || down) {
+        var row = event.target.closest(".task-row");
+        var list = event.target.closest(".task-list");
+        if (!row || !list) return;
+        if (up && row.previousElementSibling) {
+          list.insertBefore(row, row.previousElementSibling);
+        }
+        if (down && row.nextElementSibling) {
+          list.insertBefore(row.nextElementSibling, row);
+        }
+        refreshTaskMoves(list);
       }
     });
     document.getElementById("lines").addEventListener("change", function (event) {
