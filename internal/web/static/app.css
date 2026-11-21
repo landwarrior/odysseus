@@ -394,9 +394,20 @@ label.field > .phase-color-cell select {
   min-height: 0;
   width: auto;
   flex: 1 1 auto;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+label.field > .phase-color-cell select:focus,
+label.field > .phase-color-cell select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+label.field:has(.phase-color-cell):focus-within > .phase-color-cell {
+  border-color: var(--accent);
 }
 label.field > textarea {
   min-height: 5.5rem;
@@ -749,12 +760,13 @@ main.role-page label.check input {
 }
 label.process-color.field {
   flex: 0 0 auto;
-  width: 10rem;
-  min-width: 8rem;
+  width: 6.67rem;
+  min-width: 6.67rem;
+  max-width: 6.67rem;
 }
 .process-add > .check,
 .process-side > .check,
-.process-item > .process-edit > .check {
+.process-item > .check {
   flex: 0 0 auto;
 }
 .process-side {
@@ -762,7 +774,6 @@ label.process-color.field {
   flex-wrap: nowrap;
   align-items: end;
   gap: 16px;
-  flex: 0 0 auto;
   min-width: max-content;
 }
 .phase-color-cell {
@@ -771,7 +782,7 @@ label.process-color.field {
   gap: 0.5rem;
 }
 .phase-color-cell select {
-  min-width: 6.5rem;
+  min-width: 0;
 }
 .color-sample {
   display: inline-block;
@@ -799,12 +810,15 @@ label.process-color.field {
   border: 0;
 }
 label.process-name.field {
-  flex: 1 1 225px;
   width: auto;
   min-width: 225px;
   max-width: none;
 }
+.process-item .process-name.field {
+  min-width: 0;
+}
 .process-add > label.process-name.field {
+  flex: 1 1 14rem;
   min-width: min(100%, 14rem);
 }
 label.process-name.field input {
@@ -818,6 +832,8 @@ label.process-name.field input {
   width: 126px;
   min-width: 126px;
   max-width: 126px;
+  height: 2.75rem;
+  min-height: 2.75rem;
   flex: 0 0 126px;
   box-sizing: border-box;
 }
@@ -826,13 +842,12 @@ label.process-name.field input {
   flex-wrap: nowrap;
   align-items: end;
   gap: 10px;
-  flex: 0 0 auto;
   min-width: max-content;
 }
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(225px, 1fr) auto auto;
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
@@ -843,8 +858,8 @@ label.process-name.field input {
 .process-index {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 999px;
   background: var(--header-bg);
   color: var(--header-fg);
@@ -854,23 +869,24 @@ label.process-name.field input {
   display: flex;
   flex-wrap: nowrap;
   gap: 6px;
-  align-items: center;
-  flex: 0 0 auto;
+  align-items: end;
   min-width: max-content;
 }
 .move-col .move-btn {
+  box-sizing: border-box;
   width: 2.75rem;
   min-width: 2.75rem;
   max-width: 2.75rem;
-  flex: 0 0 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   display: inline-grid;
   place-items: center;
 }
 .move-icon {
   display: block;
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
   background-color: currentColor;
   -webkit-mask: center / contain no-repeat;
   mask: center / contain no-repeat;
@@ -882,6 +898,19 @@ label.process-name.field input {
 .move-icon.move-down {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 5.5 8 10.5 13 5.5'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 5.5 8 10.5 13 5.5'/%3E%3C/svg%3E");
+}
+
+/* 狭いときは塊ごとに折り返す: 移動 → 名前 → 背景色+有効 → 保存+削除 */
+@media (max-width: 52rem) {
+  .process-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .process-item .process-name.field,
+  .process-item .process-side,
+  .process-item > .check,
+  .process-item .button-pair {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 56rem) {
