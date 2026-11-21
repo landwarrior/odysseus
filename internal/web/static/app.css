@@ -419,12 +419,22 @@ label.field > textarea {
   box-sizing: border-box;
   margin: 0;
   color: var(--ink);
-  background: var(--field);
+  background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 6px;
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
+}
+.field.field-display > .field-label {
+  background: var(--bg);
+}
+input:read-only,
+textarea:read-only {
+  background: var(--bg);
+}
+label.field:has(:read-only) > .field-label {
+  background: var(--bg);
 }
 .label-row {
   display: inline-flex;
