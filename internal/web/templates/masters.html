@@ -160,7 +160,9 @@
         <form id="role-{{.ID}}" method="post" action="/roles/{{.ID}}" class="process-edit">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
           <label class="field process-name"><input name="name" value="{{.Name}}" placeholder=" " required><span class="field-label">名前</span></label>
-          <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+          <div class="process-side">
+            <label class="check"><input type="checkbox" name="active" value="1" {{if .Active}}checked{{end}}>有効</label>
+          </div>
         </form>
         <div class="button-pair">
           <button type="submit" form="role-{{.ID}}" class="primary">保存</button>

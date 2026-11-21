@@ -489,6 +489,9 @@ label.check {
   align-items: center;
   gap: 0.55rem;
   flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
   min-height: 2.75rem;
   padding: 0.45rem 0.85rem;
   border: 1px solid var(--line);
@@ -498,6 +501,7 @@ label.check {
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 label.check:hover {
   background: var(--secondary-hover);
@@ -765,18 +769,17 @@ label.process-color.field {
   max-width: 6.67rem;
 }
 .process-add > .check,
-.process-side > .check,
-.process-item > .check {
+.process-side > .check {
   flex: 0 0 auto;
-  justify-self: start;
-  width: max-content;
-  max-width: 100%;
 }
 .process-side {
   display: flex;
   flex-wrap: nowrap;
   align-items: end;
   gap: 16px;
+  justify-self: start;
+  width: max-content;
+  max-width: max-content;
   min-width: max-content;
 }
 .phase-color-cell {
@@ -850,7 +853,7 @@ label.process-name.field input {
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
   display: grid;
-  grid-template-columns: auto minmax(225px, 1fr) auto auto;
+  grid-template-columns: max-content minmax(225px, 1fr) max-content max-content;
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
@@ -904,19 +907,19 @@ label.process-name.field input {
 }
 
 /* 狭いときは塊ごとに折り返す: 移動 → 名前 → 背景色+有効 → 保存+削除 */
-@media (max-width: 52rem) {
+@media (max-width: 56rem) {
   .process-item {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: max-content minmax(0, 1fr);
   }
-  .process-item .process-name.field,
+  .process-item .process-name.field {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-width: 0;
+  }
   .process-item .process-side,
-  .process-item > .check,
   .process-item .button-pair {
     grid-column: 1 / -1;
     justify-self: start;
-  }
-  .process-item .process-name.field {
-    justify-self: stretch;
   }
 }
 
