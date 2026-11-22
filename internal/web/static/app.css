@@ -1213,6 +1213,11 @@ main.page-schedule {
   border-color: var(--button-border);
 }
 .schedule-toolbar-notes { margin: 0; }
+ul.schedule-toolbar-notes {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
 .field-help {
   color: var(--muted);
   font-size: 0.9375rem;
