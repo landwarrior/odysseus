@@ -465,10 +465,9 @@ type assignPersonGroup struct {
 	Rows       []assignRow
 }
 
-// assignRow は既存アサイン1件と、選択肢です。
+// assignRow は既存アサイン1件と、役割の選択肢です。人材は見出し側なので行には出しません。
 type assignRow struct {
 	Assignment store.Assignment
-	People     []opt
 	Roles      []opt
 }
 
@@ -544,8 +543,7 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		}
 		for _, a := range list {
 			group.Rows = append(group.Rows, assignRow{
-				Assignment: a,
-				People:     personOpts(people, a), Roles: roleOpts(roles, a),
+				Assignment: a, Roles: roleOpts(roles, a),
 			})
 		}
 		page.Groups = append(page.Groups, group)
@@ -825,20 +823,6 @@ func activePersonOpts(people []store.Person) []opt {
 		if p.Active {
 			out = append(out, opt{ID: p.ID, Label: p.Code + " " + p.FullName()})
 		}
-	}
-	return out
-}
-
-// personOpts は有効な人に加え、current の人が無効でも選択肢に残します。
-func personOpts(people []store.Person, current store.Assignment) []opt {
-	out := activePersonOpts(people)
-	for _, item := range out {
-		if item.ID == current.PersonID {
-			return out
-		}
-	}
-	if current.PersonID != "" {
-		out = append(out, opt{ID: current.PersonID, Label: current.PersonCode + " " + current.PersonName + "（無効）"})
 	}
 	return out
 }

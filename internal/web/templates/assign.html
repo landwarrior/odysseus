@@ -41,9 +41,9 @@
       <div class="assign-process-list">
         {{range .Lines}}
         <div class="assign-process-pick">
-          <label class="process-check">
+          <label class="check process-check">
             <input type="checkbox" name="project_process_id" value="{{.ID}}">
-            <span>{{.Name}}</span>
+            <span class="process-name">{{.Name}}</span>
           </label>
           <span class="process-meta">見積 {{.Hours}} 時間 · {{day .Start}} 〜 {{day .End}}</span>
           <label class="field">
@@ -69,18 +69,13 @@
       {{range .Rows}}
       {{$row := .}}
       <div class="assign-item">
-        <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
+        <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="assign-row">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <input type="hidden" name="person_id" value="{{.Assignment.PersonID}}">
           <div class="field field-display">
             <span class="field-value">{{.Assignment.ProcessName}}</span>
             <span class="field-label">工程</span>
           </div>
-          <label class="field">
-            <select name="person_id">
-              {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
-            </select>
-            <span class="field-label">人材</span>
-          </label>
           <label class="field">
             <select name="role_id">
               {{range .Roles}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.RoleID}}selected{{end}}>{{.Label}}</option>{{end}}
