@@ -1508,13 +1508,16 @@ main.page-schedule {
 }
 .schedule-table.actual-mode td.phase-cell:has(.effort-field) {
   padding-top: 0.7rem;
+  /* 横スクロール時にラベルが sticky 列の上に乗らないよう、セル全体を固定列より下に置く */
+  position: relative;
+  z-index: 0;
 }
 .schedule-table.actual-mode .effort-float-label:not(:empty) {
   display: block;
   position: absolute;
   top: 0;
   left: 0.28rem;
-  z-index: 2;
+  z-index: 1;
   transform: translateY(-50%);
   padding: 0 0.18rem;
   background: var(--surface, var(--sticky-bg));
