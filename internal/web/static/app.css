@@ -1146,6 +1146,11 @@ label.process-name.field input {
 .project-tasks-heading .note {
   margin: 0;
 }
+.project-tasks-heading ul.note {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
 
 /* スケジュール表（schedule_manager の表レイアウトに揃える） */
 :root {
