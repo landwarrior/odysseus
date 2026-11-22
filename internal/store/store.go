@@ -202,7 +202,8 @@ func RateKindLabel(rateKind string) string {
 	return "請負"
 }
 
-// Assignment は工程に人を割り当てた1件です。PlannedCostYen は保存時点の予定原価で、単価変更では自動更新しません。
+// Assignment は工程に人を割り当てた1件です。
+// PlannedCostYen は請負向けの保存予定原価です（単価変更では自動更新しません）。準委任は 0 で、予実側の受注金額比按分が正です。
 // RateKind は hourly（請負）または monthly（準委任）です。
 type Assignment struct {
 	ID               string

@@ -157,9 +157,9 @@ func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 		Project: store.Project{ID: "p", OrderAmount: &order, Status: "active"},
 		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 4800}},
 		Assignments: []store.Assignment{{
-			ID: "a", ProjectProcessID: "l", PersonID: "h", PersonName: "山田",
+			ID: "a", ProjectProcessID: "l", ProjectID: "p", PersonID: "h", PersonName: "山田",
 			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-06-30",
-			RateKind: store.RateKindMonthly, PlannedCostYen: 300000,
+			RateKind: store.RateKindMonthly, PlannedCostYen: 0,
 		}},
 		Entries: []store.TimeEntry{{
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-10", Minutes: 480,
@@ -181,6 +181,69 @@ func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 	}
 	if got.UnsetMinutes != 0 || !got.ActualKnown {
 		t.Fatalf("known: %+v", got)
+	}
+	if got.Processes[0].PlannedCostYen != 0 || got.Processes[0].ActualCostYen != 0 {
+		t.Fatalf("monthly cost must not sit on process: %+v", got.Processes[0])
+	}
+	if len(got.People) != 1 || got.People[0].PlannedCostYen != 300000 {
+		t.Fatalf("people row: %+v", got.People)
+	}
+}
+
+func TestBuildMonthlyNotDoublePerProcess(t *testing.T) {
+	order := int64(1000000)
+	b := store.Bundle{
+		Project: store.Project{ID: "p", OrderAmount: &order, Status: "active"},
+		Lines: []store.ProcessLine{
+			{ID: "l1", ProcessName: "設計", PlannedMinutes: 480},
+			{ID: "l2", ProcessName: "製造", PlannedMinutes: 480},
+		},
+		Assignments: []store.Assignment{
+			{ID: "a1", ProjectProcessID: "l1", ProjectID: "p", PersonID: "h", PersonCode: "m01", PersonName: "山田",
+				RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly},
+			{ID: "a2", ProjectProcessID: "l2", ProjectID: "p", PersonID: "h", PersonCode: "m01", PersonName: "山田",
+				RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly},
+		},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(100000)}},
+	}
+	got := Build(b, time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
+	if got.ActualCostYen != 100000 || got.PlannedCostYen != 100000 {
+		t.Fatalf("costs = planned %d actual %d", got.PlannedCostYen, got.ActualCostYen)
+	}
+	if len(got.People) != 1 {
+		t.Fatalf("people rows = %d", len(got.People))
+	}
+}
+
+func TestBuildMonthlyAllocatesByOrderAmount(t *testing.T) {
+	o1, o2 := int64(2000000), int64(1000000)
+	p1 := store.Bundle{
+		Project: store.Project{ID: "p1", OrderAmount: &o1, Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l1", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a1", ProjectProcessID: "l1", ProjectID: "p1", PersonID: "h",
+			RoleID: "pg", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly,
+		}},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(300000)}},
+	}
+	p2 := store.Bundle{
+		Project: store.Project{ID: "p2", OrderAmount: &o2, Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l2", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a2", ProjectProcessID: "l2", ProjectID: "p2", PersonID: "h",
+			RoleID: "pg", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly,
+		}},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(300000)}},
+	}
+	peers := []store.Bundle{p1, p2}
+	asOf := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
+	r1 := BuildWithContext(p1, peers, asOf)
+	r2 := BuildWithContext(p2, peers, asOf)
+	if r1.ActualCostYen != 200000 || r2.ActualCostYen != 100000 {
+		t.Fatalf("split r1=%d r2=%d", r1.ActualCostYen, r2.ActualCostYen)
+	}
+	if r1.ActualCostYen+r2.ActualCostYen != 300000 {
+		t.Fatalf("sum = %d", r1.ActualCostYen+r2.ActualCostYen)
 	}
 }
 

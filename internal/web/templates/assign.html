@@ -8,7 +8,7 @@
   {{template "project_actions" .}}
   {{if not .Lines}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
   {{if .Lines}}
-  <p class="note">人材を選び、担当する工程・役割・期間を付けます。同じ人に複数工程を一度に割り当てられます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。期間の初期値は案件の開始・終了です。開始日時点で選んだ役割の単価（時間または月間）がある人だけ登録できます。単価の種類はアサインごとに選びます（請負＝円/時、準委任＝円/月）。準委任の予定・実績原価は暦月数 × 月間単価（実績は今日までの月）、請負の実績原価は時間単価 × 実績工数です。</p>
+  <p class="note">人材を選び、担当する工程・役割・期間を付けます。同じ人に複数工程を一度に割り当てられます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。期間の初期値は案件の開始・終了です。開始日時点で選んだ役割の単価（時間または月間）がある人だけ登録できます。単価の種類はアサインごとに選びます（請負＝円/時、準委任＝円/月）。準委任の原価は人×月で1回だけ計上し、受注金額のある案件へ受注金額比で按分します（工程には分けません。予実画面で確認）。請負の実績原価は時間単価 × 実績工数です。</p>
 
   <section class="card">
     <h2>アサインを追加</h2>
@@ -91,7 +91,11 @@
           <label class="field"><input type="date" name="start_date" value="{{.Assignment.StartDate}}" required><span class="field-label">開始</span></label>
           <label class="field"><input type="date" name="end_date" value="{{.Assignment.EndDate}}" required><span class="field-label">終了</span></label>
           <div class="field field-display">
+            {{if eq .Assignment.RateKind "monthly"}}
+            <span class="field-value">予実で按分</span>
+            {{else}}
             <span class="field-value num">{{yen .Assignment.PlannedCostYen}}</span>
+            {{end}}
             <span class="field-label">予定原価</span>
           </div>
         </form>
@@ -124,8 +128,9 @@
   <p class="banner">単価未設定の実績が {{hours .Report.UnsetMinutes}} 時間あります。この分は実績原価に含めていません。粗利見込みも確定していません。</p>
   {{end}}
   {{if .Report.DerivedBudget}}
-  <p class="note">予算を空にした工程は、アサインの予定原価を予算として表示しています。</p>
+  <p class="note">予算を空にした工程は、請負アサインの予定原価を予算として表示しています。準委任の原価は工程ではなく案件合計に載せます。</p>
   {{end}}
+  <p class="note">準委任の予定・実績原価は人×月の月額を、受注金額がある参画案件へ受注金額比で按分した額です。工程表には含めません。</p>
   <div class="summary">
     <div><span>受注金額</span><strong>{{yenp .Report.OrderAmount}}</strong></div>
     <div><span>予算合計</span><strong>{{yen .Report.BudgetYen}}</strong></div>

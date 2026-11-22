@@ -49,6 +49,67 @@ func TestMonthlyAndAssignmentCost(t *testing.T) {
 	}
 }
 
+func TestAllocateByWeights(t *testing.T) {
+	got := AllocateByWeights(100000, map[string]int64{"a": 2, "b": 1})
+	if got["a"] != 66667 || got["b"] != 33333 {
+		t.Fatalf("2:1 split = %+v", got)
+	}
+	if got["a"]+got["b"] != 100000 {
+		t.Fatalf("sum = %d", got["a"]+got["b"])
+	}
+	got = AllocateByWeights(100, map[string]int64{"x": 1, "y": 1, "z": 1})
+	if got["x"]+got["y"]+got["z"] != 100 {
+		t.Fatalf("equal sum = %+v", got)
+	}
+	if len(AllocateByWeights(0, map[string]int64{"a": 1})) != 0 {
+		t.Fatal("zero total")
+	}
+}
+
+func yenPtr(v int64) *int64 { return &v }
+
+func TestMonthlyPersonCostsSingleAndSplit(t *testing.T) {
+	orders := map[string]*int64{
+		"p1": yenPtr(2000000),
+		"p2": yenPtr(1000000),
+	}
+	stakes := []MonthlyStake{
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+		{PersonID: "h", ProjectID: "p2", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+	}
+	got, missing := MonthlyPersonCosts(stakes, orders, "2026-04-15")
+	if missing {
+		t.Fatal("rate missing")
+	}
+	p1 := got[PersonProjectKey("h", "p1")]
+	p2 := got[PersonProjectKey("h", "p2")]
+	if p1.PlannedYen != 200000 || p1.ActualYen != 200000 {
+		t.Fatalf("p1 = %+v", p1)
+	}
+	if p2.PlannedYen != 100000 || p2.ActualYen != 100000 {
+		t.Fatalf("p2 = %+v", p2)
+	}
+	if p1.PlannedYen+p2.PlannedYen != 300000 {
+		t.Fatalf("total %d", p1.PlannedYen+p2.PlannedYen)
+	}
+}
+
+func TestMonthlyPersonCostsSkipsNilOrder(t *testing.T) {
+	order := int64(1000000)
+	stakes := []MonthlyStake{
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 100000, HasRate: true},
+		{PersonID: "h", ProjectID: "p2", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 100000, HasRate: true},
+	}
+	got, _ := MonthlyPersonCosts(stakes, map[string]*int64{"p1": &order, "p2": nil}, "2026-04-30")
+	if got[PersonProjectKey("h", "p1")].PlannedYen != 100000 {
+		t.Fatalf("p1 should take all: %+v", got)
+	}
+	if _, ok := got[PersonProjectKey("h", "p2")]; ok {
+		t.Fatalf("p2 should get nothing: %+v", got)
+	}
+}
+
 func TestRemainingAndGross(t *testing.T) {
 	if got := RemainingCost(400000, 40000); got != 360000 {
 		t.Fatalf("remaining = %d", got)

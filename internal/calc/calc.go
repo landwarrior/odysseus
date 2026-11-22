@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -55,14 +56,13 @@ func MonthlyCost(startDate, endDate string, monthlyYen int64) int64 {
 	return int64(months) * monthlyYen
 }
 
-// AssignmentPlannedCost はアサインの予定原価です。月間単価 × 期間の暦月数です（準委任）。
-// 月間単価が無いときは 0 です（請負の予定原価は工程予算側で見ます）。
+// AssignmentPlannedCost は互換用です。準委任の予定原価は案件横断の按分（MonthlyPersonCosts）で求め、アサインには 0 を保存します。
 func AssignmentPlannedCost(startDate, endDate string, monthlyYen int64) int64 {
 	return MonthlyCost(startDate, endDate, monthlyYen)
 }
 
-// AccruedMonthlyCost は startDate〜endDate のうち、asOfDate までに掛かる暦月分の月間原価です（準委任の実績原価）。
-// asOfDate が開始より前なら 0、終了より後なら期間全体と同じです。
+// AccruedMonthlyCost は startDate〜endDate のうち、asOfDate までに掛かる暦月分の月間原価です。
+// 按分前の月額合計用。asOfDate が開始より前なら 0、終了より後なら期間全体と同じです。
 func AccruedMonthlyCost(startDate, endDate, asOfDate string, monthlyYen int64) int64 {
 	if monthlyYen < 0 {
 		return 0
@@ -87,6 +87,187 @@ func AccruedMonthlyCost(startDate, endDate, asOfDate string, monthlyYen int64) i
 		through = asOf
 	}
 	return MonthlyCost(startDate, through.Format("2006-01-02"), monthlyYen)
+}
+
+// MonthlyStake は準委任アサイン1件分の按分入力です。
+// HasRate が偽のときはそのアサインの月間単価が無く、該当月の実績原価は未確定になります。
+type MonthlyStake struct {
+	PersonID   string
+	ProjectID  string
+	StartDate  string
+	EndDate    string
+	MonthlyYen int64
+	HasRate    bool
+}
+
+// PersonProjectCost は準委任按分後の、人材×案件の予定・実績原価です。
+type PersonProjectCost struct {
+	PlannedYen int64
+	ActualYen  int64
+}
+
+// AllocateByWeights は totalYen を weights（キー→重み）の比で分けます。
+// 重みが 0 以下のキーは無視します。端数は最大剰余法で、合計が totalYen と一致します。
+// totalYen が 0 以下、または有効な重みが無ければ空の map です。
+func AllocateByWeights(totalYen int64, weights map[string]int64) map[string]int64 {
+	out := map[string]int64{}
+	if totalYen <= 0 {
+		return out
+	}
+	type part struct {
+		id       string
+		weight   int64
+		base     int64
+		fraction int64
+	}
+	var parts []part
+	var sumWeight int64
+	for id, w := range weights {
+		if w <= 0 {
+			continue
+		}
+		parts = append(parts, part{id: id, weight: w})
+		sumWeight += w
+	}
+	if sumWeight <= 0 || len(parts) == 0 {
+		return out
+	}
+	var assigned int64
+	for i := range parts {
+		num := totalYen * parts[i].weight
+		parts[i].base = num / sumWeight
+		parts[i].fraction = num % sumWeight
+		assigned += parts[i].base
+	}
+	remain := totalYen - assigned
+	sort.SliceStable(parts, func(i, j int) bool {
+		if parts[i].fraction != parts[j].fraction {
+			return parts[i].fraction > parts[j].fraction
+		}
+		return parts[i].id < parts[j].id
+	})
+	for i := int64(0); i < remain && int(i) < len(parts); i++ {
+		parts[i].base++
+	}
+	for _, p := range parts {
+		out[p.id] = p.base
+	}
+	return out
+}
+
+// CalendarMonths は startDate〜endDate（YYYY-MM-DD）に掛かる暦月を YYYY-MM で返します。
+// 日付が不正、または終了が開始より前なら nil です。
+func CalendarMonths(startDate, endDate string) []string {
+	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
+	if err != nil {
+		return nil
+	}
+	end, err := time.ParseInLocation("2006-01-02", endDate, time.UTC)
+	if err != nil || end.Before(start) {
+		return nil
+	}
+	cur := time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
+	last := time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
+	var out []string
+	for !cur.After(last) {
+		out = append(out, cur.Format("2006-01"))
+		cur = cur.AddDate(0, 1, 0)
+	}
+	return out
+}
+
+// monthOverlaps は startDate〜endDate が ym（YYYY-MM）と重なるとき true です。
+func monthOverlaps(startDate, endDate, ym string) bool {
+	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
+	if err != nil {
+		return false
+	}
+	end, err := time.ParseInLocation("2006-01-02", endDate, time.UTC)
+	if err != nil || end.Before(start) {
+		return false
+	}
+	monthStart, err := time.ParseInLocation("2006-01", ym, time.UTC)
+	if err != nil {
+		return false
+	}
+	monthEnd := monthStart.AddDate(0, 1, -1)
+	return !end.Before(monthStart) && !start.After(monthEnd)
+}
+
+// MonthlyPersonCosts は準委任の予定・実績原価を、人×月で1回だけ計上し受注金額比で案件へ按分します。
+// orders は案件 ID → 受注金額（nil は母数から外し、その案件への按分は 0）。
+// asOfDate は実績の計上上限日（YYYY-MM-DD）。
+// rateMissing が真のときは、どれかの月で月間単価が取れず実績原価は未確定です。
+func MonthlyPersonCosts(stakes []MonthlyStake, orders map[string]*int64, asOfDate string) (byPersonProject map[string]PersonProjectCost, rateMissing bool) {
+	byPersonProject = map[string]PersonProjectCost{}
+	if len(stakes) == 0 {
+		return byPersonProject, false
+	}
+	people := map[string]struct{}{}
+	var rangeStart, rangeEnd string
+	for _, s := range stakes {
+		people[s.PersonID] = struct{}{}
+		if rangeStart == "" || (s.StartDate != "" && s.StartDate < rangeStart) {
+			rangeStart = s.StartDate
+		}
+		if rangeEnd == "" || (s.EndDate != "" && s.EndDate > rangeEnd) {
+			rangeEnd = s.EndDate
+		}
+	}
+	months := CalendarMonths(rangeStart, rangeEnd)
+	asOfMonths := map[string]bool{}
+	if asOfDate != "" {
+		if _, err := time.ParseInLocation("2006-01-02", asOfDate, time.UTC); err == nil {
+			for _, ym := range CalendarMonths(rangeStart, asOfDate) {
+				asOfMonths[ym] = true
+			}
+		}
+	}
+	for personID := range people {
+		for _, ym := range months {
+			var monthlyYen int64
+			var sawStake, sawRate bool
+			weights := map[string]int64{}
+			for _, s := range stakes {
+				if s.PersonID != personID || !monthOverlaps(s.StartDate, s.EndDate, ym) {
+					continue
+				}
+				sawStake = true
+				if s.HasRate {
+					sawRate = true
+					if s.MonthlyYen > monthlyYen {
+						monthlyYen = s.MonthlyYen
+					}
+				}
+				if amt, ok := orders[s.ProjectID]; ok && amt != nil && *amt > 0 {
+					weights[s.ProjectID] = *amt
+				}
+			}
+			if !sawStake {
+				continue
+			}
+			if !sawRate {
+				rateMissing = true
+				continue
+			}
+			shares := AllocateByWeights(monthlyYen, weights)
+			for projectID, yen := range shares {
+				key := personID + "\x00" + projectID
+				cur := byPersonProject[key]
+				cur.PlannedYen += yen
+				if asOfMonths[ym] {
+					cur.ActualYen += yen
+				}
+				byPersonProject[key] = cur
+			}
+		}
+	}
+	return byPersonProject, rateMissing
+}
+
+// PersonProjectKey は MonthlyPersonCosts の map キーです。
+func PersonProjectKey(personID, projectID string) string {
+	return personID + "\x00" + projectID
 }
 
 // RemainingCost は planned（予定原価）から actual（実績原価）を引いた残りです。

@@ -98,8 +98,8 @@ func TestForecastFlow(t *testing.T) {
 		"person_id": {personID(t, st, "m01")}, "role_" + lines[0].ID: {pg},
 		"rate_kind": {"monthly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
 	})
-	if !strings.Contains(body, "¥400,000") {
-		t.Fatalf("assignment cost missing:\n%s", body)
+	if !strings.Contains(body, "予実で按分") {
+		t.Fatalf("monthly assignment should defer planned cost to forecast:\n%s", body)
 	}
 
 	member := newClient(t, ts.URL)
@@ -157,7 +157,7 @@ func TestForecastFlow(t *testing.T) {
 
 	forecast := admin.getBody(t, "/projects/"+project.ID+"/forecast")
 	// 月間単価があるので実績原価は暦月分（4月1ヶ月 = ¥400,000）。時間実績は金額に使わない。
-	for _, want := range []string{"¥1,000,000", "¥400,000", "残予定原価", "¥0", "粗利見込み", "¥600,000"} {
+	for _, want := range []string{"¥1,000,000", "残予定原価", "粗利見込み", "¥600,000"} {
 		if !strings.Contains(forecast, want) {
 			t.Fatalf("forecast missing %s\n%s", want, forecast)
 		}

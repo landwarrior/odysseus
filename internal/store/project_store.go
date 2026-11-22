@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"odysseus/internal/calc"
 	"odysseus/internal/db"
 	"odysseus/internal/id"
 )
@@ -255,12 +254,13 @@ func RatePositive(kind string, rate Rate, hasRate bool) bool {
 }
 
 // plannedCostForKind は start〜end の予定原価です。kind に合う単価が rate に無いときは false です。
+// 準委任は案件横断の受注金額比按分で求めるため、アサインには 0 を保存します。
 func plannedCostForKind(start, end, kind string, rate Rate, hasRate bool) (int64, bool) {
 	if !RateKindOK(kind, rate, hasRate) {
 		return 0, false
 	}
 	if kind == RateKindMonthly {
-		return calc.AssignmentPlannedCost(start, end, *rate.MonthlyYen), true
+		return 0, true
 	}
 	return 0, true
 }
@@ -461,6 +461,96 @@ func (s *Store) LoadBundlesByStatus(ctx context.Context, status string) ([]Bundl
 		return nil, err
 	}
 	return s.loadBundles(ctx, projects)
+}
+
+// LoadBundlesByIDs は projectIDs の予実用 Bundle を、渡した ID の順で返します。
+// 存在しない ID は飛ばします。
+func (s *Store) LoadBundlesByIDs(ctx context.Context, projectIDs []string) ([]Bundle, error) {
+	if len(projectIDs) == 0 {
+		return nil, nil
+	}
+	var projects []Project
+	for _, id := range projectIDs {
+		project, err := s.GetProject(ctx, id)
+		if errors.Is(err, ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, project)
+	}
+	return s.loadBundles(ctx, projects)
+}
+
+// ExpandMonthlyPeers は seeds にいる準委任人材が他案件にも入っているとき、その案件の Bundle を足して返します。
+// 準委任の受注金額比按分の母数用です。seeds に無い案件だけ追加し、seeds の後ろに続けます。
+func (s *Store) ExpandMonthlyPeers(ctx context.Context, seeds []Bundle) ([]Bundle, error) {
+	personSeen := map[string]struct{}{}
+	var personIDs []string
+	projectSeen := map[string]struct{}{}
+	for _, b := range seeds {
+		projectSeen[b.Project.ID] = struct{}{}
+		for _, a := range b.Assignments {
+			if a.RateKind != RateKindMonthly {
+				continue
+			}
+			if _, ok := personSeen[a.PersonID]; ok {
+				continue
+			}
+			personSeen[a.PersonID] = struct{}{}
+			personIDs = append(personIDs, a.PersonID)
+		}
+	}
+	if len(personIDs) == 0 {
+		return seeds, nil
+	}
+	peerIDs, err := s.projectIDsWithMonthlyPeople(ctx, personIDs)
+	if err != nil {
+		return nil, err
+	}
+	var extra []string
+	for _, id := range peerIDs {
+		if _, ok := projectSeen[id]; ok {
+			continue
+		}
+		projectSeen[id] = struct{}{}
+		extra = append(extra, id)
+	}
+	if len(extra) == 0 {
+		return seeds, nil
+	}
+	more, err := s.LoadBundlesByIDs(ctx, extra)
+	if err != nil {
+		return nil, err
+	}
+	return append(append([]Bundle{}, seeds...), more...), nil
+}
+
+// projectIDsWithMonthlyPeople は personIDs が準委任で入っている案件 ID を返します。
+func (s *Store) projectIDsWithMonthlyPeople(ctx context.Context, personIDs []string) ([]string, error) {
+	if len(personIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT pp.project_id
+		FROM assignment a
+		JOIN project_process pp ON pp.id = a.project_process_id
+		WHERE a.rate_kind = ? AND a.person_id IN (`+placeholders(len(personIDs))+`)`,
+		append([]any{RateKindMonthly}, argsOf(personIDs)...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 // loadBundles は projects の並びに合わせて、工程、アサイン、実績、単価を読みます。

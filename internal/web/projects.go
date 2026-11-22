@@ -764,9 +764,8 @@ func (s *Server) readAssignmentValues(r *http.Request, projectID, assignmentID, 
 	write.StartDate = start
 	write.EndDate = end
 	write.RateKind = rateKind
-	if rateKind == store.RateKindMonthly {
-		write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, *rate.MonthlyYen)
-	}
+	// 準委任の予定原価は予実で受注金額比按分するため、アサインには保存しない。
+	write.PlannedCostYen = 0
 	return write, ""
 }
 
@@ -815,7 +814,16 @@ func (s *Server) handleForecast(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	page := forecastPage{base: s.page(w, r, "予実"), Project: bundle.Project, Report: report.Build(bundle, time.Time{})}
+	peers, err := s.store.ExpandMonthlyPeers(r.Context(), []store.Bundle{bundle})
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	page := forecastPage{
+		base:    s.page(w, r, "予実"),
+		Project: bundle.Project,
+		Report:  report.BuildWithContext(bundle, peers, time.Time{}),
+	}
 	s.render(w, http.StatusOK, "forecast", page)
 }
 
