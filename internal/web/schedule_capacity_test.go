@@ -8,18 +8,22 @@ import (
 
 func TestUniqueAssigneesInDecade(t *testing.T) {
 	assigns := []store.Assignment{
-		{PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-30"},
-		{PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-15"}, // 同一人物・別工程
-		{PersonID: "b", StartDate: "2026-11-01", EndDate: "2026-11-05"},
-		{PersonID: "c", StartDate: "2026-12-01", EndDate: "2026-12-10"}, // 別旬
+		{ID: "1", PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-30"},
+		{ID: "2", PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-15"}, // 同一人物・別工程
+		{ID: "3", PersonID: "b", StartDate: "2026-11-01", EndDate: "2026-11-05"},
+		{ID: "4", PersonID: "c", StartDate: "2026-12-01", EndDate: "2026-12-10"}, // 別旬
+		{ID: "5", PersonID: "d", StartDate: "2026-11-01", EndDate: "2026-11-30"}, // 0 円（OJT）
 	}
-	if got := uniqueAssigneesInDecade(assigns, "2026-11", 1); got != 2 {
-		t.Fatalf("early Nov unique = %d, want 2", got)
+	billable := map[string]bool{
+		"1": true, "2": true, "3": true, "4": true, "5": false,
 	}
-	if got := uniqueAssigneesInDecade(assigns, "2026-11", 3); got != 1 {
+	if got := uniqueAssigneesInDecade(assigns, billable, "2026-11", 1); got != 2 {
+		t.Fatalf("early Nov unique = %d, want 2 (d excluded)", got)
+	}
+	if got := uniqueAssigneesInDecade(assigns, billable, "2026-11", 3); got != 1 {
 		t.Fatalf("late Nov unique = %d, want 1 (only a)", got)
 	}
-	if got := uniqueAssigneesInDecade(assigns, "2026-12", 1); got != 1 {
+	if got := uniqueAssigneesInDecade(assigns, billable, "2026-12", 1); got != 1 {
 		t.Fatalf("Dec unique = %d, want 1", got)
 	}
 }

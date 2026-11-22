@@ -242,6 +242,18 @@ func RateKindOK(kind string, rate Rate, hasRate bool) bool {
 	}
 }
 
+// RatePositive は kind に合う単価が設定済みかつ 0 円超のとき true です。
+// 0 円単価（OJT など）はアサイン可能でもキャパには含めません。
+func RatePositive(kind string, rate Rate, hasRate bool) bool {
+	if !RateKindOK(kind, rate, hasRate) {
+		return false
+	}
+	if kind == RateKindMonthly {
+		return *rate.MonthlyYen > 0
+	}
+	return *rate.HourlyYen > 0
+}
+
 // plannedCostForKind は start〜end の予定原価です。kind に合う単価が rate に無いときは false です。
 func plannedCostForKind(start, end, kind string, rate Rate, hasRate bool) (int64, bool) {
 	if !RateKindOK(kind, rate, hasRate) {

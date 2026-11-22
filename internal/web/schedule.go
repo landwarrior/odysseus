@@ -71,7 +71,7 @@ type scheduleProjectBlock struct {
 
 // schedulePeriodCol はフッターの旬列です。
 // Capacity は、その旬にアサイン期間が重なるユニーク人数 × 営業日（人日）です。
-// CapClass は割当合計に対する黄（80% 以上）／赤（キャパ以上）です。
+// 0 円単価のアサインは人数に含めません。CapClass は割当合計に対する黄（80% 以上）／赤（キャパ以上）です。
 type schedulePeriodCol struct {
 	YM           string
 	Decade       int
@@ -256,6 +256,10 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	if err != nil {
 		return schedulePage{}, err
 	}
+	billable, err := s.assignmentBillable(r.Context(), assigns)
+	if err != nil {
+		return schedulePage{}, err
+	}
 
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
 	for _, project := range in.Projects {
@@ -286,7 +290,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, ym := range in.Months {
 		for decade := 1; decade <= 3; decade++ {
 			periodKey := ym + "|" + strconv.Itoa(decade)
-			heads := uniqueAssigneesInDecade(assigns, ym, decade)
+			heads := uniqueAssigneesInDecade(assigns, billable, ym, decade)
 			days := bizDays[periodKey]
 			capMinutes := int64(heads) * int64(days) * std
 			allocated := periodAllocated[periodKey]
@@ -530,12 +534,37 @@ func (s *Server) scheduleTaskGroups(
 	return groups, rowCount
 }
 
+// assignmentBillable はアサイン ID ごとに、開始日時点の単価が 0 円超かどうかを返します。
+// 0 円単価（OJT）はキャパに含めないための判定です。
+func (s *Server) assignmentBillable(ctx context.Context, assigns []store.Assignment) (map[string]bool, error) {
+	out := make(map[string]bool, len(assigns))
+	cache := map[string]bool{}
+	for _, a := range assigns {
+		if a.ID == "" {
+			continue
+		}
+		key := a.PersonID + "|" + a.RoleID + "|" + a.StartDate + "|" + a.RateKind
+		if v, ok := cache[key]; ok {
+			out[a.ID] = v
+			continue
+		}
+		rate, ok, err := s.store.FindRate(ctx, a.PersonID, a.RoleID, a.StartDate)
+		if err != nil {
+			return nil, err
+		}
+		v := store.RatePositive(a.RateKind, rate, ok)
+		cache[key] = v
+		out[a.ID] = v
+	}
+	return out, nil
+}
+
 // uniqueAssigneesInDecade は、ym の decade 旬にアサイン期間が重なる人材のユニーク人数です。
-// 同じ人が複数工程・複数案件にいても 1 人と数えます。
-func uniqueAssigneesInDecade(assigns []store.Assignment, ym string, decade int) int {
+// 同じ人が複数工程・複数案件にいても 1 人と数えます。0 円単価のアサインは含めません。
+func uniqueAssigneesInDecade(assigns []store.Assignment, billable map[string]bool, ym string, decade int) int {
 	seen := map[string]bool{}
 	for _, a := range assigns {
-		if a.PersonID == "" {
+		if a.PersonID == "" || !billable[a.ID] {
 			continue
 		}
 		if schedule.OverlapsDecade(ym, decade, a.StartDate, a.EndDate) {
