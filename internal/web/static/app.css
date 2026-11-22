@@ -1799,3 +1799,13 @@ main.time-page .time-saved-dates {
 main.time-page .time-saved-dates a.current {
   font-weight: 700;
 }
+main.time-page .time-submit {
+  margin: 1.25rem 0 0;
+}
+main.time-page .time-submit .primary {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  font-size: 1.05rem;
+}
