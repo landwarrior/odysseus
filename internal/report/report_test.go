@@ -17,7 +17,7 @@ func TestBuildUsesLatestRateAndGrossMargin(t *testing.T) {
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", PersonCode: "m01", PersonName: "山田",
 			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30",
-			PlannedCostYen: 400000,
+			RateKind: store.RateKindHourly, PlannedCostYen: 400000,
 		}},
 		Entries: []store.TimeEntry{{
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 480,
@@ -54,7 +54,7 @@ func TestBuildLeavesUnsetRateOutOfYen(t *testing.T) {
 		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
-			PlannedCostYen: 40000,
+			RateKind: store.RateKindHourly, PlannedCostYen: 40000,
 		}},
 		Entries: []store.TimeEntry{{ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 60}},
 	}
@@ -77,7 +77,7 @@ func TestBuildTaskActualAndOverPlan(t *testing.T) {
 		},
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
-			PlannedCostYen: 80000,
+			RateKind: store.RateKindHourly, PlannedCostYen: 80000,
 		}},
 		Entries: []store.TimeEntry{
 			{ID: "e1", AssignmentID: "a", TaskID: "t1", WorkDate: "2026-04-01", Minutes: 600},
@@ -103,6 +103,29 @@ func TestBuildTaskActualAndOverPlan(t *testing.T) {
 	}
 }
 
+func TestBuildHourlyDespiteMonthlyRate(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			StartDate: "2026-04-01", EndDate: "2026-04-30",
+			RateKind: store.RateKindHourly, PlannedCostYen: 0,
+		}},
+		Entries: []store.TimeEntry{{
+			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 60,
+		}},
+		Rates: []store.Rate{{
+			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01",
+			HourlyYen: 5000, MonthlyYen: 400000,
+		}},
+	}
+	got := Build(b, time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
+	if got.ActualCostYen != 5000 {
+		t.Fatalf("hourly actual = %d, want 5000 (not monthly)", got.ActualCostYen)
+	}
+}
+
 func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 	order := int64(1000000)
 	b := store.Bundle{
@@ -111,7 +134,7 @@ func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", PersonName: "山田",
 			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-06-30",
-			PlannedCostYen: 300000,
+			RateKind: store.RateKindMonthly, PlannedCostYen: 300000,
 		}},
 		Entries: []store.TimeEntry{{
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-10", Minutes: 480,

@@ -82,13 +82,14 @@ func NewServer(st *store.Store, cfg config.Config) (*Server, error) {
 		cfg.StandardMinutes = 480
 	}
 	funcs := template.FuncMap{
-		"yen":    calc.FormatYen,
-		"yenp":   formatYenPtr,
-		"nump":   formatNumberPtr,
-		"hours":  calc.FormatHours,
-		"pdays":  func(n int64) string { return calc.FormatPersonDays(n, cfg.StandardMinutes) },
-		"status": statusLabel,
-		"sub":    func(a, b int64) int64 { return a - b },
+		"yen":      calc.FormatYen,
+		"yenp":     formatYenPtr,
+		"nump":     formatNumberPtr,
+		"hours":    calc.FormatHours,
+		"pdays":    func(n int64) string { return calc.FormatPersonDays(n, cfg.StandardMinutes) },
+		"status":   statusLabel,
+		"rateKind": store.RateKindLabel,
+		"sub":      func(a, b int64) int64 { return a - b },
 		"day": func(s string) string {
 			if s == "" {
 				return "—"

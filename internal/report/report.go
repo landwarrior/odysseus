@@ -58,11 +58,13 @@ type TaskRow struct {
 }
 
 // PersonRow はアサイン1件の予実です。同じ人が複数工程にいると、行も複数になります。
+// RateKind は hourly（請負）または monthly（準委任）です。
 type PersonRow struct {
 	ProcessName      string
 	PersonName       string
 	PersonCode       string
 	RoleName         string
+	RateKind         string
 	StartDate        string
 	EndDate          string
 	ActualMinutes    int64
@@ -108,6 +110,7 @@ func Build(b store.Bundle, asOf time.Time) Report {
 				PersonName:     a.PersonName,
 				PersonCode:     a.PersonCode,
 				RoleName:       a.RoleName,
+				RateKind:       a.RateKind,
 				StartDate:      a.StartDate,
 				EndDate:        a.EndDate,
 				PlannedCostYen: a.PlannedCostYen,
@@ -119,12 +122,16 @@ func Build(b store.Bundle, asOf time.Time) Report {
 				row.ActualMinutes += e.Minutes
 				rep.ActualMinutes += e.Minutes
 			}
-			rate, hasRate := rateAt(idx, a.PersonID, a.RoleID, a.StartDate)
-			if hasRate && rate.MonthlyYen > 0 {
-				cost := calc.AccruedMonthlyCost(a.StartDate, a.EndDate, asOfDate, rate.MonthlyYen)
-				person.ActualCostYen = cost
-				row.ActualCostYen += cost
-				rep.ActualCostYen += cost
+			if a.RateKind == store.RateKindMonthly {
+				rate, hasRate := rateAt(idx, a.PersonID, a.RoleID, a.StartDate)
+				if !hasRate || rate.MonthlyYen <= 0 {
+					rep.ActualKnown = false
+				} else {
+					cost := calc.AccruedMonthlyCost(a.StartDate, a.EndDate, asOfDate, rate.MonthlyYen)
+					person.ActualCostYen = cost
+					row.ActualCostYen += cost
+					rep.ActualCostYen += cost
+				}
 			} else {
 				for _, e := range entries[a.ID] {
 					yen, ok := hourlyAt(idx, a.PersonID, a.RoleID, e.WorkDate)

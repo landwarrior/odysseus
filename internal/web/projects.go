@@ -664,9 +664,24 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if !ok {
 		return write, "この開始日に、その役割の単価（時間または月間）がありません。"
 	}
+	kind := formText(r, "rate_kind")
+	switch kind {
+	case store.RateKindHourly, store.RateKindMonthly:
+	default:
+		return write, "単価の種類（請負または準委任）を選んでください。"
+	}
+	if !store.RateKindOK(kind, rate, true) {
+		if kind == store.RateKindMonthly {
+			return write, "この開始日に月間単価がありません。準委任以外を選ぶか、単価を登録してください。"
+		}
+		return write, "この開始日に時間単価がありません。請負以外を選ぶか、単価を登録してください。"
+	}
 	write.StartDate = start
 	write.EndDate = end
-	write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, rate.MonthlyYen)
+	write.RateKind = kind
+	if kind == store.RateKindMonthly {
+		write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, rate.MonthlyYen)
+	}
 	return write, ""
 }
 

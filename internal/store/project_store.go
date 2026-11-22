@@ -171,9 +171,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 	assignmentID := newID()
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO assignment (
-			id, project_process_id, person_id, role_id, start_date, end_date, planned_cost_yen, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedCostYen, now(), now())
+			id, project_process_id, person_id, role_id, start_date, end_date, rate_kind, planned_cost_yen, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.RateKind, in.PlannedCostYen, now(), now())
 	if err != nil {
 		return "", mapWriteErr(err)
 	}
@@ -184,9 +184,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 func (s *Store) UpdateAssignment(ctx context.Context, assignmentID string, in AssignmentWrite) error {
 	res, err := s.db.Exec(ctx, `
 		UPDATE assignment
-		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, planned_cost_yen = ?, updated_at = ?
+		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, rate_kind = ?, planned_cost_yen = ?, updated_at = ?
 		WHERE id = ?`,
-		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedCostYen, now(), assignmentID)
+		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.RateKind, in.PlannedCostYen, now(), assignmentID)
 	if err != nil {
 		return mapWriteErr(err)
 	}
@@ -202,7 +202,7 @@ func (s *Store) DeleteAssignment(ctx context.Context, assignmentID string) error
 	return missing(res)
 }
 
-// RecalcPlannedCosts は projectID の予定原価を、各アサインの開始日時点の単価で計算し直します。
+// RecalcPlannedCosts は projectID の予定原価を、各アサインの開始日時点の単価と単価種別で計算し直します。
 // updated は更新した件数、missingNames は単価が無くて見送った人の表示名です。
 func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updated int, missingNames []string, err error) {
 	assignments, err := s.ListAssignmentsByProject(ctx, projectID)
@@ -214,17 +214,43 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 		if err != nil {
 			return updated, missingNames, err
 		}
-		if !ok {
-			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName)
+		cost, okCost := plannedCostForKind(a.StartDate, a.EndDate, a.RateKind, rate, ok)
+		if !okCost {
+			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName+"（"+RateKindLabel(a.RateKind)+"）")
 			continue
 		}
-		cost := calc.AssignmentPlannedCost(a.StartDate, a.EndDate, rate.MonthlyYen)
 		if _, err := s.db.Exec(ctx, `UPDATE assignment SET planned_cost_yen = ?, updated_at = ? WHERE id = ?`, cost, now(), a.ID); err != nil {
 			return updated, missingNames, err
 		}
 		updated++
 	}
 	return updated, missingNames, nil
+}
+
+// RateKindOK は kind に合う単価が rate にあるとき true です。
+func RateKindOK(kind string, rate Rate, hasRate bool) bool {
+	if !hasRate {
+		return false
+	}
+	switch kind {
+	case RateKindMonthly:
+		return rate.MonthlyYen > 0
+	case RateKindHourly:
+		return rate.HourlyYen > 0
+	default:
+		return false
+	}
+}
+
+// plannedCostForKind は start〜end の予定原価です。kind に合う単価が rate に無いときは false です。
+func plannedCostForKind(start, end, kind string, rate Rate, hasRate bool) (int64, bool) {
+	if !RateKindOK(kind, rate, hasRate) {
+		return 0, false
+	}
+	if kind == RateKindMonthly {
+		return calc.AssignmentPlannedCost(start, end, rate.MonthlyYen), true
+	}
+	return 0, true
 }
 
 // ListEntries は assignmentIDs の実績を返します。
@@ -518,7 +544,7 @@ const lineSelect = `
 const assignmentSelect = `
 	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code,
 		CASE WHEN person.name_kana = '' THEN person.name ELSE person.name || ' ' || person.name_kana END,
-		a.role_id, role.name, a.start_date, a.end_date, a.planned_cost_yen
+		a.role_id, role.name, a.start_date, a.end_date, a.rate_kind, a.planned_cost_yen
 	FROM assignment a
 	JOIN project_process pp ON pp.id = a.project_process_id
 	JOIN process ON process.id = pp.process_id
@@ -629,7 +655,7 @@ func scanAssignment(row scanner) (Assignment, error) {
 	var a Assignment
 	err := row.Scan(
 		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProcessName, &a.PersonID, &a.PersonCode, &a.PersonName,
-		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.PlannedCostYen)
+		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.RateKind, &a.PlannedCostYen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Assignment{}, ErrNotFound
 	}

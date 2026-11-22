@@ -176,7 +176,22 @@ type TaskAllocation struct {
 	PlannedMinutes int64
 }
 
+// アサインの単価種別です。人材単価に時間・月間の両方があるとき、案件ごとにどちらで原価を見るかを選びます。
+const (
+	RateKindHourly  = "hourly"  // 請負（円/時）
+	RateKindMonthly = "monthly" // 準委任（円/月）
+)
+
+// RateKindLabel は rateKind の画面表示名です。
+func RateKindLabel(rateKind string) string {
+	if rateKind == RateKindMonthly {
+		return "準委任"
+	}
+	return "請負"
+}
+
 // Assignment は工程に人を割り当てた1件です。PlannedCostYen は保存時点の予定原価で、単価変更では自動更新しません。
+// RateKind は hourly（請負）または monthly（準委任）です。
 type Assignment struct {
 	ID               string
 	ProjectProcessID string
@@ -189,6 +204,7 @@ type Assignment struct {
 	RoleName         string
 	StartDate        string
 	EndDate          string
+	RateKind         string
 	PlannedCostYen   int64
 }
 
@@ -199,6 +215,7 @@ type AssignmentWrite struct {
 	RoleID           string
 	StartDate        string
 	EndDate          string
+	RateKind         string
 	PlannedCostYen   int64
 }
 
