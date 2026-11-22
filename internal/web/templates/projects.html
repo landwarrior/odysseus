@@ -5,10 +5,7 @@
   {{if .Detail}}
   <h1>スケジュール</h1>
   {{else}}
-  <div class="title-row">
-    <h1>プロジェクト</h1>
-    <a class="button" href="/projects/new">新規作成</a>
-  </div>
+  <h1>プロジェクト</h1>
   {{end}}
   {{template "alerts" .}}
   {{if .Detail}}
@@ -270,6 +267,11 @@
       {{end}}
     </table>
   </div>
+  {{if not .Detail}}
+  <p class="actions">
+    <a class="button" href="/projects/new">新規作成</a>
+  </p>
+  {{end}}
 </main>
 <script src="/static/schedule.js"></script>
 {{template "foot" .}}
