@@ -1569,18 +1569,18 @@ ul.schedule-toolbar-notes {
   background: var(--phase-yellow-bg);
   color: var(--phase-yellow-text);
 }
-.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn {
+/* 工程キャパ超過は入力欄（実績モードは表示欄）だけ色を変え、旬セルの工程色は残す */
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-input,
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-display {
   background: var(--cap-warn-bg);
   color: var(--cap-warn-text);
+  font-weight: 700;
 }
-.schedule-table:not(.schedule-detail) td.phase-cell.cap-over {
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-input,
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-display {
   background: var(--over-bg);
   color: var(--danger);
-}
-.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-float-label,
-.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-float-label {
-  background: inherit;
-  color: inherit;
+  font-weight: 700;
 }
 .schedule-table.actual-mode .phase-cell.has-actual {
   position: relative;
