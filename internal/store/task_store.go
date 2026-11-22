@@ -53,7 +53,8 @@ func (s *Store) GetTask(ctx context.Context, taskID string) (Task, error) {
 
 // ReplaceTasksByProcess は projectID の工程ごとに tasksByProcess（工程マスタ ID → タスク）を置き換えます。
 // フォームに載っていない工程のタスクは消しません。載せた工程で空なら、その工程のタスクを全部消します。
-// タスクがある工程は、工程明細の予定分をタスク合計に揃えます。
+// 名前付きタスクがある工程は、工程明細の予定分をタスク合計に揃えます。
+// タスクが無い工程の予定分は、案件保存時にタスク合計（0）として書かれた値のままです。
 func (s *Store) ReplaceTasksByProcess(ctx context.Context, projectID string, tasksByProcess map[string][]TaskWrite) error {
 	if len(tasksByProcess) == 0 {
 		return nil
@@ -125,7 +126,7 @@ func (s *Store) ReplaceTasksByProcess(ctx context.Context, projectID string, tas
 			}
 		}
 		// 名前付きタスクがあるときだけ、工程の予定分をタスク合計に揃える。
-		// タスクを全部消したときは、案件フォームの予定時間を残す。
+		// タスクが無い工程は、案件保存時にタスク合計（0）として既に書かれている。
 		if hadNamed {
 			if _, err := tx.Exec(ctx, `
 				UPDATE project_process SET planned_minutes = ?, updated_at = ? WHERE id = ?`,

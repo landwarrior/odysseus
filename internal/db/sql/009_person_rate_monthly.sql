@@ -1,1 +1,0 @@
-ALTER TABLE person_rate ADD COLUMN monthly_yen BIGINT NOT NULL DEFAULT 0;
