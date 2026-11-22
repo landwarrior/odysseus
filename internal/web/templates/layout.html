@@ -62,6 +62,17 @@
 {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 {{end}}
 
+{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ */}}
+{{define "project_actions"}}
+<p class="actions">
+  <a class="button" href="/projects">一覧</a>
+  <a class="button" href="/projects/{{.Project.ID}}">編集</a>
+  <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
+  <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
+  <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
+</p>
+{{end}}
+
 {{define "foot"}}
 <script src="/static/app.js"></script>
 </body>

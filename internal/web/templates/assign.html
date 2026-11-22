@@ -2,11 +2,10 @@
 {{template "head" .}}
 {{template "nav" .}}
 <main>
-  <div class="title-row">
-    <h1>人材アサイン</h1>
-    <a href="/projects/{{.Project.ID}}">{{.Project.Code}} {{.Project.Name}}</a>
-  </div>
+  <h1>人材アサイン</h1>
   {{template "alerts" .}}
+  <p class="note">{{.Project.Code}} {{.Project.Name}}</p>
+  {{template "project_actions" .}}
   {{if not .Lines}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
   {{if .Lines}}
   <p class="note">人材を選び、担当する工程・役割・期間を付けます。同じ人に複数工程を一度に割り当てられます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。期間の初期値は案件の開始・終了です。開始日時点で選んだ役割の単価（時間または月間）がある人だけ登録できます。単価の種類はアサインごとに選びます（請負＝円/時、準委任＝円/月）。準委任の予定・実績原価は暦月数 × 月間単価（実績は今日までの月）、請負の実績原価は時間単価 × 実績工数です。</p>
@@ -117,11 +116,10 @@
 {{template "head" .}}
 {{template "nav" .}}
 <main>
-  <div class="title-row">
-    <h1>予実</h1>
-    <span>{{.Project.Code}} {{.Project.Name}}（{{status .Project.Status}}）</span>
-  </div>
+  <h1>予実</h1>
   {{template "alerts" .}}
+  <p class="note">{{.Project.Code}} {{.Project.Name}}（{{status .Project.Status}}）</p>
+  {{template "project_actions" .}}
   {{if not .Report.ActualKnown}}
   <p class="banner">単価未設定の実績が {{hours .Report.UnsetMinutes}} 時間あります。この分は実績原価に含めていません。粗利見込みも確定していません。</p>
   {{end}}
@@ -219,7 +217,6 @@
     </table>
   </div>
   {{end}}
-  <p class="actions"><a href="/projects/{{.Project.ID}}">編集に戻る</a></p>
 </main>
 {{template "foot" .}}
 {{end}}

@@ -5,7 +5,6 @@
   <div class="title-row">
     {{if .Detail}}
     <h1>スケジュール</h1>
-    <a class="button" href="/projects?from={{.From}}&amp;to={{.To}}">一覧へ</a>
     {{else}}
     <h1>プロジェクト</h1>
     <a class="button" href="/projects/new">新規作成</a>
@@ -14,11 +13,7 @@
   {{template "alerts" .}}
   {{if .Detail}}
   <p class="note">{{.Project.Code}} {{.Project.Name}}（{{status .Project.Status}}）</p>
-  <p class="actions">
-    <a class="button" href="/projects/{{.Project.ID}}">編集</a>
-    <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
-    <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
-  </p>
+  {{template "project_actions" .}}
   {{else}}
   <p class="filters">
     <a href="/projects?from={{.From}}&amp;to={{.To}}" {{if eq .Status ""}}class="current"{{end}}>すべて</a>
@@ -111,10 +106,6 @@
           <tr>
             <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
               <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
-              <p class="project-links">
-                <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
-                <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
-              </p>
             </th>
             <td class="sticky-col col-phase" colspan="5"><span class="field-help">工程未登録（<a href="/projects/{{$block.Project.ID}}">編集</a>）</span></td>
             {{range $.Months}}{{range $.Decades}}<td class="phase-cell"></td>{{end}}{{end}}
@@ -126,10 +117,6 @@
               {{if and (eq $gi 0) (eq $ti 0)}}
               <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
                 <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Code}} {{$block.Project.Name}}</a></div>
-                <p class="project-links">
-                  <a href="/projects/{{$block.Project.ID}}/assign">アサイン</a>
-                  <a href="/projects/{{$block.Project.ID}}/forecast">予実</a>
-                </p>
               </th>
               {{end}}
               {{if eq $ti 0}}
@@ -295,12 +282,7 @@
   <h1>{{if .IsNew}}プロジェクト作成{{else}}プロジェクト編集{{end}}</h1>
   {{template "alerts" .}}
   {{if not .IsNew}}
-  <p class="actions">
-    <a class="button" href="/projects">一覧</a>
-    <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
-    <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
-    <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
-  </p>
+  {{template "project_actions" .}}
   {{end}}
   <form method="post" action="{{if .IsNew}}/projects{{else}}/projects/{{.Project.ID}}{{end}}" class="stack">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
