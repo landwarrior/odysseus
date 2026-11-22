@@ -66,8 +66,8 @@
           <th>予定原価</th>
           <th>実績原価</th>
           <th>粗利見込み</th>
-          <th>予定工数</th>
-          <th>実績工数</th>
+          <th>予定（人日）</th>
+          <th>実績（人日）</th>
           <th>開始</th>
           <th>終了</th>
           <th></th>
@@ -83,8 +83,8 @@
           <td class="num">{{yen .Report.PlannedCostYen}}</td>
           <td class="num">{{yen .Report.ActualCostYen}}{{if not .Report.ActualKnown}} ※{{end}}</td>
           <td class="num">{{yenp .Report.GrossMargin}}</td>
-          <td class="num">{{hours .Report.PlannedMinutes}} 時間</td>
-          <td class="num">{{hours .Report.ActualMinutes}} 時間</td>
+          <td class="num">{{pdays .Report.PlannedMinutes}}</td>
+          <td class="num">{{pdays .Report.ActualMinutes}}</td>
           <td>{{day .Project.StartDate}}</td>
           <td>{{day .Project.EndDate}}</td>
           <td class="actions">

@@ -86,7 +86,7 @@ func TestForecastFlow(t *testing.T) {
 	body = admin.submit(t, "/projects", url.Values{
 		"csrf": {csrfOf(t, body)}, "code": {"P1"}, "name": {"予実案件"}, "order_amount": {"1000000"},
 		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
-		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_hours": {"80"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"10.0"},
 	})
 	project := projectByCode(t, st, "P1")
 	lines, err := st.ListProcessLines(ctx, project.ID)

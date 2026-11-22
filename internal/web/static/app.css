@@ -1125,7 +1125,7 @@ label.process-name.field input {
 }
 .task-name-field { flex: 1 1 16rem; min-width: min(100%, 14rem); max-width: 22rem; }
 .task-remarks-field { flex: 2 1 12rem; min-width: min(100%, 10rem); }
-.task-hours-field { flex: 0 1 8rem; min-width: min(100%, 7rem); }
+.task-days-field { flex: 0 1 8rem; min-width: min(100%, 7rem); }
 .task-row > .remove-task { flex: 0 0 auto; }
 
 /* プロジェクト編集の基本項目（基準幅 16rem に対する比率） */

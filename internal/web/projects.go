@@ -13,20 +13,20 @@ import (
 	"odysseus/internal/store"
 )
 
-// taskForm は工程下のタスク入力欄です。
+// taskForm は工程下のタスク入力欄です。Days は人日表示です。
 type taskForm struct {
 	ID      string
 	Name    string
 	Remarks string
-	Hours   string
+	Days    string
 }
 
-// lineForm は工程明細の入力欄です。時間と予算は、まだ数値に変換する前の文字列です。
+// lineForm は工程明細の入力欄です。Days はタスク合計の人日、Budget は円の文字列です。
 type lineForm struct {
 	ProcessID string
 	Start     string
 	End       string
-	Hours     string
+	Days      string
 	Budget    string
 	Tasks     []taskForm
 }
@@ -244,17 +244,17 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 			if m := limitRunes(stringsTrim(task.Remarks), "タスク備考", 500); m != "" {
 				msg = firstMsg(msg, m)
 			}
-			taskMinutes, tm := parseOptionalHours(task.Hours)
+			taskMinutes, tm := parseOptionalPersonDays(task.Days, s.cfg.StandardMinutes)
 			msg = firstMsg(msg, tm)
 			if taskMinutes > 100000*60 {
-				msg = firstMsg(msg, "タスクの見積時間が大きすぎます。")
+				msg = firstMsg(msg, "タスクの見積工数が大きすぎます。")
 			}
 			taskSum += taskMinutes
 		}
 		if taskSum > 100000*60 {
-			msg = firstMsg(msg, "合計時間が大きすぎます。")
+			msg = firstMsg(msg, "合計工数が大きすぎます。")
 		}
-		form.Hours = calc.FormatHours(taskSum)
+		form.Days = calc.FormatPersonDays(taskSum, s.cfg.StandardMinutes)
 		lines = append(lines, store.LineWrite{
 			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: taskSum, BudgetYen: budget,
 		})
@@ -270,7 +270,7 @@ func readLineForms(r *http.Request) []lineForm {
 	ids := r.Form["process_id"]
 	starts := r.Form["line_start"]
 	ends := r.Form["line_end"]
-	hours := r.Form["line_hours"]
+	days := r.Form["line_days"]
 	budgets := r.Form["line_budget"]
 	n := len(ids)
 	if len(starts) > n {
@@ -279,7 +279,7 @@ func readLineForms(r *http.Request) []lineForm {
 	out := make([]lineForm, 0, n)
 	for i := 0; i < n; i++ {
 		out = append(out, lineForm{
-			ProcessID: at(ids, i), Start: at(starts, i), End: at(ends, i), Hours: at(hours, i), Budget: at(budgets, i),
+			ProcessID: at(ids, i), Start: at(starts, i), End: at(ends, i), Days: at(days, i), Budget: at(budgets, i),
 			Tasks: []taskForm{{}},
 		})
 	}
@@ -293,7 +293,7 @@ func attachTasks(lines []lineForm, r *http.Request) {
 	ids := r.Form["task_id"]
 	names := r.Form["task_name"]
 	remarks := r.Form["task_remarks"]
-	hours := r.Form["task_hours"]
+	days := r.Form["task_days"]
 	if len(processIDs) == 0 {
 		return
 	}
@@ -305,7 +305,7 @@ func attachTasks(lines []lineForm, r *http.Request) {
 			continue
 		}
 		byProcess[pid] = append(byProcess[pid], taskForm{
-			ID: at(ids, i), Name: at(names, i), Remarks: at(remarks, i), Hours: at(hours, i),
+			ID: at(ids, i), Name: at(names, i), Remarks: at(remarks, i), Days: at(days, i),
 		})
 	}
 	for i := range lines {
@@ -327,10 +327,11 @@ func at(values []string, i int) string {
 }
 
 // lineForms は lines を入力欄の文字列に戻します。空なら空行を1つ足します。
-func lineForms(lines []store.ProcessLine) []lineForm {
+func (s *Server) lineForms(lines []store.ProcessLine) []lineForm {
 	if len(lines) == 0 {
 		return []lineForm{{Tasks: []taskForm{{}}}}
 	}
+	std := s.cfg.StandardMinutes
 	out := make([]lineForm, 0, len(lines))
 	for _, line := range lines {
 		budget := ""
@@ -339,7 +340,7 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 		}
 		out = append(out, lineForm{
 			ProcessID: line.ProcessID, Start: line.StartDate, End: line.EndDate,
-			Hours: calc.FormatHours(line.PlannedMinutes), Budget: budget,
+			Days: calc.FormatPersonDays(line.PlannedMinutes, std), Budget: budget,
 			Tasks: []taskForm{{}},
 		})
 	}
@@ -348,15 +349,16 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 
 // lineFormsWithTasks は工程明細に、保存済みタスクを載せて返します。
 func (s *Server) lineFormsWithTasks(r *http.Request, projectID string, lines []store.ProcessLine) ([]lineForm, error) {
-	forms := lineForms(lines)
+	forms := s.lineForms(lines)
 	tasks, err := s.store.ListTasksByProject(r.Context(), projectID)
 	if err != nil {
 		return nil, err
 	}
+	std := s.cfg.StandardMinutes
 	byProcess := map[string][]taskForm{}
 	for _, task := range tasks {
 		byProcess[task.ProcessID] = append(byProcess[task.ProcessID], taskForm{
-			ID: task.ID, Name: task.Name, Remarks: task.Remarks, Hours: calc.FormatHours(task.PlannedMinutes),
+			ID: task.ID, Name: task.Name, Remarks: task.Remarks, Days: calc.FormatPersonDays(task.PlannedMinutes, std),
 		})
 	}
 	for i := range forms {
@@ -370,6 +372,7 @@ func (s *Server) lineFormsWithTasks(r *http.Request, projectID string, lines []s
 // saveProjectTasks は forms のタスクを projectID へ保存します。
 func (s *Server) saveProjectTasks(r *http.Request, projectID string, forms []lineForm) error {
 	byProcess := map[string][]store.TaskWrite{}
+	std := s.cfg.StandardMinutes
 	for _, form := range forms {
 		if form.ProcessID == "" {
 			continue
@@ -380,7 +383,7 @@ func (s *Server) saveProjectTasks(r *http.Request, projectID string, forms []lin
 			if name == "" {
 				continue
 			}
-			minutes, _ := parseOptionalHours(task.Hours)
+			minutes, _ := parseOptionalPersonDays(task.Days, std)
 			writes = append(writes, store.TaskWrite{
 				ID: task.ID, Name: name, Remarks: stringsTrim(task.Remarks), PlannedMinutes: minutes,
 			})
@@ -471,13 +474,13 @@ type assignRow struct {
 	Roles      []opt
 }
 
-// assignLineOpt は追加フォームの工程1行です。
+// assignLineOpt は追加フォームの工程1行です。Days は見積の人日表示です。
 type assignLineOpt struct {
 	ID    string
 	Name  string
 	Start string
 	End   string
-	Hours string
+	Days  string
 }
 
 // opt はプルダウンの1件です。ID が送信値、Label が画面の文言です。
@@ -551,7 +554,7 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 	for _, line := range lines {
 		page.Lines = append(page.Lines, assignLineOpt{
 			ID: line.ID, Name: line.ProcessName, Start: line.StartDate, End: line.EndDate,
-			Hours: calc.FormatHours(line.PlannedMinutes),
+			Days: calc.FormatPersonDays(line.PlannedMinutes, s.cfg.StandardMinutes),
 		})
 	}
 	return page, true

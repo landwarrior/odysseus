@@ -45,7 +45,7 @@
             <input type="checkbox" name="project_process_id" value="{{.ID}}">
             <span class="process-name">{{.Name}}</span>
           </label>
-          <span class="process-meta">見積 {{.Hours}} 時間 · {{day .Start}} 〜 {{day .End}}</span>
+          <span class="process-meta">見積 {{.Days}} 人日 · {{day .Start}} 〜 {{day .End}}</span>
           <label class="field">
             <select name="role_{{.ID}}">
               {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
@@ -135,8 +135,8 @@
     <div><span>実績原価</span><strong>{{yen .Report.ActualCostYen}}</strong></div>
     <div><span>残予定原価</span><strong>{{yen .Report.RemainingCostYen}}</strong></div>
     <div><span>粗利見込み</span><strong>{{yenp .Report.GrossMargin}}</strong></div>
-    <div><span>予定工数</span><strong>{{hours .Report.PlannedMinutes}} 時間（{{pdays .Report.PlannedMinutes}} 人日）</strong></div>
-    <div><span>実績工数</span><strong>{{hours .Report.ActualMinutes}} 時間（{{pdays .Report.ActualMinutes}} 人日）</strong></div>
+    <div><span>予定工数</span><strong>{{pdays .Report.PlannedMinutes}} 人日（{{hours .Report.PlannedMinutes}} 時間）</strong></div>
+    <div><span>実績工数</span><strong>{{pdays .Report.ActualMinutes}} 人日（{{hours .Report.ActualMinutes}} 時間）</strong></div>
   </div>
   <form method="post" action="/projects/{{.Project.ID}}/recalc">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -148,7 +148,7 @@
     <table>
       <thead>
         <tr>
-          <th>工程</th><th>期間</th><th>見積</th><th>実績</th><th>差分（見積 − 実績）</th><th>予算</th><th>予定原価</th><th>実績原価</th>
+          <th>工程</th><th>期間</th><th>見積（人日）</th><th>実績（人日）</th><th>差分（見積 − 実績）</th><th>予算</th><th>予定原価</th><th>実績原価</th>
         </tr>
       </thead>
       <tbody>
@@ -156,9 +156,9 @@
         <tr {{if or .OverBudget .OverPlan}}class="over"{{end}}>
           <td>{{.Name}}</td>
           <td>{{day .StartDate}} 〜 {{day .EndDate}}</td>
-          <td class="num">{{hours .PlannedMinutes}}</td>
-          <td class="num">{{hours .ActualMinutes}}</td>
-          <td class="num">{{hours (sub .PlannedMinutes .ActualMinutes)}}</td>
+          <td class="num">{{pdays .PlannedMinutes}}</td>
+          <td class="num">{{pdays .ActualMinutes}}</td>
+          <td class="num">{{pdays (sub .PlannedMinutes .ActualMinutes)}}</td>
           <td class="num">{{yen .BudgetYen}}{{if .BudgetFromAssignments}} *{{end}}</td>
           <td class="num">{{yen .PlannedCostYen}}</td>
           <td class="num">{{yen .ActualCostYen}}{{if .UnsetMinutes}} ※{{end}}</td>
@@ -174,7 +174,7 @@
     <table>
       <thead>
         <tr>
-          <th>工程</th><th>タスク</th><th>見積</th><th>実績</th><th>差分（見積 − 実績）</th>
+          <th>工程</th><th>タスク</th><th>見積（人日）</th><th>実績（人日）</th><th>差分（見積 − 実績）</th>
         </tr>
       </thead>
       <tbody>
@@ -182,9 +182,9 @@
         <tr {{if .OverPlan}}class="over"{{end}}>
           <td>{{.ProcessName}}</td>
           <td>{{.Name}}</td>
-          <td class="num">{{hours .PlannedMinutes}}</td>
-          <td class="num">{{hours .ActualMinutes}}</td>
-          <td class="num">{{hours (sub .PlannedMinutes .ActualMinutes)}}</td>
+          <td class="num">{{pdays .PlannedMinutes}}</td>
+          <td class="num">{{pdays .ActualMinutes}}</td>
+          <td class="num">{{pdays (sub .PlannedMinutes .ActualMinutes)}}</td>
         </tr>
         {{end}}
       </tbody>

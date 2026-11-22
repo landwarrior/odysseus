@@ -148,7 +148,7 @@ type LineWrite struct {
 	BudgetYen      *int64
 }
 
-// Task は工程明細を細分化した作業です。見積工数と案件スケジュール割当の単位です。
+// Task は工程明細を細分化した作業です。見積工数（分。画面では人日）と案件スケジュール割当の単位です。
 // Remarks は任意の備考で、案件スケジュールのタスク名ホバーに出します。
 type Task struct {
 	ID               string
