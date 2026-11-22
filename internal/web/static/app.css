@@ -1506,12 +1506,14 @@ main.page-schedule {
 .schedule-table.actual-mode tbody tr.row-editing td.col-task.actual-over {
   color: var(--danger);
 }
+/* 一覧の工程キャパ／実績モードの割当ラベル。横スクロール時は sticky 列より下に置く */
+.schedule-table:not(.schedule-detail) td.phase-cell:has(.effort-field),
 .schedule-table.actual-mode td.phase-cell:has(.effort-field) {
   padding-top: 0.7rem;
-  /* 横スクロール時にラベルが sticky 列の上に乗らないよう、セル全体を固定列より下に置く */
   position: relative;
   z-index: 0;
 }
+.schedule-table:not(.schedule-detail) .effort-float-label:not(:empty),
 .schedule-table.actual-mode .effort-float-label:not(:empty) {
   display: block;
   position: absolute;
@@ -1528,29 +1530,48 @@ main.page-schedule {
   letter-spacing: 0;
   pointer-events: none;
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-cyan.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-cyan.active .effort-float-label {
   background: var(--phase-cyan-bg);
   color: var(--phase-cyan-text);
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-orange.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-orange.active .effort-float-label {
   background: var(--phase-orange-bg);
   color: var(--phase-orange-text);
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-green.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-green.active .effort-float-label {
   background: var(--phase-green-bg);
   color: var(--phase-green-text);
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-lavender.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-lavender.active .effort-float-label {
   background: var(--phase-lavender-bg);
   color: var(--phase-lavender-text);
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-rose.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-rose.active .effort-float-label {
   background: var(--phase-rose-bg);
   color: var(--phase-rose-text);
 }
+.schedule-table:not(.schedule-detail) .phase-cell.color-yellow.active .effort-float-label,
 .schedule-table.actual-mode .phase-cell.color-yellow.active .effort-float-label {
   background: var(--phase-yellow-bg);
   color: var(--phase-yellow-text);
+}
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn {
+  background: var(--cap-warn-bg);
+  color: var(--cap-warn-text);
+}
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over {
+  background: var(--over-bg);
+  color: var(--danger);
+}
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-float-label,
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-float-label {
+  background: inherit;
+  color: inherit;
 }
 .schedule-table.actual-mode .phase-cell.has-actual {
   position: relative;

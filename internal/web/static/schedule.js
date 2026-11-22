@@ -34,10 +34,16 @@
     const label = field.querySelector(".effort-float-label");
     const estimate = input?.dataset.estimate || plan?.textContent || "";
     const actual = input?.dataset.actual || display?.textContent || "";
+    const capacity = input?.dataset.capacity || "";
     cell.classList.toggle("active", cellIsActive(cell, estimate && Number(estimate) > 0));
     cell.classList.toggle("has-actual", Number(actual || 0) > 0);
     if (label) {
-      label.textContent = estimate;
+      // 一覧の割当モードは工程キャパ、実績モード（と詳細）は割当をラベルに出す。
+      if (!actualMode && input && input.hasAttribute("data-capacity")) {
+        label.textContent = capacity;
+      } else {
+        label.textContent = estimate;
+      }
     }
     if (display && input) {
       display.textContent = actual;
@@ -47,14 +53,50 @@
   function applyFieldForMode(field) {
     const input = field.querySelector(".effort-input");
     if (input) {
-      const estimate = input.dataset.estimate || "";
-      input.value = estimate;
+      // 入力欄は常に割当値。実績モードでは非表示にし、表示は effort-display 側。
+      input.value = input.dataset.estimate || "";
       input.disabled = actualMode;
       if (actualMode && document.activeElement === input) {
         input.blur();
       }
     }
     syncEffortStyle(field);
+  }
+
+  function capacityLoadClass(allocated, capacity) {
+    if (capacity <= 0) {
+      return allocated > 0 ? "cap-over" : "";
+    }
+    if (allocated >= capacity) {
+      return "cap-over";
+    }
+    if (allocated >= capacity * 0.8) {
+      return "cap-warn";
+    }
+    return "";
+  }
+
+  function updateProcessCellCapacity(input) {
+    if (!input.hasAttribute("data-capacity")) {
+      return;
+    }
+    const cell = input.closest(".phase-cell");
+    if (!cell) {
+      return;
+    }
+    const allocated = Number(input.value || 0);
+    const capacity = Number(input.dataset.capacity || 0);
+    const heads = Number(input.dataset.capHeads || 0);
+    cell.classList.remove("cap-warn", "cap-over");
+    const cls = capacityLoadClass(Number.isNaN(allocated) ? 0 : allocated, capacity);
+    if (cls) {
+      cell.classList.add(cls);
+    }
+    if (heads > 0 && input.dataset.capacity) {
+      cell.title = `工程キャパ ${input.dataset.capacity}（${heads}人 × 営業日）`;
+    } else {
+      cell.removeAttribute("title");
+    }
   }
 
   // 残工数行を隠すと rowspan が余るので、実績モードでは工程・案件の行数を詰める。
@@ -423,6 +465,7 @@
       input.value = effort;
       input.dataset.estimate = effort;
       syncEffortStyle(input);
+      updateProcessCellCapacity(input);
       const rowId = data.task_id || data.project_process_id || "";
       applyRowMeta(rowId, data.allocated, data.diff, data.diff_sign);
       updateProcessRemainders(input.dataset.processId || "");
@@ -473,6 +516,7 @@
       if (cell) {
         cell.classList.toggle("active", cellIsActive(cell, input.value && Number(input.value) > 0));
       }
+      updateProcessCellCapacity(input);
       updateProcessRemainders(input.dataset.processId || "");
       queueSave(input);
     });

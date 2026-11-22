@@ -14,8 +14,9 @@ import (
 )
 
 // scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
-// CapClass は案件スケジュールの残工数行で、マイナスのとき cap-over（赤）です。
-// ActualDays は time_entry を旬に集めた実績（人日表示）です。
+// CapClass は一覧では工程キャパ超過（黄／赤）、案件スケジュールの残工数行ではマイナスのとき cap-over です。
+// CapDays は一覧の工程キャパ（人日）。ActualDays は time_entry を旬に集めた実績（人日表示）です。
+// CapHeads は工程キャパの人数（title 用）です。
 type scheduleCell struct {
 	YM         string
 	Decade     int
@@ -26,6 +27,8 @@ type scheduleCell struct {
 	InRange    bool
 	Current    bool
 	CapClass   string
+	CapDays    string
+	CapHeads   int
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
@@ -273,7 +276,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		if in.Detail {
 			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, taskActualMap, taskActualTotals, processActualMap, processActualTotals, std)
 		} else {
-			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, processActualMap, processActualTotals, std)
+			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, processActualMap, processActualTotals, assigns, billable, bizDays, std)
 		}
 		blocks = append(blocks, block)
 	}
@@ -282,7 +285,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, ym := range in.Months {
 		for decade := 1; decade <= 3; decade++ {
 			periodKey := ym + "|" + strconv.Itoa(decade)
-			heads := uniqueAssigneesInDecade(assigns, billable, ym, decade)
+			heads := uniqueAssigneesInDecade(assigns, billable, ym, decade, "")
 			days := bizDays[periodKey]
 			capMinutes := int64(heads) * int64(days) * std
 			allocated := periodAllocated[periodKey]
@@ -389,6 +392,7 @@ func fillCellActual(cell *scheduleCell, actualMinutes, std int64) {
 }
 
 // scheduleProcessRows は工程ごとの行を作ります（一覧用・編集可）。
+// 各旬セルに、その工程のアサイン人数ベースのキャパ（CapDays）と負荷色（CapClass）を付けます。
 func (s *Server) scheduleProcessRows(
 	lines []store.ProcessLine,
 	tasks []store.Task,
@@ -399,6 +403,9 @@ func (s *Server) scheduleProcessRows(
 	processTotals map[string]int64,
 	processActualMap map[string]int64,
 	processActualTotals map[string]int64,
+	assigns []store.Assignment,
+	billable map[string]bool,
+	bizDays map[string]int,
 	std int64,
 ) ([]scheduleRow, int) {
 	if len(lines) == 0 {
@@ -439,13 +446,21 @@ func (s *Server) scheduleProcessRows(
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
 				minutes := processAllocMap[line.ID+"|"+periodKey]
+				heads := uniqueAssigneesInDecade(assigns, billable, ym, decade, line.ID)
+				days := bizDays[periodKey]
+				capMinutes := int64(heads) * int64(days) * std
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
-					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
-					Current: ym == currentYM && decade == currentDec,
+					InRange:  schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
+					Current:  ym == currentYM && decade == currentDec,
+					CapClass: capacityLoadClass(minutes, capMinutes),
+					CapHeads: heads,
 				}
 				if minutes > 0 {
 					cell.Days = calc.FormatPersonDays(minutes, std)
+				}
+				if heads > 0 {
+					cell.CapDays = calc.FormatPersonDays(capMinutes, std)
 				}
 				fillCellActual(&cell, processActualMap[line.ID+"|"+periodKey], std)
 				row.Cells = append(row.Cells, cell)
@@ -620,11 +635,15 @@ func (s *Server) assignmentBillable(ctx context.Context, assigns []store.Assignm
 }
 
 // uniqueAssigneesInDecade は、ym の decade 旬にアサイン期間が重なる人材のユニーク人数です。
+// processID が空なら全工程、指定があればその工程のアサインだけを数えます。
 // 同じ人が複数工程・複数案件にいても 1 人と数えます。0 円単価のアサインは含めません。
-func uniqueAssigneesInDecade(assigns []store.Assignment, billable map[string]bool, ym string, decade int) int {
+func uniqueAssigneesInDecade(assigns []store.Assignment, billable map[string]bool, ym string, decade int, processID string) int {
 	seen := map[string]bool{}
 	for _, a := range assigns {
 		if a.PersonID == "" || !billable[a.ID] {
+			continue
+		}
+		if processID != "" && a.ProjectProcessID != processID {
 			continue
 		}
 		if schedule.OverlapsDecade(ym, decade, a.StartDate, a.EndDate) {
