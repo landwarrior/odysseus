@@ -3,6 +3,8 @@ package web
 import (
 	"errors"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -443,20 +445,24 @@ func firstMsg(current, next string) string {
 	return next
 }
 
-// assignPage は案件の人材アサイン画面です。
+// assignPage は案件の人材アサイン画面です。人材ごとに既存アサインをまとめ、追加は人→工程の順です。
 type assignPage struct {
 	base
-	Project store.Project
-	Groups  []assignGroup
-	People  []opt
-	Roles   []opt
+	Project      store.Project
+	Groups       []assignPersonGroup
+	Lines        []assignLineOpt
+	People       []opt
+	Roles        []opt
+	DefaultStart string
+	DefaultEnd   string
 }
 
-// assignGroup は工程1つと、そこへの既存アサインです。
-type assignGroup struct {
-	Line  store.ProcessLine
-	Rows  []assignRow
-	Hours string
+// assignPersonGroup は1人分の既存アサインです。
+type assignPersonGroup struct {
+	PersonID   string
+	PersonCode string
+	PersonName string
+	Rows       []assignRow
 }
 
 // assignRow は既存アサイン1件と、選択肢です。
@@ -464,6 +470,15 @@ type assignRow struct {
 	Assignment store.Assignment
 	People     []opt
 	Roles      []opt
+}
+
+// assignLineOpt は追加フォームの工程1行です。
+type assignLineOpt struct {
+	ID    string
+	Name  string
+	Start string
+	End   string
+	Hours string
 }
 
 // opt はプルダウンの1件です。ID が送信値、Label が画面の文言です。
@@ -502,17 +517,32 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		s.fail(w, err)
 		return assignPage{}, false
 	}
-	byLine := map[string][]store.Assignment{}
+	byPerson := map[string][]store.Assignment{}
+	var personOrder []string
 	for _, a := range assignments {
-		byLine[a.ProjectProcessID] = append(byLine[a.ProjectProcessID], a)
+		if _, ok := byPerson[a.PersonID]; !ok {
+			personOrder = append(personOrder, a.PersonID)
+		}
+		byPerson[a.PersonID] = append(byPerson[a.PersonID], a)
 	}
+	sort.SliceStable(personOrder, func(i, j int) bool {
+		a, b := byPerson[personOrder[i]][0], byPerson[personOrder[j]][0]
+		if a.PersonCode != b.PersonCode {
+			return a.PersonCode < b.PersonCode
+		}
+		return a.PersonName < b.PersonName
+	})
 	page := assignPage{
 		base: s.page(w, r, "人材アサイン"), Project: project,
 		People: activePersonOpts(people), Roles: activeRoleOpts(roles),
+		DefaultStart: project.StartDate, DefaultEnd: project.EndDate,
 	}
-	for _, line := range lines {
-		group := assignGroup{Line: line, Hours: calc.FormatHours(line.PlannedMinutes)}
-		for _, a := range byLine[line.ID] {
+	for _, personID := range personOrder {
+		list := byPerson[personID]
+		group := assignPersonGroup{
+			PersonID: personID, PersonCode: list[0].PersonCode, PersonName: list[0].PersonName,
+		}
+		for _, a := range list {
 			group.Rows = append(group.Rows, assignRow{
 				Assignment: a,
 				People:     personOpts(people, a), Roles: roleOpts(roles, a),
@@ -520,26 +550,79 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		}
 		page.Groups = append(page.Groups, group)
 	}
+	for _, line := range lines {
+		page.Lines = append(page.Lines, assignLineOpt{
+			ID: line.ID, Name: line.ProcessName, Start: line.StartDate, End: line.EndDate,
+			Hours: calc.FormatHours(line.PlannedMinutes),
+		})
+	}
 	return page, true
 }
 
-// handleAssignCreate はパスの案件の工程へ、フォームの人材を追加します。
+// handleAssignCreate はフォームの人材を、選んだ工程へまとめて追加します。
 func (s *Server) handleAssignCreate(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
-	write, msg := s.readAssignment(r, projectID, "")
-	if msg != "" {
-		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
+	processIDs := r.Form["project_process_id"]
+	if len(processIDs) == 0 {
+		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "担当する工程を1つ以上選んでください。")
 		return
 	}
-	if _, err := s.store.CreateAssignment(r.Context(), write); err != nil {
-		if errors.Is(err, store.ErrConflict) {
-			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
+	personID := formText(r, "person_id")
+	rateKind := formText(r, "rate_kind")
+	startRaw := r.FormValue("start_date")
+	endRaw := r.FormValue("end_date")
+	seen := map[string]bool{}
+	var writes []store.AssignmentWrite
+	for _, processID := range processIDs {
+		if seen[processID] {
+			continue
+		}
+		seen[processID] = true
+		roleID := formText(r, "role_"+processID)
+		if roleID == "" {
+			roleID = formText(r, "role_id")
+		}
+		write, msg := s.readAssignmentValues(r, projectID, "", personID, processID, roleID, rateKind, startRaw, endRaw)
+		if msg != "" {
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 			return
 		}
+		writes = append(writes, write)
+	}
+	existing, err := s.store.ListAssignmentsByProject(r.Context(), projectID)
+	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました。")
+	taken := map[string]bool{}
+	for _, a := range existing {
+		if a.PersonID == personID {
+			taken[a.ProjectProcessID] = true
+		}
+	}
+	for _, write := range writes {
+		if taken[write.ProjectProcessID] {
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "同じ人材が既に入っている工程があります。")
+			return
+		}
+	}
+	created := 0
+	for _, write := range writes {
+		if _, err := s.store.CreateAssignment(r.Context(), write); err != nil {
+			if errors.Is(err, store.ErrConflict) {
+				s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "同じ人材が既に入っている工程があります。")
+				return
+			}
+			s.fail(w, err)
+			return
+		}
+		created++
+	}
+	if created == 1 {
+		s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました。")
+		return
+	}
+	s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました（"+strconv.Itoa(created)+" 件）。")
 }
 
 // handleAssignUpdate はパスのアサインをフォームの内容で更新し、予定原価を計算し直します。
@@ -549,7 +632,9 @@ func (s *Server) handleAssignUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	write, msg := s.readAssignment(r, projectID, assignment.ID)
+	write, msg := s.readAssignmentValues(r, projectID, assignment.ID,
+		formText(r, "person_id"), assignment.ProjectProcessID, formText(r, "role_id"),
+		formText(r, "rate_kind"), r.FormValue("start_date"), r.FormValue("end_date"))
 	if msg != "" {
 		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 		return
@@ -593,14 +678,14 @@ func (s *Server) ownAssignment(w http.ResponseWriter, r *http.Request) (store.As
 	return assignment, true
 }
 
-// readAssignment は r のフォームをアサイン入力にします。
+// readAssignmentValues はアサイン1件分の入力を検証して返します。
 // projectID は案件、assignmentID は更新対象です。新規なら assignmentID は空です。
 // 開始日時点の単価が無いときはメッセージを返し、予定原価は計算しません。
-func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string) (store.AssignmentWrite, string) {
+func (s *Server) readAssignmentValues(r *http.Request, projectID, assignmentID, personID, processID, roleID, rateKind, startRaw, endRaw string) (store.AssignmentWrite, string) {
 	write := store.AssignmentWrite{
-		ProjectProcessID: formText(r, "project_process_id"),
-		PersonID:         formText(r, "person_id"),
-		RoleID:           formText(r, "role_id"),
+		ProjectProcessID: processID,
+		PersonID:         personID,
+		RoleID:           roleID,
 	}
 	if assignmentID == "" {
 		line, err := s.store.GetProcessLine(r.Context(), write.ProjectProcessID)
@@ -608,11 +693,11 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 			return write, "工程が不正です。"
 		}
 	}
-	start, msg := normalizeDate(r.FormValue("start_date"), true)
+	start, msg := normalizeDate(startRaw, true)
 	if msg != "" {
 		return write, msg
 	}
-	end, msg := normalizeDate(r.FormValue("end_date"), true)
+	end, msg := normalizeDate(endRaw, true)
 	if msg != "" {
 		return write, msg
 	}
@@ -664,22 +749,21 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if !ok {
 		return write, "この開始日に、その役割の単価（時間または月間）がありません。"
 	}
-	kind := formText(r, "rate_kind")
-	switch kind {
+	switch rateKind {
 	case store.RateKindHourly, store.RateKindMonthly:
 	default:
 		return write, "単価の種類（請負または準委任）を選んでください。"
 	}
-	if !store.RateKindOK(kind, rate, true) {
-		if kind == store.RateKindMonthly {
+	if !store.RateKindOK(rateKind, rate, true) {
+		if rateKind == store.RateKindMonthly {
 			return write, "この開始日に月間単価がありません。準委任以外を選ぶか、単価を登録してください。"
 		}
 		return write, "この開始日に時間単価がありません。請負以外を選ぶか、単価を登録してください。"
 	}
 	write.StartDate = start
 	write.EndDate = end
-	write.RateKind = kind
-	if kind == store.RateKindMonthly {
+	write.RateKind = rateKind
+	if rateKind == store.RateKindMonthly {
 		write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, *rate.MonthlyYen)
 	}
 	return write, ""

@@ -95,7 +95,7 @@ func TestForecastFlow(t *testing.T) {
 	}
 	body = admin.submit(t, "/projects/"+project.ID+"/assignments", url.Values{
 		"csrf": {csrfOf(t, body)}, "project_process_id": {lines[0].ID},
-		"person_id": {personID(t, st, "m01")}, "role_id": {pg},
+		"person_id": {personID(t, st, "m01")}, "role_" + lines[0].ID: {pg},
 		"rate_kind": {"monthly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
 	})
 	if !strings.Contains(body, "¥400,000") {

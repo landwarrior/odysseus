@@ -7,23 +7,74 @@
     <a href="/projects/{{.Project.ID}}">{{.Project.Code}} {{.Project.Name}}</a>
   </div>
   {{template "alerts" .}}
-  {{if not .Groups}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
-  {{if .Groups}}
-  <p class="note">工程の期間はプロジェクト編集で登録します。スケジュール表の帯表示用で、空でもアサインできます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。工程の期間があるときは、追加フォームの初期値に使います。選べる人材は、開始日時点でその役割の単価（時間または月間）がある人だけです。単価の種類はアサインごとに選びます（請負＝円/時、準委任＝円/月）。人材に両方あるときは、案件の契約に合わせてください。予定時間はここでは入れません。準委任の予定・実績原価は暦月数 × 月間単価（実績は今日までの月）、請負の実績原価は時間単価 × 実績工数です。</p>
-  {{end}}
+  {{if not .Lines}}<p>先にプロジェクトの工程を登録してください。</p>{{end}}
+  {{if .Lines}}
+  <p class="note">人材を選び、担当する工程・役割・期間を付けます。同じ人に複数工程を一度に割り当てられます。アサインの開始・終了が案件スケジュールの「枠」（人数 × 営業日）の根拠です。期間の初期値は案件の開始・終了です。開始日時点で選んだ役割の単価（時間または月間）がある人だけ登録できます。単価の種類はアサインごとに選びます（請負＝円/時、準委任＝円/月）。準委任の予定・実績原価は暦月数 × 月間単価（実績は今日までの月）、請負の実績原価は時間単価 × 実績工数です。</p>
+
+  <section class="card">
+    <h2>アサインを追加</h2>
+    {{if not .People}}<p>有効な人材がいません。</p>{{end}}
+    {{if .People}}
+    <form method="post" action="/projects/{{.Project.ID}}/assignments" class="assign-create">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="grid assign-create-meta">
+        <label class="field">
+          <select name="person_id" required>
+            <option value="" selected disabled>選択</option>
+            {{range .People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+          </select>
+          <span class="field-label">人材</span>
+        </label>
+        <label class="field">
+          <select name="rate_kind" required>
+            <option value="" selected disabled>選択</option>
+            <option value="hourly">請負（円/時）</option>
+            <option value="monthly">準委任（円/月）</option>
+          </select>
+          <span class="field-label">単価</span>
+        </label>
+        <label class="field"><input type="date" name="start_date" value="{{.DefaultStart}}" required><span class="field-label">開始</span></label>
+        <label class="field"><input type="date" name="end_date" value="{{.DefaultEnd}}" required><span class="field-label">終了</span></label>
+      </div>
+      <h3>担当する工程</h3>
+      <p class="note">チェックした工程に、上の人材・単価・期間でアサインします。工程ごとに役割を選べます。</p>
+      <div class="assign-process-list">
+        {{range .Lines}}
+        <div class="assign-process-pick">
+          <label class="process-check">
+            <input type="checkbox" name="project_process_id" value="{{.ID}}">
+            <span>{{.Name}}</span>
+          </label>
+          <span class="process-meta">見積 {{.Hours}} 時間 · {{day .Start}} 〜 {{day .End}}</span>
+          <label class="field">
+            <select name="role_{{.ID}}">
+              {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+            </select>
+            <span class="field-label">役割</span>
+          </label>
+        </div>
+        {{end}}
+      </div>
+      <button type="submit" class="primary">追加</button>
+    </form>
+    {{end}}
+  </section>
+
+  <h2>登録済みのアサイン</h2>
+  {{if not .Groups}}<p>アサインはありません。</p>{{end}}
   {{range .Groups}}
   <section class="card">
-    <h2>{{.Line.ProcessName}}</h2>
-    <p class="note">工程の見積 {{hours .Line.PlannedMinutes}} 時間。工程の期間 {{day .Line.StartDate}} 〜 {{day .Line.EndDate}}</p>
-    <h3>登録済みのアサイン</h3>
-    {{if not .Rows}}<p>アサインはありません。</p>{{end}}
-    {{if .Rows}}
+    <h2>{{.PersonCode}} {{.PersonName}}</h2>
     <div class="assign-list">
       {{range .Rows}}
       {{$row := .}}
       <div class="assign-item">
         <form id="assign-{{.Assignment.ID}}" method="post" action="/projects/{{$.Project.ID}}/assignments/{{.Assignment.ID}}" class="grid assign-row">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <div class="field field-display">
+            <span class="field-value">{{.Assignment.ProcessName}}</span>
+            <span class="field-label">工程</span>
+          </div>
           <label class="field">
             <select name="person_id">
               {{range .People}}<option value="{{.ID}}" {{if eq .ID $row.Assignment.PersonID}}selected{{end}}>{{.Label}}</option>{{end}}
@@ -60,41 +111,8 @@
       </div>
       {{end}}
     </div>
-    {{end}}
-    <div class="assign-add">
-      <h3>アサインを追加</h3>
-      {{if not $.People}}<p>有効な人材がいません。</p>{{end}}
-      {{if $.People}}
-      <form method="post" action="/projects/{{$.Project.ID}}/assignments" class="grid">
-        <input type="hidden" name="csrf" value="{{$.CSRF}}">
-        <input type="hidden" name="project_process_id" value="{{.Line.ID}}">
-        <label class="field">
-          <select name="person_id" required>
-            {{range $.People}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
-          </select>
-          <span class="field-label">人材</span>
-        </label>
-        <label class="field">
-          <select name="role_id" required>
-            {{range $.Roles}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
-          </select>
-          <span class="field-label">役割</span>
-        </label>
-        <label class="field">
-          <select name="rate_kind" required>
-            <option value="" selected disabled>選択</option>
-            <option value="hourly">請負（円/時）</option>
-            <option value="monthly">準委任（円/月）</option>
-          </select>
-          <span class="field-label">単価</span>
-        </label>
-        <label class="field"><input type="date" name="start_date" value="{{.Line.StartDate}}" required><span class="field-label">開始</span></label>
-        <label class="field"><input type="date" name="end_date" value="{{.Line.EndDate}}" required><span class="field-label">終了</span></label>
-        <button type="submit" class="primary">追加</button>
-      </form>
-      {{end}}
-    </div>
   </section>
+  {{end}}
   {{end}}
 </main>
 {{template "foot" .}}

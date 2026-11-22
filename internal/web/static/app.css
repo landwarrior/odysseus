@@ -652,12 +652,48 @@ section.danger { border-color: var(--danger-line); }
 .assign-item .button-pair {
   justify-self: start;
 }
-.assign-add {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
+.assign-create { display: grid; gap: 1rem; }
+.assign-create-meta > .field {
+  flex: 1 1 9rem;
+  min-width: min(100%, 9rem);
 }
-.assign-add h3 { margin-top: 0; }
+.assign-create h3 { margin: 0; }
+.assign-process-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.assign-process-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.assign-process-pick .process-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 10rem;
+  min-width: min(100%, 10rem);
+  font-weight: 600;
+}
+.assign-process-pick .process-meta {
+  flex: 1 1 12rem;
+  min-width: min(100%, 10rem);
+  color: var(--muted);
+  font-size: 0.92rem;
+  padding-bottom: 0.55rem;
+}
+.assign-process-pick > .field {
+  flex: 0 1 9rem;
+  min-width: min(100%, 8rem);
+}
+.assign-create > button {
+  justify-self: start;
+}
 
 .project-lines {
   display: grid;
