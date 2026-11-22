@@ -1720,8 +1720,8 @@ main.time-page .time-rows {
   gap: 8px;
 }
 main.time-page .time-row {
-  display: grid;
-  grid-template-columns: minmax(8rem, 1fr) max-content;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 12px;
   padding: 0.45rem 0.6rem;
@@ -1732,10 +1732,16 @@ main.time-page .time-row-out {
   opacity: 0.65;
 }
 main.time-page .time-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 main.time-page .time-hours {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
 }
@@ -1751,6 +1757,7 @@ main.time-page .time-hours input {
 }
 main.time-page .time-unit,
 main.time-page .time-out-note {
+  flex: 0 0 auto;
   color: var(--muted);
   font-size: 0.92rem;
 }
@@ -1761,9 +1768,4 @@ main.time-page .time-saved-dates {
 }
 main.time-page .time-saved-dates a.current {
   font-weight: 700;
-}
-@media (max-width: 40rem) {
-  main.time-page .time-row {
-    grid-template-columns: 1fr;
-  }
 }
