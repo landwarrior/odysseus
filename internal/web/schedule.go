@@ -362,21 +362,15 @@ func (s *Server) scheduleProcessRows(
 			}
 		}
 		allocated := processTotals[line.ID]
-		diff := est - allocated
-		diffClass := ""
-		if diff > 0 {
-			diffClass = "warn"
-		} else if diff < 0 {
-			diffClass = "diff-over"
-		}
+		estStr, allocStr, diffStr, diffClass, _ := personDayRowMeta(est, allocated, std)
 		row := scheduleRow{
 			RowID:     line.ID,
 			ProcessID: line.ID,
 			Process:   line.ProcessName,
 			Color:     color,
-			Estimate:  calc.FormatPersonDays(est, std),
-			Allocated: calc.FormatPersonDays(allocated, std),
-			Diff:      calc.FormatPersonDays(diff, std),
+			Estimate:  estStr,
+			Allocated: allocStr,
+			Diff:      diffStr,
 			DiffClass: diffClass,
 			Editable:  true,
 		}
@@ -432,13 +426,7 @@ func (s *Server) scheduleTaskGroups(
 		for _, task := range lineTasks {
 			est := task.PlannedMinutes
 			allocated := taskTotals[task.ID]
-			diff := est - allocated
-			diffClass := ""
-			if diff > 0 {
-				diffClass = "warn"
-			} else if diff < 0 {
-				diffClass = "diff-over"
-			}
+			estStr, allocStr, diffStr, diffClass, _ := personDayRowMeta(est, allocated, std)
 			row := scheduleRow{
 				RowID:     task.ID,
 				ProcessID: line.ID,
@@ -446,9 +434,9 @@ func (s *Server) scheduleTaskGroups(
 				Name:      task.Name,
 				Remarks:   task.Remarks,
 				Color:     color,
-				Estimate:  calc.FormatPersonDays(est, std),
-				Allocated: calc.FormatPersonDays(allocated, std),
-				Diff:      calc.FormatPersonDays(diff, std),
+				Estimate:  estStr,
+				Allocated: allocStr,
+				Diff:      diffStr,
 				DiffClass: diffClass,
 				Editable:  true,
 			}
@@ -473,19 +461,18 @@ func (s *Server) scheduleTaskGroups(
 		}
 		if len(taskRows) == 0 {
 			est := line.PlannedMinutes
+			estStr, allocStr, diffStr, diffClass, _ := personDayRowMeta(est, 0, std)
 			row := scheduleRow{
 				RowID:     line.ID,
 				ProcessID: line.ID,
 				Process:   line.ProcessName,
 				Name:      "—",
 				Color:     color,
-				Estimate:  calc.FormatPersonDays(est, std),
-				Allocated: calc.FormatPersonDays(0, std),
-				Diff:      calc.FormatPersonDays(est, std),
+				Estimate:  estStr,
+				Allocated: allocStr,
+				Diff:      diffStr,
+				DiffClass: diffClass,
 				Editable:  false,
-			}
-			if est > 0 {
-				row.DiffClass = "warn"
 			}
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
@@ -637,16 +624,16 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		allocated := totals[task.ID]
-		diff := task.PlannedMinutes - allocated
+		estStr, allocStr, diffStr, _, diffSign := personDayRowMeta(task.PlannedMinutes, allocated, std)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"kind":      "task",
 			"task_id":   task.ID,
 			"effort":    calc.FormatPersonDays(minutes, std),
-			"estimate":  calc.FormatPersonDays(task.PlannedMinutes, std),
-			"allocated": calc.FormatPersonDays(allocated, std),
-			"diff":      calc.FormatPersonDays(diff, std),
-			"diff_sign": diff,
+			"estimate":  estStr,
+			"allocated": allocStr,
+			"diff":      diffStr,
+			"diff_sign": diffSign,
 		})
 		return
 	}
@@ -678,17 +665,31 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	allocated := totals[line.ID]
-	diff := est - allocated
+	estStr, allocStr, diffStr, _, diffSign := personDayRowMeta(est, allocated, std)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"kind":               "process",
 		"project_process_id": line.ID,
 		"effort":             calc.FormatPersonDays(minutes, std),
-		"estimate":           calc.FormatPersonDays(est, std),
-		"allocated":          calc.FormatPersonDays(allocated, std),
-		"diff":               calc.FormatPersonDays(diff, std),
-		"diff_sign":          diff,
+		"estimate":           estStr,
+		"allocated":          allocStr,
+		"diff":               diffStr,
+		"diff_sign":          diffSign,
 	})
+}
+
+// personDayRowMeta は見積・割当・差分を、画面の人日（0.1 刻み）同士で揃えて返します。
+// diffSign は 0.1 人日の個数の差（正: 割当不足、負: 超過）で、JS の色分けに使います。
+func personDayRowMeta(estimateMinutes, allocatedMinutes, standardMinutes int64) (estimate, allocated, diff, diffClass string, diffSign int64) {
+	estT := calc.PersonDayTenths(estimateMinutes, standardMinutes)
+	allocT := calc.PersonDayTenths(allocatedMinutes, standardMinutes)
+	diffT := estT - allocT
+	if diffT > 0 {
+		diffClass = "warn"
+	} else if diffT < 0 {
+		diffClass = "diff-over"
+	}
+	return calc.FormatPersonDayTenths(estT), calc.FormatPersonDayTenths(allocT), calc.FormatPersonDayTenths(diffT), diffClass, diffT
 }
 
 // processEstimateMinutes は工程明細の見積分です。タスクがあればその合計、無ければ工程の予定分です。

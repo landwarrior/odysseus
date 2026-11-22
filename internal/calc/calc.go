@@ -153,19 +153,54 @@ func FormatHours(minutes int64) string {
 	return fmt.Sprintf("%s%d.%02d", sign, whole, hundredths)
 }
 
-// FormatPersonDays は minutes を人日の文字列にし、小数第1位で四捨五入します。
+// PersonDayTenths は minutes を 0.1 人日の個数にし、四捨五入します。
 // standardMinutes は 1 人日の分数です。0 以下のときは 480 分として計算します。
-func FormatPersonDays(minutes, standardMinutes int64) string {
+// 負の minutes なら負の刻み数を返します。
+func PersonDayTenths(minutes, standardMinutes int64) int64 {
 	if standardMinutes <= 0 {
 		standardMinutes = 480
 	}
-	sign := ""
+	sign := int64(1)
 	if minutes < 0 {
-		sign = "-"
+		sign = -1
 		minutes = -minutes
 	}
-	tenths := (minutes*10 + standardMinutes/2) / standardMinutes
+	return sign * ((minutes*10 + standardMinutes/2) / standardMinutes)
+}
+
+// FormatPersonDayTenths は 0.1 人日の個数を "n.n" 形式の文字列にします。
+func FormatPersonDayTenths(tenths int64) string {
+	sign := ""
+	if tenths < 0 {
+		sign = "-"
+		tenths = -tenths
+	}
 	return fmt.Sprintf("%s%d.%d", sign, tenths/10, tenths%10)
+}
+
+// FormatPersonDays は minutes を人日の文字列にし、小数第1位で四捨五入します。
+// standardMinutes は 1 人日の分数です。0 以下のときは 480 分として計算します。
+func FormatPersonDays(minutes, standardMinutes int64) string {
+	return FormatPersonDayTenths(PersonDayTenths(minutes, standardMinutes))
+}
+
+// SnapToPersonDays は minutes を、画面の人日表示と同じ 0.1 人日刻みの分数に揃えます。
+// 表示が 1.8 なら保存も 1.8 人日ぶんの分になり、割当と差分がずれません。
+func SnapToPersonDays(minutes, standardMinutes int64) int64 {
+	if standardMinutes <= 0 {
+		standardMinutes = 480
+	}
+	tenths := PersonDayTenths(minutes, standardMinutes)
+	if tenths < 0 {
+		return -((-tenths) * standardMinutes / 10)
+	}
+	return tenths * standardMinutes / 10
+}
+
+// PersonDayDiffTenths は見積と割当の差分を、画面の人日（0.1 刻み）同士の引き算で求めます。
+// 分のまま引いてから四捨五入すると、同じ表示値同士でも -0.1 になることがあるためです。
+func PersonDayDiffTenths(estimateMinutes, allocatedMinutes, standardMinutes int64) int64 {
+	return PersonDayTenths(estimateMinutes, standardMinutes) - PersonDayTenths(allocatedMinutes, standardMinutes)
 }
 
 // ParsePersonDays は raw（画面の人日。0.1 刻み）を分にします。

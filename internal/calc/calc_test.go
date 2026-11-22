@@ -92,6 +92,19 @@ func TestPersonDays(t *testing.T) {
 	if got := FormatPersonDays(24, 480); got != "0.1" {
 		t.Fatalf("round half up = %s", got)
 	}
+	// 旧・時間入力の 14 時間 = 840 分は表示 1.8。割当 1.8（864 分）との差分は表示上 0。
+	if got := FormatPersonDays(840, 480); got != "1.8" {
+		t.Fatalf("14h display = %s", got)
+	}
+	if got := SnapToPersonDays(840, 480); got != 864 {
+		t.Fatalf("snap 840 = %d", got)
+	}
+	if got := PersonDayDiffTenths(840, 864, 480); got != 0 {
+		t.Fatalf("display diff tenths = %d, want 0", got)
+	}
+	if got := FormatPersonDayTenths(PersonDayDiffTenths(840, 864, 480)); got != "0.0" {
+		t.Fatalf("display diff = %s", got)
+	}
 	got, err := ParsePersonDays("1.5", 480)
 	if err != nil || got != 720 {
 		t.Fatalf("parse 1.5 = %d %v", got, err)

@@ -359,3 +359,22 @@ func scanTaskRows(rows *sql.Rows) (Task, error) {
 func errorsIsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
+
+// SnapEffortToPersonDays は見積・割当の分数を、画面の 0.1 人日刻みに揃えます。
+// 時間入力時代の端数が、表示 1.8 に対して割当 1.8 と食い違わないようにします。
+// standardMinutes は 1 人日の分数です。何度呼んでも同じ結果になります。
+func (s *Store) SnapEffortToPersonDays(ctx context.Context, standardMinutes int64) error {
+	if standardMinutes <= 0 {
+		standardMinutes = 480
+	}
+	half := standardMinutes / 2
+	for _, table := range []string{"project_task", "project_process", "process_allocation", "task_allocation"} {
+		_, err := s.db.Exec(ctx, `
+			UPDATE `+table+` SET planned_minutes = ((planned_minutes * 10 + ?) / ?) * ? / 10
+			WHERE planned_minutes > 0`, half, standardMinutes, standardMinutes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -43,6 +43,9 @@ func main() {
 		log.Fatal(err)
 	}
 	st := store.New(database)
+	if err := st.SnapEffortToPersonDays(ctx, cfg.StandardMinutes); err != nil {
+		log.Fatal(err)
+	}
 	password, created, err := st.Seed(ctx)
 	if err != nil {
 		log.Fatal(err)
