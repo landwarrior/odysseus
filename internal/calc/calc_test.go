@@ -25,6 +25,91 @@ func TestCostYen(t *testing.T) {
 	}
 }
 
+func TestMonthlyAndAssignmentCost(t *testing.T) {
+	if got := MonthlyCost("2026-04-01", "2026-04-30", 400000); got != 400000 {
+		t.Fatalf("one month = %d", got)
+	}
+	if got := MonthlyCost("2026-04-15", "2026-06-10", 100000); got != 300000 {
+		t.Fatalf("three months = %d", got)
+	}
+	if got := AssignmentPlannedCost("2026-04-01", "2026-04-30", 400000); got != 400000 {
+		t.Fatalf("assignment planned = %d", got)
+	}
+	if got := AssignmentPlannedCost("2026-04-01", "2026-04-30", 0); got != 0 {
+		t.Fatalf("no monthly = %d", got)
+	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-05-15", 100000); got != 200000 {
+		t.Fatalf("accrued through May = %d", got)
+	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-03-31", 100000); got != 0 {
+		t.Fatalf("before start = %d", got)
+	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-12-01", 100000); got != 300000 {
+		t.Fatalf("after end = %d", got)
+	}
+}
+
+func TestAllocateByWeights(t *testing.T) {
+	got := AllocateByWeights(100000, map[string]int64{"a": 2, "b": 1})
+	if got["a"] != 66667 || got["b"] != 33333 {
+		t.Fatalf("2:1 split = %+v", got)
+	}
+	if got["a"]+got["b"] != 100000 {
+		t.Fatalf("sum = %d", got["a"]+got["b"])
+	}
+	got = AllocateByWeights(100, map[string]int64{"x": 1, "y": 1, "z": 1})
+	if got["x"]+got["y"]+got["z"] != 100 {
+		t.Fatalf("equal sum = %+v", got)
+	}
+	if len(AllocateByWeights(0, map[string]int64{"a": 1})) != 0 {
+		t.Fatal("zero total")
+	}
+}
+
+func yenPtr(v int64) *int64 { return &v }
+
+func TestMonthlyPersonCostsSingleAndSplit(t *testing.T) {
+	orders := map[string]*int64{
+		"p1": yenPtr(2000000),
+		"p2": yenPtr(1000000),
+	}
+	stakes := []MonthlyStake{
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+		{PersonID: "h", ProjectID: "p2", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 300000, HasRate: true},
+	}
+	got, missing := MonthlyPersonCosts(stakes, orders, "2026-04-15")
+	if missing {
+		t.Fatal("rate missing")
+	}
+	p1 := got[PersonProjectKey("h", "p1")]
+	p2 := got[PersonProjectKey("h", "p2")]
+	if p1.PlannedYen != 200000 || p1.ActualYen != 200000 {
+		t.Fatalf("p1 = %+v", p1)
+	}
+	if p2.PlannedYen != 100000 || p2.ActualYen != 100000 {
+		t.Fatalf("p2 = %+v", p2)
+	}
+	if p1.PlannedYen+p2.PlannedYen != 300000 {
+		t.Fatalf("total %d", p1.PlannedYen+p2.PlannedYen)
+	}
+}
+
+func TestMonthlyPersonCostsSkipsNilOrder(t *testing.T) {
+	order := int64(1000000)
+	stakes := []MonthlyStake{
+		{PersonID: "h", ProjectID: "p1", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 100000, HasRate: true},
+		{PersonID: "h", ProjectID: "p2", StartDate: "2026-04-01", EndDate: "2026-04-30", MonthlyYen: 100000, HasRate: true},
+	}
+	got, _ := MonthlyPersonCosts(stakes, map[string]*int64{"p1": &order, "p2": nil}, "2026-04-30")
+	if got[PersonProjectKey("h", "p1")].PlannedYen != 100000 {
+		t.Fatalf("p1 should take all: %+v", got)
+	}
+	if _, ok := got[PersonProjectKey("h", "p2")]; ok {
+		t.Fatalf("p2 should get nothing: %+v", got)
+	}
+}
+
 func TestRemainingAndGross(t *testing.T) {
 	if got := RemainingCost(400000, 40000); got != 360000 {
 		t.Fatalf("remaining = %d", got)
@@ -67,6 +152,33 @@ func TestPersonDays(t *testing.T) {
 	}
 	if got := FormatPersonDays(24, 480); got != "0.1" {
 		t.Fatalf("round half up = %s", got)
+	}
+	// 旧・時間入力の 14 時間 = 840 分は表示 1.8。割当 1.8（864 分）との差分は表示上 0。
+	if got := FormatPersonDays(840, 480); got != "1.8" {
+		t.Fatalf("14h display = %s", got)
+	}
+	if got := SnapToPersonDays(840, 480); got != 864 {
+		t.Fatalf("snap 840 = %d", got)
+	}
+	if got := PersonDayDiffTenths(840, 864, 480); got != 0 {
+		t.Fatalf("display diff tenths = %d, want 0", got)
+	}
+	if got := FormatPersonDayTenths(PersonDayDiffTenths(840, 864, 480)); got != "0.0" {
+		t.Fatalf("display diff = %s", got)
+	}
+	got, err := ParsePersonDays("1.5", 480)
+	if err != nil || got != 720 {
+		t.Fatalf("parse 1.5 = %d %v", got, err)
+	}
+	got, err = ParsePersonDays("0.1", 480)
+	if err != nil || got != 48 {
+		t.Fatalf("parse 0.1 = %d %v", got, err)
+	}
+	if _, err := ParsePersonDays("", 480); err != ErrEmpty {
+		t.Fatalf("empty: %v", err)
+	}
+	if _, err := ParsePersonDays("0.15", 480); err != ErrFormat {
+		t.Fatalf("not tenth: %v", err)
 	}
 }
 

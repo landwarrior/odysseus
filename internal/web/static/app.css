@@ -1,53 +1,71 @@
+/* 色は schedule_manager のライト／ダークに揃える */
 :root {
-  --bg: #f3efe6;
-  --paper: #fffdf8;
-  --ink: #1d1a16;
-  --muted: #655e54;
-  --line: #e3d8c8;
-  --accent: #1f4e3d;
-  --accent-hover: #2a6a52;
-  --warn: #8a3b12;
-  --danger: #8d1d1d;
-  --danger-hover: #a42828;
-  --secondary-hover: #ebe4d8;
-  --header-bg: #1d1a16;
-  --header-fg: #f6f1e8;
-  --field: #ffffff;
-  --flash-bg: #e7f5ee;
-  --flash-fg: #145c38;
-  --warn-bg: #fff6e8;
-  --warn-line: #efd3a8;
-  --error-bg: #fff1ef;
-  --danger-line: #e7c1c1;
-  --over-bg: #fff1ef;
-  --check-border: #c9bba8;
-  --shadow: rgba(29, 26, 22, 0.16);
+  --bg: #e0e0e0;
+  --paper: #efefef;
+  --ink: #1a1a1a;
+  --muted: #666666;
+  --line: #bdbdbd;
+  --accent: #2563eb;
+  /* ライトはリンクを明るく、塗りボタンは少し暗くする */
+  --link-hover: #3b82f6;
+  --button-bg: #2563eb;
+  --button-text: #ffffff;
+  --button-border: #2563eb;
+  --button-hover-bg: #1d4ed8;
+  --button-hover-border: #1d4ed8;
+  --warn: #b45309;
+  --danger: #b91c1c;
+  --danger-button-bg: #b91c1c;
+  --danger-hover: #991b1b;
+  --secondary-hover: #d7e6ff;
+  --header-bg: #2f2f2f;
+  --header-fg: #ffffff;
+  --field: #f5f5f5;
+  --flash-bg: #dcfce7;
+  --flash-fg: #166534;
+  --warn-bg: #fef3c7;
+  --warn-line: #fcd34d;
+  --error-bg: #fef2f2;
+  --danger-line: #fecaca;
+  --over-bg: #fecaca;
+  --check-border: #bdbdbd;
+  --shadow: rgba(0, 0, 0, 0.16);
+  /* 端末にあるフォントだけ使う。英字は Nunito→Roboto→Segoe UI、日本語は Noto Sans JP */
+  --font-ui: "Nunito", "Roboto", "Segoe UI", "Noto Sans JP", sans-serif;
   color-scheme: light;
 }
 
 html[data-theme="dark"] {
-  --bg: #161410;
-  --paper: #221f1a;
-  --ink: #f3efe6;
-  --muted: #a8a093;
-  --line: #3f3a32;
-  --accent: #3f7d64;
-  --accent-hover: #346853;
-  --warn: #e0a06a;
-  --danger: #b85c5c;
-  --danger-hover: #9e4a4a;
-  --secondary-hover: #2c2822;
-  --header-bg: #0e0c0a;
-  --header-fg: #f6f1e8;
-  --field: #2a2620;
-  --flash-bg: #1c3a2c;
-  --flash-fg: #a8e0c0;
-  --warn-bg: #3a2a18;
-  --warn-line: #8a6230;
-  --error-bg: #3a1c1c;
-  --danger-line: #8a4545;
-  --over-bg: #3a1c1c;
-  --check-border: #6a6358;
+  --bg: #272727;
+  --paper: #333333;
+  --ink: #cfcfcf;
+  --muted: #9a9a9a;
+  --line: #4a4a4a;
+  --accent: #8bb4e8;
+  /* ダークはリンクを暗く、塗りボタンは同系色で少し明るくする */
+  --link-hover: #6b9ad4;
+  --button-bg: #3a4f6a;
+  --button-text: #d5dbe6;
+  --button-border: #4a6280;
+  --button-hover-bg: #4a6280;
+  --button-hover-border: #5c7694;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  /* 削除ボタンはベースを暗くし、ホバーで他ボタン同様に明るくする */
+  --danger-button-bg: #7f1d1d;
+  --danger-hover: #b33a3a;
+  --secondary-hover: #2a3f5f;
+  --header-bg: #1a1a1a;
+  --header-fg: #d0d0d0;
+  --field: #1f1f1f;
+  --flash-bg: #14532d;
+  --flash-fg: #bbf7d0;
+  --warn-bg: #5b4a16;
+  --warn-line: #fde68a;
+  --error-bg: #3f1d1d;
+  --danger-line: #7f1d1d;
+  --over-bg: #5c2222;
+  --check-border: #4a4a4a;
   --shadow: rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }
@@ -62,14 +80,15 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+  font-family: var(--font-ui);
   font-size: 1rem;
   line-height: 1.5;
+  /* Noto は詰まりやすいが、非 Noto 端末で開きすぎないよう 0.05rem */
+  letter-spacing: 0.05rem;
 }
 
 a { color: var(--accent); }
-a:hover { color: var(--accent-hover); }
-a.button:hover { color: white; }
+a:hover { color: var(--link-hover); }
 a.secondary:hover { color: var(--ink); }
 body, main, p, td, th, .banner, .note { overflow-wrap: anywhere; }
 
@@ -100,7 +119,7 @@ header.top:not(:has(.site-nav)) {
 
 header.top a { color: inherit; text-decoration: none; }
 header.top a:hover { color: inherit; }
-header.top .user-panel a:hover { color: var(--accent-hover); }
+header.top .user-panel a:hover { color: var(--link-hover); }
 header.top .brand {
   grid-area: brand;
   font-weight: 700;
@@ -233,13 +252,13 @@ header.top .theme-option {
   padding: 0.4rem 0.55rem;
 }
 header.top .theme-option[aria-pressed="true"] {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--button-bg);
+  color: var(--button-text);
+  border-color: var(--button-border);
 }
 header.top .theme-option[aria-pressed="true"]:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
 }
 header.top .theme-option:hover:not([aria-pressed="true"]) {
   background: var(--secondary-hover);
@@ -255,24 +274,38 @@ header.top .user-panel > form button:hover {
   background: var(--secondary-hover);
 }
 
+/* 既定はナビ・表示など。DB を更新する操作は .primary、削除は .danger */
 button, .button {
   display: inline-block;
-  background: var(--accent);
-  color: white;
-  border: 0;
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 0.45rem 0.85rem;
   text-decoration: none;
   font: inherit;
   cursor: pointer;
 }
-button:hover:not(:disabled):not(.secondary):not(.danger):not(header.top button),
-a.button:hover {
-  background: var(--accent-hover);
+button:hover:not(:disabled):not(.primary):not(.danger):not(header.top button),
+a.button:hover:not(.primary):not(.danger) {
+  background: var(--secondary-hover);
+  color: var(--ink);
+}
+
+button.primary, .button.primary {
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--button-border);
+}
+button.primary:hover:not(:disabled),
+a.button.primary:hover {
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
+  color: var(--button-text);
 }
 
 button.secondary, .secondary {
-  background: transparent;
+  background: var(--field);
   color: var(--ink);
   border: 1px solid var(--line);
 }
@@ -282,7 +315,7 @@ a.secondary:hover {
 }
 
 button.danger, .danger button {
-  background: var(--danger);
+  background: var(--danger-button-bg);
   color: white;
   border: 0;
 }
@@ -291,13 +324,157 @@ button.danger:hover:not(:disabled),
   background: var(--danger-hover);
 }
 
-label { display: flex; flex-direction: column; gap: 0.25rem; color: var(--muted); font-size: 0.92rem; }
+/* 先頭の「上へ」や末尾の「下へ」など、押せないボタンは見た目でも分かるようにする */
+button:disabled,
+button:disabled:hover,
+.button:disabled,
+.button:disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* フローティングラベル（入力欄と一体の1ブロックとして折り返す） */
+label.field,
+.field.field-display {
+  position: relative;
+  display: block;
+  min-width: 0;
+  color: inherit;
+  font-size: inherit;
+}
+label.field > .field-label,
+.field.field-display > .field-label {
+  position: absolute;
+  z-index: 1;
+  left: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: calc(100% - 0.9rem);
+  padding: 0 0.25rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  /* 未入力で枠内にあるときも、入力欄と同じ色にする（透明だと画面背景が見える） */
+  background: var(--field);
+  transition: top 0.12s ease, transform 0.12s ease, font-size 0.12s ease, color 0.12s ease, background-color 0.12s ease;
+}
+label.field:focus-within > .field-label,
+label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+label.field:has(select) > .field-label,
+label.field:has(input[type="date"]) > .field-label,
+label.field:has(input[type="month"]) > .field-label,
+label.field:has(.help) > .field-label,
+label.field:has(.phase-color-cell) > .field-label,
+.field.field-display > .field-label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  background: var(--field);
+}
+label.field:focus-within > .field-label {
+  color: var(--accent);
+}
+label.field > :is(input, select, textarea),
+label.field > .phase-color-cell,
+.field.field-display > .field-value {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.95rem 0.55rem 0.35rem;
+}
+/* OS 標準の select / date 塗りを抑え、ラベルと同じ --field にする */
+label.field > :is(input, select, textarea) {
+  background-color: var(--field);
+  color: var(--ink);
+}
+label.field > select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23666666' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 0.9rem 0.9rem;
+  padding-right: 1.8rem;
+}
+html[data-theme="dark"] label.field > select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%239a9a9a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+}
+label.field > .phase-color-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+label.field > .phase-color-cell select {
+  min-height: 0;
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+label.field > .phase-color-cell select:focus,
+label.field > .phase-color-cell select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+label.field:has(.phase-color-cell):focus-within > .phase-color-cell {
+  border-color: var(--accent);
+}
+label.field > textarea {
+  min-height: 5.5rem;
+  padding-top: 1.15rem;
+  resize: vertical;
+}
+.field.field-display > .field-value {
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+input:read-only,
+textarea:read-only {
+  background: var(--bg);
+}
+/* 表示専用のラベルは値（--bg）に合わせる。
+   :has(:read-only) は span にもマッチするため使わない。 */
+.field.field-display > .field-label {
+  background: var(--bg);
+}
+label.field:has(input:read-only, textarea:read-only) > .field-label {
+  background: var(--bg);
+}
 .label-row {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  max-width: 100%;
 }
-label:has(.help) { position: relative; }
+label.field:has(.help) { position: relative; }
+label.field:has(.help) > .field-label {
+  overflow: visible;
+  text-overflow: clip;
+}
+label.field:has(.help[open]) {
+  z-index: 5;
+}
+label.field > .field-label .help { pointer-events: auto; }
 .help {
   position: static;
   display: inline;
@@ -326,12 +503,14 @@ label:has(.help) { position: relative; }
   border-color: var(--accent);
   color: var(--accent);
 }
-.help-tip {
+/* 説明は入力欄直下・入力欄幅。ラベル内に置くと幅がラベル幅になる */
+label.field > .help-tip {
+  display: none;
   position: absolute;
   z-index: 8;
   left: 0;
   right: 0;
-  top: 1.75rem;
+  top: calc(100% + 0.35rem);
   width: auto;
   max-width: none;
   box-sizing: border-box;
@@ -345,25 +524,44 @@ label:has(.help) { position: relative; }
   font-weight: 400;
   line-height: 1.45;
   white-space: normal;
+  pointer-events: auto;
+}
+label.field:has(.help[open]) > .help-tip {
+  display: block;
 }
 label.check {
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 0.55rem;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
   min-height: 2.75rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
   color: var(--ink);
   cursor: pointer;
   user-select: none;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+label.check:hover {
+  background: var(--secondary-hover);
 }
 input, select, textarea {
   width: 100%;
   max-width: 100%;
+  min-height: 2.75rem;
   font: inherit;
   color: var(--ink);
   background: var(--field);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 0.45rem 0.55rem;
+  padding: 0.55rem;
 }
 label.check input {
   appearance: none;
@@ -378,7 +576,7 @@ label.check input {
   cursor: pointer;
   flex: 0 0 auto;
 }
-label.check input:hover { border-color: var(--accent); }
+label.check:hover input { border-color: var(--accent); }
 label.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 label.check input:checked {
   background-color: var(--accent);
@@ -388,24 +586,29 @@ label.check input:checked {
 
 .stack { display: grid; gap: 0.8rem; }
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem 1rem;
   align-items: end;
 }
-.grid.rates-form {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-@media (max-width: 56rem) {
-  .grid.rates-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.grid > .field,
+.grid > label.field {
+  flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
 }
 .title-row, .actions, .filters, .inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .title-row h1, .title-row h2 { margin-right: auto; }
 .filters a.current { font-weight: 700; }
+.inline > .field {
+  flex: 1 1 14rem;
+  min-width: min(100%, 12rem);
+}
 .inline.checks { gap: 0.75rem 1.5rem; }
 .inline.checks .check { flex: 0 0 auto; }
+.grid > button {
+  flex: 0 0 auto;
+  align-self: end;
+}
 
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; background: var(--paper); }
@@ -425,11 +628,10 @@ td.clip {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-th.mark, td.mark { text-align: center; width: 4.5rem; }
-table.rates {
-  table-layout: fixed;
-  width: 100%;
+td.person-fullname {
+  white-space: nowrap;
 }
+th.mark, td.mark { text-align: center; width: 4.5rem; }
 .mark-check {
   display: inline-block;
   width: 1.15rem;
@@ -454,29 +656,80 @@ section.danger { border-color: var(--danger-line); }
 .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.75rem; margin: 1rem 0; }
 .summary div { background: var(--paper); border: 1px solid var(--line); padding: 0.65rem 0.75rem; }
 .summary span { display: block; color: var(--muted); font-size: 0.8rem; }
-.cost { margin: 0; align-self: end; }
 .assign-list {
   display: grid;
   gap: 0.75rem;
 }
 .assign-item {
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 10px;
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg);
 }
-.assign-row { margin: 0; }
+/* 工程行と同様、フォームの子を行の flex に直接参加させる */
+.assign-row { display: contents; }
+/* display:contents なので DOM 上は .assign-row の子。幅はここで固定する */
+.assign-row > .field {
+  flex: 1 1 160px;
+  max-width: 200px;
+  min-width: 160px;
+}
+.assign-row > .field .field-value.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .assign-item .button-pair {
+  flex: 0 0 auto;
+}
+.assign-create { display: grid; gap: 1rem; }
+.assign-create-meta > .field {
+  flex: 1 1 160px;
+  max-width: 200px;
+  min-width: 160px;
+}
+.assign-create h3 { margin: 0; }
+.assign-process-list {
+  display: grid;
+  gap: 0.65rem;
+}
+.assign-process-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.assign-process-pick .process-check {
+  flex: 0 1 auto;
+  max-width: min(100%, 200px);
+}
+.assign-process-pick .process-check .process-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assign-process-pick .process-meta {
+  flex: 1 1 12rem;
+  min-width: min(100%, 10rem);
+  color: var(--muted);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.assign-process-pick > .field {
+  flex: 1 1 160px;
+  max-width: 200px;
+  min-width: 160px;
+}
+.assign-create > button {
   justify-self: start;
 }
-.assign-add {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-.assign-add h3 { margin-top: 0; }
 
 .project-lines {
   display: grid;
@@ -494,25 +747,25 @@ section.danger { border-color: var(--danger-line); }
 }
 .line-process {
   flex: 1 1 14rem;
-  min-width: 14rem;
+  min-width: min(100%, 12rem);
 }
 .line-dates,
 .line-amounts {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: end;
   gap: 0.75rem;
-  flex: 0 0 auto;
-  min-width: max-content;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
-.line-dates label,
-.line-amounts label {
-  width: 9.5rem;
-  min-width: 9.5rem;
+.line-dates > .field,
+.line-amounts > .field {
+  flex: 1 1 8.5rem;
+  min-width: min(100%, 8.5rem);
+  max-width: 12rem;
 }
 .line-remove {
   flex: 0 0 auto;
-  min-width: max-content;
 }
 
 main.process-page,
@@ -523,19 +776,94 @@ main.person-page {
   padding-right: 24px;
   font-size: 16px;
 }
-main.process-page label,
-main.role-page label,
-main.person-page label { font-size: 16px; }
+.rate-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+.rate-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.rate-row > .rate-role,
+.rate-row > .rate-date,
+.rate-row > .rate-hourly,
+.rate-row > .rate-monthly {
+  min-width: 0;
+}
+.rate-row .field.field-display > .field-value,
+.rate-row .field.field-display > .field-label {
+  background: var(--field);
+}
+.rate-row > .rate-actions {
+  display: flex;
+  align-items: end;
+  min-width: 0;
+}
+.rate-row > .rate-actions > form {
+  display: flex;
+  width: 100%;
+}
+.rate-row > .rate-actions button {
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+.rate-row.rate-add {
+  margin-top: 0.9rem;
+}
+@media (max-width: 40rem) {
+  .rate-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+main.process-page label.field > .field-label,
+main.role-page label.field > .field-label,
+main.person-page label.field > .field-label,
+main.process-page .field.field-display > .field-label,
+main.role-page .field.field-display > .field-label,
+main.person-page .field.field-display > .field-label {
+  font-size: 16px;
+}
+main.process-page label.field:focus-within > .field-label,
+main.process-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.process-page label.field:has(select) > .field-label,
+main.process-page label.field:has(input[type="date"]) > .field-label,
+main.process-page label.field:has(.help) > .field-label,
+main.process-page label.field:has(.phase-color-cell) > .field-label,
+main.role-page label.field:focus-within > .field-label,
+main.role-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.role-page label.field:has(select) > .field-label,
+main.role-page label.field:has(input[type="date"]) > .field-label,
+main.role-page label.field:has(.help) > .field-label,
+main.person-page label.field:focus-within > .field-label,
+main.person-page label.field:has(:is(input, textarea):not(:placeholder-shown)) > .field-label,
+main.person-page label.field:has(select) > .field-label,
+main.person-page label.field:has(input[type="date"]) > .field-label,
+main.person-page label.field:has(.help) > .field-label,
+main.process-page .field.field-display > .field-label,
+main.role-page .field.field-display > .field-label,
+main.person-page .field.field-display > .field-label {
+  font-size: 12px;
+}
 .person-delete {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: end;
   gap: 10px;
 }
-.person-delete input[name="confirm_code"] {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
+.person-delete > .field {
+  flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
 }
 .person-delete > button {
   width: 126px;
@@ -547,7 +875,11 @@ main.person-page label { font-size: 16px; }
 main.process-page .card,
 main.role-page .card { padding: 16px 20px; }
 main.process-page label.check,
-main.role-page label.check { gap: 8px; min-height: 44px; }
+main.role-page label.check {
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+}
 main.process-page label.check input,
 main.role-page label.check input {
   width: 22px;
@@ -555,31 +887,85 @@ main.role-page label.check input {
   min-width: 22px;
   min-height: 22px;
 }
-.process-add, .process-edit {
+.process-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  min-width: 0;
+}
+/* 登録済み行では子を process-item の flex に直接参加させる */
+.process-item > .process-edit {
+  display: contents;
+}
+label.process-color.field {
+  flex: 0 0 auto;
+  width: 6.67rem;
+  min-width: 6.67rem;
+  max-width: 6.67rem;
+}
+.process-add > .check,
+.process-side > .check {
+  flex: 0 0 auto;
+}
+.process-side {
   display: flex;
   flex-wrap: nowrap;
   align-items: end;
   gap: 16px;
-}
-.process-edit {
-  flex: 1 1 225px;
+  justify-self: start;
+  width: max-content;
+  max-width: max-content;
   min-width: max-content;
 }
-label.process-name {
-  flex: 1 1 225px;
+.phase-color-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.phase-color-cell select {
+  min-width: 0;
+}
+.color-sample {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.color-sample.color-cyan { background: var(--phase-cyan-bg); }
+.color-sample.color-orange { background: var(--phase-orange-bg); }
+.color-sample.color-green { background: var(--phase-green-bg); }
+.color-sample.color-lavender { background: var(--phase-lavender-bg); }
+.color-sample.color-rose { background: var(--phase-rose-bg); }
+.color-sample.color-yellow { background: var(--phase-yellow-bg); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+label.process-name.field {
   width: auto;
   min-width: 225px;
   max-width: none;
 }
-label.process-name input {
+.process-item .process-name.field {
+  min-width: 0;
+}
+.process-add > label.process-name.field {
+  flex: 1 1 14rem;
+  min-width: min(100%, 14rem);
+}
+label.process-name.field input {
   width: 100%;
   min-width: 0;
-  max-width: none;
-}
-input.process-name {
-  flex: 1 1 225px;
-  width: auto;
-  min-width: 225px;
   max-width: none;
 }
 .process-add > button,
@@ -588,6 +974,8 @@ input.process-name {
   width: 126px;
   min-width: 126px;
   max-width: 126px;
+  height: 2.75rem;
+  min-height: 2.75rem;
   flex: 0 0 126px;
   box-sizing: border-box;
 }
@@ -596,12 +984,12 @@ input.process-name {
   flex-wrap: nowrap;
   align-items: end;
   gap: 10px;
-  flex: 0 0 auto;
+  min-width: max-content;
 }
 .process-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .process-item {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: max-content minmax(225px, 1fr) max-content max-content;
   align-items: end;
   gap: 12px 16px;
   padding: 14px 16px;
@@ -612,15 +1000,64 @@ input.process-name {
 .process-index {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 999px;
   background: var(--header-bg);
   color: var(--header-fg);
   font-weight: 700;
 }
-.move-col { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; flex: 0 0 auto; }
-.move-col button { width: 72px; min-width: 72px; max-width: 72px; flex: 0 0 72px; }
+.move-col {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: end;
+  min-width: max-content;
+}
+.move-col .move-btn {
+  box-sizing: border-box;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.move-icon {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+.move-icon.move-up {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 10.5 8 5.5 13 10.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 10.5 8 5.5 13 10.5'/%3E%3C/svg%3E");
+}
+.move-icon.move-down {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 5.5 8 10.5 13 5.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 5.5 8 10.5 13 5.5'/%3E%3C/svg%3E");
+}
+
+/* 狭いときは塊ごとに折り返す: 移動 → 名前 → 背景色+有効 → 保存+削除 */
+@media (max-width: 56rem) {
+  .process-item {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .process-item .process-name.field {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-width: 0;
+  }
+  .process-item .process-side,
+  .process-item .button-pair {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
 
 @media (max-width: 56rem) {
   header.top {
@@ -665,4 +1102,735 @@ input.process-name {
   .inline { align-items: stretch; }
   .inline > * { flex: 1 1 12rem; }
   h1 { font-size: 1.35rem; }
+}
+
+/* プロジェクト編集のタスク分解 */
+.line-tasks {
+  flex: 1 1 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+}
+.line-tasks h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+.task-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.task-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem 0.75rem;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.task-move {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.task-move .move-btn {
+  box-sizing: border-box;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.task-name-field { flex: 1 1 16rem; min-width: min(100%, 14rem); max-width: 22rem; }
+.task-remarks-field { flex: 2 1 12rem; min-width: min(100%, 10rem); }
+.task-days-field { flex: 0 1 8rem; min-width: min(100%, 7rem); }
+.task-row > .remove-task { flex: 0 0 auto; }
+
+/* プロジェクト編集の基本項目（基準幅 16rem に対する比率） */
+.grid.project-meta > .meta-code { flex: 1 1 9rem; max-width: 10.67rem; min-width: min(100%, 8rem); }
+.grid.project-meta > .meta-name { flex: 2 1 14rem; min-width: min(100%, 12rem); max-width: none; }
+.grid.project-meta > .meta-amount { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
+.grid.project-meta > .meta-status { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
+.grid.project-meta > .meta-date { flex: 1 1 9rem; max-width: 10.67rem; min-width: min(100%, 8rem); }
+.project-tasks-heading {
+  display: grid;
+  gap: 0.2rem;
+}
+.project-tasks-heading h2,
+.project-tasks-heading .note {
+  margin: 0;
+}
+.project-tasks-heading ul.note {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* スケジュール表（schedule_manager の表レイアウトに揃える） */
+:root {
+  --font-size-schedule: 0.85rem;
+  --phase-cyan-bg: #cdeef3;
+  --phase-cyan-text: #1a1a1a;
+  --phase-orange-bg: #ffd8b8;
+  --phase-orange-text: #c2410c;
+  --phase-green-bg: #d1fae5;
+  --phase-green-text: #166534;
+  --phase-lavender-bg: #d8cff5;
+  --phase-lavender-text: #4c1d95;
+  --phase-rose-bg: #fce7f3;
+  --phase-rose-text: #9d174d;
+  --phase-yellow-bg: #fef3c7;
+  --phase-yellow-text: #92400e;
+  --current-col-bg: #d5ddec;
+  --current-col-tint: rgba(37, 99, 235, 0.07);
+  --sticky-bg: #e8e8e8;
+  --thead-bg: #d6d6d6;
+  --month-head-bg: #cfcfcf;
+  --project-divider: #8a8a8a;
+  --cap-warn-bg: #fef3c7;
+  --cap-warn-text: #92400e;
+  --hatch: rgba(15, 23, 42, 0.12);
+}
+html[data-theme="dark"] {
+  --phase-cyan-bg: #1f3d42;
+  --phase-cyan-text: #cfcfcf;
+  --phase-orange-bg: #4a3424;
+  --phase-orange-text: #fdba74;
+  --phase-green-bg: #14532d;
+  --phase-green-text: #bbf7d0;
+  --phase-lavender-bg: #5c5685;
+  --phase-lavender-text: #ede9fe;
+  --phase-rose-bg: #4a2030;
+  --phase-rose-text: #fbcfe8;
+  --phase-yellow-bg: #5b4a16;
+  --phase-yellow-text: #fde68a;
+  --current-col-bg: #32373e;
+  --current-col-tint: rgba(6, 12, 22, 0.24);
+  --sticky-bg: #2e2e2e;
+  --thead-bg: #3a3a3a;
+  --month-head-bg: #404040;
+  --project-divider: #707070;
+  --cap-warn-bg: #5b4a16;
+  --cap-warn-text: #fde68a;
+  --hatch: rgba(255, 255, 255, 0.14);
+}
+main.page-schedule {
+  max-width: none;
+  width: 100%;
+  padding-bottom: 1.5rem;
+}
+.schedule-toolbar {
+  display: grid;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+}
+.schedule-toolbar-main {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+#actual-mode-button[aria-pressed="true"] {
+  background: var(--button-bg);
+  color: var(--button-text);
+  border-color: var(--button-border);
+}
+.schedule-toolbar-notes { margin: 0; }
+ul.schedule-toolbar-notes {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.field-help {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+.schedule-range-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+.range-control { display: grid; gap: 0.35rem; }
+.range-label { font-size: 0.9rem; color: var(--muted); }
+.range-fields {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.range-sep { color: var(--muted); }
+.table-scroll {
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-height: calc(100vh - 160px);
+}
+.schedule-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  background: var(--paper);
+  --sticky-left-phase: 192px;
+  --sticky-left-task: 320px;
+  --sticky-left-meta1: 320px;
+  --sticky-left-meta2: 395px;
+  --sticky-left-meta3: 465px;
+  --sticky-cols-width: 535px;
+  --sticky-thead-height: 4rem;
+}
+.schedule-table.schedule-detail {
+  --sticky-left-meta1: 480px;
+  --sticky-left-meta2: 555px;
+  --sticky-left-meta3: 625px;
+  --sticky-cols-width: 695px;
+}
+.schedule-table th,
+.schedule-table td {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.25rem;
+  font-size: var(--font-size-schedule);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.schedule-table tr > *:first-child {
+  border-left: 1px solid var(--line);
+}
+.schedule-table thead tr:first-child > * {
+  border-top: 1px solid var(--line);
+}
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--thead-bg);
+  font-size: var(--font-size-schedule);
+  font-weight: 600;
+}
+.schedule-table thead tr:nth-child(2) th {
+  top: 2rem;
+}
+.schedule-table col.col-project { width: 192px; }
+.schedule-table col.col-phase { width: 8rem; }
+.schedule-table col.col-task { width: 10rem; }
+.schedule-table col.col-meta1 { width: 75px; }
+.schedule-table col.col-meta2,
+.schedule-table col.col-meta3 { width: 70px; }
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--sticky-bg);
+  z-index: 2;
+}
+.schedule-table .col-project { left: 0; min-width: 192px; }
+.schedule-table .col-phase { left: var(--sticky-left-phase, 192px); min-width: 8rem; }
+.schedule-table .col-task { left: var(--sticky-left-task, 320px); min-width: 10rem; }
+.schedule-table .col-meta1 { left: var(--sticky-left-meta1, 320px); width: 75px; min-width: 75px; max-width: 75px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta2 { left: var(--sticky-left-meta2, 395px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table .col-meta3 { left: var(--sticky-left-meta3, 465px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
+.schedule-table th.col-project:not([colspan]),
+.schedule-table td.col-project:not([colspan]) {
+  width: 192px;
+  min-width: 192px;
+  max-width: 192px;
+  white-space: normal;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+.schedule-table .project-name {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-weight: 700;
+}
+.schedule-table .project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.schedule-table .col-phase:not([colspan]) { max-width: 8rem; }
+.schedule-table .col-task:not([colspan]) { max-width: 10rem; }
+.schedule-table .col-meta1:not([colspan]) {
+  width: 75px;
+  min-width: 75px;
+  max-width: 75px;
+  box-sizing: border-box;
+}
+.schedule-table .col-meta2:not([colspan]),
+.schedule-table .col-meta3:not([colspan]) {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+}
+.schedule-table th.col-phase,
+.schedule-table td.col-phase,
+.schedule-table th.col-task,
+.schedule-table td.col-task {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schedule-table .task-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schedule-table thead .sticky-col { z-index: 4; }
+.schedule-table tfoot .sticky-col {
+  z-index: 3;
+  background: var(--sticky-bg);
+}
+.schedule-table tfoot .summary-label,
+.schedule-table tr.phase-capacity .summary-label {
+  text-align: right;
+  font-weight: 600;
+}
+.schedule-table tr.phase-capacity td {
+  background: var(--thead-bg);
+  color: var(--muted);
+}
+.schedule-table tr.phase-capacity .sticky-col {
+  background: var(--thead-bg);
+}
+.schedule-table tr.phase-capacity .phase-cell {
+  color: var(--ink);
+}
+.schedule-table tr.phase-capacity .phase-cell.cap-over {
+  color: var(--danger);
+}
+.schedule-table tbody.project-block > tr > td:not(.sticky-col),
+.schedule-table tfoot td:not(.sticky-col) {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+}
+.schedule-table tbody.project-block:not(:last-of-type) > tr:last-child > * {
+  border-bottom: 2px solid var(--project-divider);
+}
+.month-head { text-align: center; background: var(--month-head-bg); }
+.decade-head {
+  text-align: center;
+  font-weight: 600;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+}
+.schedule-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.schedule-table .warn { color: var(--warn); font-weight: 600; }
+.schedule-table .diff-over { color: var(--danger); font-weight: 600; }
+.schedule-table .cap-warn { background: var(--cap-warn-bg); color: var(--cap-warn-text); font-weight: 700; }
+.schedule-table .cap-over { background: var(--over-bg); color: var(--danger); font-weight: 700; }
+.schedule-table .empty { text-align: center; color: var(--muted); padding: 1.5rem !important; white-space: normal; }
+.phase-cell {
+  text-align: center;
+  color: transparent;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+  overflow: hidden;
+}
+.phase-cell .effort-field {
+  display: block;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.effort-float-label,
+.effort-display {
+  display: none;
+}
+.effort-plan,
+.effort-display {
+  box-sizing: border-box;
+  width: 100%;
+  text-align: right;
+  padding: 0.2rem 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+.phase-cell.color-cyan.active {
+  background: var(--phase-cyan-bg);
+  color: var(--phase-cyan-text);
+}
+.phase-cell.color-orange.active {
+  background: var(--phase-orange-bg);
+  color: var(--phase-orange-text);
+}
+.phase-cell.color-green.active {
+  background: var(--phase-green-bg);
+  color: var(--phase-green-text);
+}
+.phase-cell.color-lavender.active {
+  background: var(--phase-lavender-bg);
+  color: var(--phase-lavender-text);
+}
+.phase-cell.color-rose.active {
+  background: var(--phase-rose-bg);
+  color: var(--phase-rose-text);
+}
+.phase-cell.color-yellow.active {
+  background: var(--phase-yellow-bg);
+  color: var(--phase-yellow-text);
+}
+.phase-cell.active { font-weight: 700; }
+.effort-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  text-align: right;
+  padding: 0.2rem 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--font-size-schedule);
+  font-variant-numeric: tabular-nums;
+  scroll-margin-left: calc(var(--sticky-cols-width, 32.6rem) + 4px);
+  scroll-margin-right: 4px;
+  scroll-margin-top: calc(var(--sticky-thead-height, 4rem) + 4px);
+  scroll-margin-bottom: 4px;
+}
+.phase-cell .effort-input {
+  background: transparent;
+  color: var(--ink);
+  font-weight: normal;
+}
+.phase-cell.active .effort-input {
+  color: inherit;
+  font-weight: inherit;
+}
+.effort-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.schedule-table tbody tr.row-editing .col-phase,
+.schedule-table tbody tr.row-editing .col-task {
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+.schedule-table.actual-mode td.col-phase.actual-over,
+.schedule-table.actual-mode td.col-task.actual-over {
+  color: var(--danger);
+  font-weight: 600;
+}
+.schedule-table.actual-mode tbody tr.row-editing td.col-phase.actual-over,
+.schedule-table.actual-mode tbody tr.row-editing td.col-task.actual-over {
+  color: var(--danger);
+}
+/* 一覧の工程キャパ／実績モードの割当ラベル。横スクロール時は sticky 列より下に置く */
+.schedule-table:not(.schedule-detail) td.phase-cell:has(.effort-field),
+.schedule-table.actual-mode td.phase-cell:has(.effort-field) {
+  padding-top: 0.7rem;
+  position: relative;
+  z-index: 0;
+}
+.schedule-table:not(.schedule-detail) .effort-float-label:not(:empty),
+.schedule-table.actual-mode .effort-float-label:not(:empty) {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0.28rem;
+  z-index: 1;
+  transform: translateY(-50%);
+  padding: 0 0.18rem;
+  background: var(--surface, var(--sticky-bg));
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-cyan.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-cyan.active .effort-float-label {
+  background: var(--phase-cyan-bg);
+  color: var(--phase-cyan-text);
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-orange.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-orange.active .effort-float-label {
+  background: var(--phase-orange-bg);
+  color: var(--phase-orange-text);
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-green.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-green.active .effort-float-label {
+  background: var(--phase-green-bg);
+  color: var(--phase-green-text);
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-lavender.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-lavender.active .effort-float-label {
+  background: var(--phase-lavender-bg);
+  color: var(--phase-lavender-text);
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-rose.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-rose.active .effort-float-label {
+  background: var(--phase-rose-bg);
+  color: var(--phase-rose-text);
+}
+.schedule-table:not(.schedule-detail) .phase-cell.color-yellow.active .effort-float-label,
+.schedule-table.actual-mode .phase-cell.color-yellow.active .effort-float-label {
+  background: var(--phase-yellow-bg);
+  color: var(--phase-yellow-text);
+}
+/* 工程キャパ超過は入力欄（実績モードは表示欄）だけ色を変え、旬セルの工程色は残す */
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-input,
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-warn .effort-display {
+  background: var(--cap-warn-bg);
+  color: var(--cap-warn-text);
+  font-weight: 700;
+}
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-input,
+.schedule-table:not(.schedule-detail) td.phase-cell.cap-over .effort-display {
+  background: var(--over-bg);
+  color: var(--danger);
+  font-weight: 700;
+}
+.schedule-table.actual-mode .phase-cell.has-actual {
+  position: relative;
+}
+.schedule-table.actual-mode .phase-cell.has-actual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 9px,
+    var(--hatch) 9px 10px
+  );
+}
+.schedule-table.actual-mode .effort-input,
+.schedule-table.actual-mode .effort-plan {
+  display: none !important;
+}
+.schedule-table.actual-mode .effort-display {
+  display: block;
+  position: relative;
+  z-index: 1;
+  color: inherit;
+  font-weight: inherit;
+}
+.sum-fraction {
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 2.5rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.sum-line {
+  border-top: 1px solid currentColor;
+  margin: 0.05rem 0;
+}
+.schedule-table.actual-mode .sum-single {
+  display: none;
+}
+.schedule-table.actual-mode .sum-fraction {
+  display: inline-flex;
+}
+.schedule-table.actual-mode tr.phase-capacity {
+  display: none;
+}
+.schedule-table tbody.project-block:has(tr.row-editing) .col-project a {
+  font-weight: 700;
+}
+.schedule-table tbody tr.row-editing .sticky-col.num {
+  font-weight: 700;
+}
+.schedule-table thead th.month-head.col-editing,
+.schedule-table thead th.decade-head.col-editing {
+  font-weight: 700;
+  color: var(--ink);
+}
+.schedule-table thead th.decade-head.col-editing {
+  box-shadow: inset 0 -3px 0 var(--ink);
+}
+.schedule-table thead th.decade-head.col-current {
+  background: var(--current-col-bg);
+}
+.schedule-table td.col-current {
+  box-shadow: inset 0 0 0 9999px var(--current-col-tint);
+}
+.holiday-add > .holiday-date {
+  flex: 0 0 12rem;
+  width: 12rem;
+  min-width: min(100%, 12rem);
+}
+.holiday-item {
+  grid-template-columns: max-content minmax(225px, 1fr) max-content;
+}
+.holiday-item .holiday-date {
+  width: 12rem;
+  min-width: 12rem;
+  max-width: 12rem;
+}
+@media (max-width: 56rem) {
+  .holiday-item {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .holiday-item .holiday-date {
+    justify-self: start;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+main.time-page {
+  max-width: min(100%, 1100px);
+}
+main.time-page .time-toolbar {
+  margin: 1rem 0 1.5rem;
+}
+main.time-page .time-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 16px;
+}
+main.time-page .time-static {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 16px;
+}
+main.time-page .time-static-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+main.time-page .time-static input,
+main.time-page .time-static select {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  min-width: 11rem;
+}
+main.time-page .time-person {
+  margin: 0;
+  align-self: center;
+}
+main.time-page .time-project {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+main.time-page .time-project > h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+main.time-page .time-process {
+  margin: 0 0 1.1rem;
+}
+main.time-page .time-process:last-child {
+  margin-bottom: 0;
+}
+main.time-page .time-process > h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+main.time-page .time-period {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+main.time-page .time-rows {
+  display: grid;
+  gap: 8px;
+}
+main.time-page .time-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: var(--thead-bg, color-mix(in srgb, var(--surface) 88%, var(--ink) 4%));
+}
+main.time-page .time-row-out {
+  opacity: 0.65;
+}
+main.time-page .time-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+main.time-page .time-hours {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+main.time-page .time-hours input {
+  width: 5.5rem;
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: right;
+}
+main.time-page .time-unit,
+main.time-page .time-out-note {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+main.time-page .time-saved-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+main.time-page .time-saved-dates a.current {
+  font-weight: 700;
+}
+main.time-page .time-submit {
+  margin: 1.25rem 0 0;
+}
+main.time-page .time-submit .primary {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  font-size: 1.05rem;
 }

@@ -76,6 +76,19 @@ func parseOptionalHours(raw string) (int64, string) {
 	return minutes, ""
 }
 
+// parseOptionalPersonDays は raw（人日。0.1 刻み）を分にします。空なら 0 と空メッセージです。
+// standardMinutes は 1 人日の分数です。
+func parseOptionalPersonDays(raw string, standardMinutes int64) (int64, string) {
+	minutes, err := calc.ParsePersonDays(raw, standardMinutes)
+	if errors.Is(err, calc.ErrEmpty) {
+		return 0, ""
+	}
+	if err != nil {
+		return 0, "見積工数は 0.1 人日単位で入力してください。"
+	}
+	return minutes, ""
+}
+
 // parseRequiredHours は raw を、0 より大きい分にします。空や 0 はエラーです。
 func parseRequiredHours(raw string) (int64, string) {
 	minutes, err := calc.ParseHours(raw)

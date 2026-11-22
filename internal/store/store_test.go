@@ -44,10 +44,10 @@ func TestSeedRateAndCascade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: pg.ID, FromDate: "2026-01-01", HourlyYen: 3000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: pg.ID, FromDate: "2026-01-01", HourlyYen: Yen(3000)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: pg.ID, FromDate: "2026-02-01", HourlyYen: 9000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: pg.ID, FromDate: "2026-02-01", HourlyYen: Yen(9000)}); err != nil {
 		t.Fatal(err)
 	}
 	yen, ok, err := st.FindHourly(ctx, person.ID, pg.ID, "2026-03-01")
@@ -71,7 +71,7 @@ func TestSeedRateAndCascade(t *testing.T) {
 	}
 	if _, err := st.CreateAssignment(ctx, AssignmentWrite{
 		ProjectProcessID: lines[0].ID, PersonID: person.ID, RoleID: pg.ID,
-		StartDate: "2026-04-01", EndDate: "2026-04-30", PlannedMinutes: 4800, PlannedCostYen: 400000,
+		StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: RateKindMonthly, PlannedCostYen: 400000,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +79,24 @@ func TestSeedRateAndCascade(t *testing.T) {
 	if err != nil || len(assignments) != 1 {
 		t.Fatal(err)
 	}
-	if err := st.SaveDay(ctx, []DayCell{{AssignmentID: assignments[0].ID, WorkDate: "2026-04-02", Minutes: 480}}); err != nil {
+	if err := st.ReplaceTasksByProcess(ctx, projectID, map[string][]TaskWrite{
+		build.ID: {{Name: "画面", PlannedMinutes: 240}, {Name: "API", PlannedMinutes: 240}},
+	}); err != nil {
 		t.Fatal(err)
+	}
+	tasks, err := st.ListTasksByProject(ctx, projectID)
+	if err != nil || len(tasks) != 2 {
+		t.Fatalf("tasks: %+v %v", tasks, err)
+	}
+	if err := st.SaveDay(ctx, []DayCell{
+		{AssignmentID: assignments[0].ID, TaskID: tasks[0].ID, WorkDate: "2026-04-02", Minutes: 120},
+		{AssignmentID: assignments[0].ID, TaskID: tasks[1].ID, WorkDate: "2026-04-02", Minutes: 180},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("entries: %+v %v", entries, err)
 	}
 	if err := st.DeletePerson(ctx, person.ID); err != ErrInUse && !isInUse(err) {
 		t.Fatalf("delete person: %v", err)
@@ -88,7 +104,7 @@ func TestSeedRateAndCascade(t *testing.T) {
 	if err := st.DeleteProject(ctx, projectID); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
+	entries, err = st.ListEntries(ctx, []string{assignments[0].ID}, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,13 +138,13 @@ func TestLatestRoleNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: 3000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: Yen(3000)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["SE"], FromDate: "2026-03-01", HourlyYen: 4000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["SE"], FromDate: "2026-03-01", HourlyYen: Yen(4000)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PL"], FromDate: "2026-06-01", HourlyYen: 5000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: person.ID, RoleID: roleID["PL"], FromDate: "2026-06-01", HourlyYen: Yen(5000)}); err != nil {
 		t.Fatal(err)
 	}
 	names, err := st.LatestRoleNames(ctx, "2026-04-15")
@@ -150,10 +166,10 @@ func TestLatestRoleNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: 6000}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["PG"], FromDate: "2026-01-01", HourlyYen: Yen(6000)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["SE"], FromDate: "2026-01-01", HourlyYen: 4500}); err != nil {
+	if _, err := st.InsertRate(ctx, Rate{PersonID: other.ID, RoleID: roleID["SE"], FromDate: "2026-01-01", HourlyYen: Yen(4500)}); err != nil {
 		t.Fatal(err)
 	}
 	names, err = st.LatestRoleNames(ctx, "2026-01-01")

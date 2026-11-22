@@ -56,7 +56,7 @@ func TestForecastFlow(t *testing.T) {
 		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"},
 		"password": {"memberpass"}, "active": {"1"},
 	})
-	if !strings.Contains(body, "時間単価") {
+	if !strings.Contains(body, "単価") {
 		t.Fatalf("person page:\n%s", body)
 	}
 	roles, err := st.ListRoles(ctx)
@@ -70,7 +70,8 @@ func TestForecastFlow(t *testing.T) {
 		}
 	}
 	body = admin.submit(t, "/people/"+personID(t, st, "m01")+"/rates", url.Values{
-		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"5000"},
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"},
+		"hourly_yen": {"5000"}, "monthly_yen": {"400000"},
 	})
 	processes, err := st.ListProcesses(ctx)
 	if err != nil {
@@ -85,7 +86,7 @@ func TestForecastFlow(t *testing.T) {
 	body = admin.submit(t, "/projects", url.Values{
 		"csrf": {csrfOf(t, body)}, "code": {"P1"}, "name": {"予実案件"}, "order_amount": {"1000000"},
 		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
-		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_hours": {"80"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"10.0"},
 	})
 	project := projectByCode(t, st, "P1")
 	lines, err := st.ListProcessLines(ctx, project.ID)
@@ -94,11 +95,11 @@ func TestForecastFlow(t *testing.T) {
 	}
 	body = admin.submit(t, "/projects/"+project.ID+"/assignments", url.Values{
 		"csrf": {csrfOf(t, body)}, "project_process_id": {lines[0].ID},
-		"person_id": {personID(t, st, "m01")}, "role_id": {pg},
-		"start_date": {"2026-04-01"}, "end_date": {"2026-04-30"}, "hours": {"80"},
+		"person_id": {personID(t, st, "m01")}, "role_" + lines[0].ID: {pg},
+		"rate_kind": {"monthly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
 	})
-	if !strings.Contains(body, "¥400,000") {
-		t.Fatalf("assignment cost missing:\n%s", body)
+	if !strings.Contains(body, "予実で按分") {
+		t.Fatalf("monthly assignment should defer planned cost to forecast:\n%s", body)
 	}
 
 	member := newClient(t, ts.URL)
@@ -118,14 +119,45 @@ func TestForecastFlow(t *testing.T) {
 	if err != nil || len(assignments) != 1 {
 		t.Fatal(err)
 	}
-	timePage := member.getBody(t, "/time/"+project.ID+"?month=2026-04")
-	member.submit(t, "/time/"+project.ID+"?month=2026-04", url.Values{
-		"csrf": {csrfOf(t, timePage)}, "work_date": {"2026-04-02"},
-		"minutes_" + assignments[0].ID: {"8"},
+	memberID := personID(t, st, "m01")
+	if err := st.ReplaceTasksByProcess(ctx, project.ID, map[string][]store.TaskWrite{
+		build: {{Name: "画面", PlannedMinutes: 40 * 60}, {Name: "API", PlannedMinutes: 40 * 60}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tasks, err := st.ListTasksByProject(ctx, project.ID)
+	if err != nil || len(tasks) != 2 {
+		t.Fatalf("tasks: %+v %v", tasks, err)
+	}
+
+	adminTime := admin.getBody(t, "/time?date=2026-04-01&person="+memberID)
+	if !strings.Contains(adminTime, "P1") {
+		t.Fatalf("admin time form missing project:\n%s", adminTime)
+	}
+	if !strings.Contains(adminTime, "入力対象: m01 山田") && !strings.Contains(adminTime, "m01 山田") {
+		t.Fatalf("admin time form missing person:\n%s", adminTime)
+	}
+	if !strings.Contains(adminTime, "画面") {
+		t.Fatalf("admin time form missing task column:\n%s", adminTime)
+	}
+	admin.submit(t, "/time", url.Values{
+		"csrf": {csrfOf(t, adminTime)}, "person_id": {memberID}, "work_date": {"2026-04-01"},
+		"minutes_" + assignments[0].ID + "_" + tasks[0].ID: {"4"},
 	})
 
+	timePage := member.getBody(t, "/time?date=2026-04-02")
+	member.submit(t, "/time", url.Values{
+		"csrf": {csrfOf(t, timePage)}, "work_date": {"2026-04-02"},
+		"minutes_" + assignments[0].ID + "_" + tasks[1].ID: {"8"},
+	})
+	forecastPage := admin.getBody(t, "/projects/"+project.ID+"/forecast")
+	if !strings.Contains(forecastPage, "タスク") || !strings.Contains(forecastPage, "画面") {
+		t.Fatalf("forecast missing tasks:\n%s", forecastPage)
+	}
+
 	forecast := admin.getBody(t, "/projects/"+project.ID+"/forecast")
-	for _, want := range []string{"¥1,000,000", "¥400,000", "¥40,000", "¥360,000", "¥600,000"} {
+	// 月間単価があるので実績原価は暦月分（4月1ヶ月 = ¥400,000）。時間実績は金額に使わない。
+	for _, want := range []string{"¥1,000,000", "残予定原価", "粗利見込み", "¥600,000"} {
 		if !strings.Contains(forecast, want) {
 			t.Fatalf("forecast missing %s\n%s", want, forecast)
 		}
@@ -266,7 +298,7 @@ func TestPeopleListShowsLatestRoleAndEditButton(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	body = admin.submit(t, "/people", url.Values{
-		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"},
+		"csrf": {csrfOf(t, body)}, "code": {"m01"}, "name": {"山田"}, "name_kana": {"太郎"},
 		"password": {"memberpass"}, "active": {"1"},
 		"remarks": {"長い備考テキストを一覧でも見えるようにする"},
 	})
@@ -291,9 +323,9 @@ func TestPeopleListShowsLatestRoleAndEditButton(t *testing.T) {
 	})
 	page := admin.getBody(t, "/people")
 	for _, want := range []string{
-		"<th>役割</th>", "<th>備考</th>", "SE", "長い備考テキストを一覧でも見えるようにする",
+		"<th>役割</th>", "<th>備考</th>", "SE", "山田 太郎", "長い備考テキストを一覧でも見えるようにする",
 		`class="button" href="/people/` + personID(t, st, "m01") + `">編集</a>`,
-		`class="clip"`,
+		`class="clip"`, `class="person-fullname"`,
 	} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("people page missing %s\n%s", want, page)
@@ -336,7 +368,7 @@ func TestRolePageSeparatesAddAndReorder(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	page := admin.getBody(t, "/roles")
-	for _, want := range []string{"役割を追加", "登録済みの役割", "上へ", "下へ", "disabled>上へ", `class="role-page"`} {
+	for _, want := range []string{"役割を追加", "登録済みの役割", `aria-label="上へ"`, `aria-label="下へ"`, `aria-label="上へ" disabled`, `class="role-page"`} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("roles page missing %s", want)
 		}
@@ -403,7 +435,7 @@ func TestProcessPageSeparatesAddAndReorder(t *testing.T) {
 		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
 	})
 	page := admin.getBody(t, "/processes")
-	for _, want := range []string{"工程を追加", "登録済みの工程", "上へ", "下へ", "disabled>上へ"} {
+	for _, want := range []string{"工程を追加", "登録済みの工程", `aria-label="上へ"`, `aria-label="下へ"`, `aria-label="上へ" disabled`} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("processes page missing %s", want)
 		}

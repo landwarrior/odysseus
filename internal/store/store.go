@@ -40,7 +40,7 @@ type Store struct{ db *db.DB }
 func New(database *db.DB) *Store { return &Store{db: database} }
 
 // Person はログインも兼ねる人材です。パスワードそのものは持ちません。
-// Theme は light または dark です。
+// Name は姓、NameKana は名です。Theme は light または dark です。
 type Person struct {
 	ID                 string
 	Code               string
@@ -53,6 +53,14 @@ type Person struct {
 	Theme              string
 }
 
+// FullName は姓と名を空白でつないだ表示名です。名が空なら姓だけです。
+func (p Person) FullName() string {
+	if p.NameKana == "" {
+		return p.Name
+	}
+	return p.Name + " " + p.NameKana
+}
+
 // PersonAuth は Person に、照合用のパスワードハッシュを足したものです。画面へは渡しません。
 type PersonAuth struct {
 	Person
@@ -60,6 +68,7 @@ type PersonAuth struct {
 }
 
 // NewPerson は人材の登録と更新に使う入力です。Password が空の更新では、パスワードを変えません。
+// Name は姓、NameKana は名です。
 type NewPerson struct {
 	Code     string
 	Name     string
@@ -79,22 +88,30 @@ type Role struct {
 }
 
 // Process は要件定義や製造などの工程マスタです。案件ごとの期間や工数は別の型です。
+// Color はスケジュール表の背景色（cyan / orange / green / lavender / rose / yellow）です。
 type Process struct {
 	ID        string
 	Name      string
 	SortOrder int64
 	Active    bool
+	Color     string
 }
 
-// Rate は人材と役割の時間単価です。FromDate 以降、次の単価が現れるまで有効です。
+// Rate は人材と役割の単価です。FromDate 以降、次の単価が現れるまで有効です。
+// HourlyYen は請負向けの円/時、MonthlyYen は準委任向けの円/月です。どちらか一方以上を持ちます。
+// ポインタが nil のときはその種別は未設定、0 は無料（0 円）です。
 type Rate struct {
-	ID        string
-	PersonID  string
-	RoleID    string
-	RoleName  string
-	FromDate  string
-	HourlyYen int64
+	ID         string
+	PersonID   string
+	RoleID     string
+	RoleName   string
+	FromDate   string
+	HourlyYen  *int64
+	MonthlyYen *int64
 }
+
+// Yen は単価の円額へのポインタを返します。
+func Yen(n int64) *int64 { return &n }
 
 // Project は案件です。Status は planning、active、closed のいずれかです。
 // OrderAmount が nil のときは受注金額が未設定です。
@@ -114,6 +131,7 @@ type ProcessLine struct {
 	ProjectID      string
 	ProcessID      string
 	ProcessName    string
+	ProcessColor   string
 	StartDate      string
 	EndDate        string
 	PlannedMinutes int64
@@ -130,11 +148,69 @@ type LineWrite struct {
 	BudgetYen      *int64
 }
 
-// Assignment は工程に人を割り当てた1件です。PlannedCostYen は保存時点の予定原価で、単価変更では自動更新しません。
+// Task は工程明細を細分化した作業です。見積工数（分。画面では人日）と案件スケジュール割当の単位です。
+// Remarks は任意の備考で、案件スケジュールのタスク名ホバーに出します。
+type Task struct {
+	ID               string
+	ProjectProcessID string
+	ProjectID        string
+	ProcessID        string
+	ProcessName      string
+	ProcessSort      int64
+	ProcessColor     string
+	Name             string
+	Remarks          string
+	SortOrder        int64
+	PlannedMinutes   int64
+}
+
+// TaskWrite はタスクの保存内容です。
+type TaskWrite struct {
+	ID             string
+	Name           string
+	Remarks        string
+	PlannedMinutes int64
+}
+
+// TaskAllocation はタスクの旬への工数割当です。YearMonth は YYYY-MM、Decade は 1〜3 です。
+type TaskAllocation struct {
+	TaskID         string
+	YearMonth      string
+	Decade         int
+	PlannedMinutes int64
+}
+
+// ProcessAllocation は工程明細の旬への工数割当です（一覧スケジュールで編集します）。
+type ProcessAllocation struct {
+	ProjectProcessID string
+	YearMonth        string
+	Decade           int
+	PlannedMinutes   int64
+}
+
+// アサインの単価種別です。人材単価に時間・月間の両方があるとき、案件ごとにどちらで原価を見るかを選びます。
+const (
+	RateKindHourly  = "hourly"  // 請負（円/時）
+	RateKindMonthly = "monthly" // 準委任（円/月）
+)
+
+// RateKindLabel は rateKind の画面表示名です。
+func RateKindLabel(rateKind string) string {
+	if rateKind == RateKindMonthly {
+		return "準委任"
+	}
+	return "請負"
+}
+
+// Assignment は工程に人を割り当てた1件です。
+// PlannedCostYen は請負向けの保存予定原価です（単価変更では自動更新しません）。準委任は 0 で、予実側の受注金額比按分が正です。
+// RateKind は hourly（請負）または monthly（準委任）です。
 type Assignment struct {
 	ID               string
 	ProjectProcessID string
 	ProjectID        string
+	ProjectCode      string
+	ProjectName      string
 	ProcessName      string
 	PersonID         string
 	PersonCode       string
@@ -143,8 +219,15 @@ type Assignment struct {
 	RoleName         string
 	StartDate        string
 	EndDate          string
-	PlannedMinutes   int64
+	RateKind         string
 	PlannedCostYen   int64
+}
+
+// OpenAssignee は完了前案件にアサインされている人材です（実績画面の候補）。
+type OpenAssignee struct {
+	ID   string
+	Code string
+	Name string
 }
 
 // AssignmentWrite はアサインの登録と更新に使う入力です。
@@ -154,21 +237,25 @@ type AssignmentWrite struct {
 	RoleID           string
 	StartDate        string
 	EndDate          string
-	PlannedMinutes   int64
+	RateKind         string
 	PlannedCostYen   int64
 }
 
 // TimeEntry はアサインに対する1日の実績です。Minutes は 0 より大きい分です。
+// TaskID が空のときは、タスク未分割（工程＝アサイン単位）の実績です。
 type TimeEntry struct {
 	ID           string
 	AssignmentID string
+	TaskID       string
 	WorkDate     string
 	Minutes      int64
 }
 
 // DayCell は1日の保存指示です。Minutes が 0 以下のときは、その日の実績を削除します。
+// TaskID が空のときは task_id IS NULL の行を対象にします。
 type DayCell struct {
 	AssignmentID string
+	TaskID       string
 	WorkDate     string
 	Minutes      int64
 }
@@ -177,6 +264,7 @@ type DayCell struct {
 type Bundle struct {
 	Project     Project
 	Lines       []ProcessLine
+	Tasks       []Task
 	Assignments []Assignment
 	Entries     []TimeEntry
 	Rates       []Rate
@@ -194,14 +282,14 @@ func (s *Store) Seed(ctx context.Context) (adminPassword string, created bool, e
 		return "", false, err
 	}
 	if err := s.seedNames(ctx, `SELECT COUNT(*) FROM process`, nil, []Process{
-		{Name: "提案", SortOrder: 10, Active: true},
-		{Name: "要件定義", SortOrder: 20, Active: true},
-		{Name: "基本設計", SortOrder: 30, Active: true},
-		{Name: "詳細設計", SortOrder: 40, Active: true},
-		{Name: "製造", SortOrder: 50, Active: true},
-		{Name: "単体テスト", SortOrder: 60, Active: true},
-		{Name: "結合テスト", SortOrder: 70, Active: true},
-		{Name: "シナリオテスト", SortOrder: 80, Active: true},
+		{Name: "提案", SortOrder: 10, Active: true, Color: "cyan"},
+		{Name: "要件定義", SortOrder: 20, Active: true, Color: "cyan"},
+		{Name: "基本設計", SortOrder: 30, Active: true, Color: "orange"},
+		{Name: "詳細設計", SortOrder: 40, Active: true, Color: "orange"},
+		{Name: "製造", SortOrder: 50, Active: true, Color: "green"},
+		{Name: "単体テスト", SortOrder: 60, Active: true, Color: "green"},
+		{Name: "結合テスト", SortOrder: 70, Active: true, Color: "lavender"},
+		{Name: "シナリオテスト", SortOrder: 80, Active: true, Color: "lavender"},
 	}); err != nil {
 		return "", false, err
 	}
@@ -217,7 +305,7 @@ func (s *Store) Seed(ctx context.Context) (adminPassword string, created bool, e
 		return "", false, err
 	}
 	_, err = s.InsertPerson(ctx, NewPerson{
-		Code: "admin", Name: "管理者", NameKana: "カンリシャ", Password: password,
+		Code: "admin", Name: "管理者", NameKana: "", Password: password,
 		IsAdmin: true, Active: true, Remarks: "初期管理者",
 	})
 	if err != nil {
@@ -541,7 +629,7 @@ func (s *Store) DeleteRole(ctx context.Context, roleID string) error {
 
 // ListProcesses は工程マスタを並び順、名前の順で返します。
 func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, name, sort_order, active FROM process ORDER BY sort_order, name`)
+	rows, err := s.db.Query(ctx, `SELECT id, name, sort_order, active, color FROM process ORDER BY sort_order, name`)
 	if err != nil {
 		return nil, err
 	}
@@ -550,10 +638,13 @@ func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
 	for rows.Next() {
 		var process Process
 		var active int
-		if err := rows.Scan(&process.ID, &process.Name, &process.SortOrder, &active); err != nil {
+		if err := rows.Scan(&process.ID, &process.Name, &process.SortOrder, &active, &process.Color); err != nil {
 			return nil, err
 		}
 		process.Active = active != 0
+		if process.Color == "" {
+			process.Color = "cyan"
+		}
 		out = append(out, process)
 	}
 	return out, rows.Err()
@@ -562,9 +653,12 @@ func (s *Store) ListProcesses(ctx context.Context) ([]Process, error) {
 // InsertProcess は process を登録して、採番した ID を入れたものを返します。
 func (s *Store) InsertProcess(ctx context.Context, process Process) (Process, error) {
 	process.ID = id.New()
+	if process.Color == "" {
+		process.Color = "cyan"
+	}
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO process (id, name, sort_order, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		process.ID, process.Name, process.SortOrder, bint(process.Active), now(), now())
+		INSERT INTO process (id, name, sort_order, active, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		process.ID, process.Name, process.SortOrder, bint(process.Active), process.Color, now(), now())
 	if err != nil {
 		return Process{}, mapWriteErr(err)
 	}
@@ -618,11 +712,14 @@ func (s *Store) MoveProcess(ctx context.Context, id, direction string) (bool, er
 	return true, nil
 }
 
-// UpdateProcess は process.ID の工程を、process の名前、並び順、有効フラグで更新します。
+// UpdateProcess は process.ID の工程を、process の名前、並び順、有効フラグ、背景色で更新します。
 func (s *Store) UpdateProcess(ctx context.Context, process Process) error {
+	if process.Color == "" {
+		process.Color = "cyan"
+	}
 	res, err := s.db.Exec(ctx, `
-		UPDATE process SET name = ?, sort_order = ?, active = ?, updated_at = ? WHERE id = ?`,
-		process.Name, process.SortOrder, bint(process.Active), now(), process.ID)
+		UPDATE process SET name = ?, sort_order = ?, active = ?, color = ?, updated_at = ? WHERE id = ?`,
+		process.Name, process.SortOrder, bint(process.Active), process.Color, now(), process.ID)
 	if err != nil {
 		return mapWriteErr(err)
 	}
@@ -654,7 +751,7 @@ func (s *Store) LatestRoleNames(ctx context.Context, date string) (map[string]st
 		FROM person_rate r
 		JOIN role ON role.id = r.role_id
 		WHERE r.from_date <= ?
-		ORDER BY r.person_id, r.from_date DESC, r.hourly_yen DESC, role.sort_order, role.name`, date)
+		ORDER BY r.person_id, r.from_date DESC, COALESCE(r.hourly_yen, r.monthly_yen, 0) DESC, role.sort_order, role.name`, date)
 	if err != nil {
 		return nil, err
 	}
@@ -673,10 +770,10 @@ func (s *Store) LatestRoleNames(ctx context.Context, date string) (map[string]st
 	return out, rows.Err()
 }
 
-// ListRates は personID の時間単価を、適用開始日の順で返します。
+// ListRates は personID の単価を、適用開始日の順で返します。
 func (s *Store) ListRates(ctx context.Context, personID string) ([]Rate, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT r.id, r.person_id, r.role_id, role.name, r.from_date, r.hourly_yen
+		SELECT r.id, r.person_id, r.role_id, role.name, r.from_date, r.hourly_yen, r.monthly_yen
 		FROM person_rate r
 		JOIN role ON role.id = r.role_id
 		WHERE r.person_id = ?
@@ -692,9 +789,9 @@ func (s *Store) ListRates(ctx context.Context, personID string) ([]Rate, error) 
 func (s *Store) InsertRate(ctx context.Context, rate Rate) (Rate, error) {
 	rate.ID = id.New()
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO person_rate (id, person_id, role_id, from_date, hourly_yen, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, rate.HourlyYen, now(), now())
+		INSERT INTO person_rate (id, person_id, role_id, from_date, hourly_yen, monthly_yen, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, nullYen(rate.HourlyYen), nullYen(rate.MonthlyYen), now(), now())
 	if err != nil {
 		return Rate{}, mapWriteErr(err)
 	}
@@ -710,23 +807,37 @@ func (s *Store) DeleteRate(ctx context.Context, personID, rateID string) error {
 	return missing(res)
 }
 
-// FindHourly はその日以前で最も新しい適用開始日の時間単価です。
-// FindHourly は personID と roleID について、date 以前で最も新しい時間単価を返します。
+// FindRate は personID と roleID について、date 以前で最も新しい単価を返します。
 // 該当が無いときは false です。
-func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (int64, bool, error) {
-	var yen int64
+func (s *Store) FindRate(ctx context.Context, personID, roleID, date string) (Rate, bool, error) {
+	var rate Rate
+	var hourly, monthly sql.NullInt64
 	err := s.db.QueryRow(ctx, `
-		SELECT hourly_yen FROM person_rate
+		SELECT id, person_id, role_id, '', from_date, hourly_yen, monthly_yen
+		FROM person_rate
 		WHERE person_id = ? AND role_id = ? AND from_date <= ?
 		ORDER BY from_date DESC
-		LIMIT 1`, personID, roleID, date).Scan(&yen)
+		LIMIT 1`, personID, roleID, date).Scan(
+		&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &hourly, &monthly)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, false, nil
+		return Rate{}, false, nil
 	}
 	if err != nil {
+		return Rate{}, false, err
+	}
+	rate.HourlyYen = yenPtr(hourly)
+	rate.MonthlyYen = yenPtr(monthly)
+	return rate, true, nil
+}
+
+// FindHourly は personID と roleID について、date 以前で最も新しい時間単価を返します。
+// 該当が無いとき、または時間単価が未設定のときは false です。0 円は有効な単価です。
+func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (int64, bool, error) {
+	rate, ok, err := s.FindRate(ctx, personID, roleID, date)
+	if err != nil || !ok || rate.HourlyYen == nil {
 		return 0, false, err
 	}
-	return yen, true, nil
+	return *rate.HourlyYen, true, nil
 }
 
 const personSelect = `SELECT id, code, name, name_kana, is_admin, active, remarks, must_change_password, theme FROM person`
@@ -759,12 +870,32 @@ func scanRates(rows *sql.Rows) ([]Rate, error) {
 	var out []Rate
 	for rows.Next() {
 		var rate Rate
-		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen); err != nil {
+		var hourly, monthly sql.NullInt64
+		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &hourly, &monthly); err != nil {
 			return nil, err
 		}
+		rate.HourlyYen = yenPtr(hourly)
+		rate.MonthlyYen = yenPtr(monthly)
 		out = append(out, rate)
 	}
 	return out, rows.Err()
+}
+
+// yenPtr は n が有効ならその円額へのポインタを返します。
+func yenPtr(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64
+	return &v
+}
+
+// nullYen は p が nil なら SQL の NULL、そうでなければ円額です。
+func nullYen(p *int64) any {
+	if p == nil {
+		return nil
+	}
+	return *p
 }
 
 // count は query（COUNT を返す SQL）を args で実行し、件数を返します。

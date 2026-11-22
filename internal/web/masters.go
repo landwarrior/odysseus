@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"odysseus/internal/schedule"
 	"odysseus/internal/store"
 )
 
@@ -24,7 +25,9 @@ type roleView struct {
 // processPage は工程の追加と、登録済み工程の編集です。
 type processPage struct {
 	base
-	Processes []processView
+	Processes   []processView
+	Colors      []string
+	ColorLabels map[string]string
 }
 
 // processView は一覧の1行です。Position は上から数えた位置です。
@@ -191,7 +194,10 @@ func (s *Server) handleProcesses(w http.ResponseWriter, r *http.Request) {
 			First: i == 0, Last: i == len(processes)-1,
 		}
 	}
-	s.render(w, http.StatusOK, "processes", processPage{base: s.page(w, r, "工程"), Processes: views})
+	s.render(w, http.StatusOK, "processes", processPage{
+		base: s.page(w, r, "工程"), Processes: views,
+		Colors: schedule.PhaseColors, ColorLabels: schedule.PhaseColorLabels,
+	})
 }
 
 // handleProcessCreate はフォームの工程を、一覧の一番下に追加します。
@@ -293,9 +299,12 @@ func (s *Server) handleProcessDelete(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/processes", "削除しました。")
 }
 
-// readProcess は r のフォームから、工程の名前と有効フラグを読みます。並び順は含みません。
+// readProcess は r のフォームから、工程の名前、有効フラグ、背景色を読みます。並び順は含みません。
 func readProcess(r *http.Request) (store.Process, string) {
-	process := store.Process{Name: formText(r, "name"), Active: checkbox(r, "active")}
+	process := store.Process{
+		Name: formText(r, "name"), Active: checkbox(r, "active"),
+		Color: schedule.NormalizeColor(formText(r, "color")),
+	}
 	if process.Name == "" {
 		return process, "名前を入力してください。"
 	}

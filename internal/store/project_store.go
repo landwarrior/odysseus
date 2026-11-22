@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"odysseus/internal/calc"
 	"odysseus/internal/db"
 	"odysseus/internal/id"
 )
@@ -125,6 +124,11 @@ func (s *Store) ListProcessLines(ctx context.Context, projectID string) ([]Proce
 	return listLines(ctx, s.db, projectID)
 }
 
+// ListProcessLinesForProjects は projectIDs の工程明細を、工程の並び順で返します。
+func (s *Store) ListProcessLinesForProjects(ctx context.Context, projectIDs []string) ([]ProcessLine, error) {
+	return s.linesForProjects(ctx, projectIDs)
+}
+
 // GetProcessLine は lineID の工程明細を返します。
 func (s *Store) GetProcessLine(ctx context.Context, lineID string) (ProcessLine, error) {
 	row := s.db.QueryRow(ctx, lineSelect+` WHERE pp.id = ?`, lineID)
@@ -166,9 +170,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 	assignmentID := newID()
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO assignment (
-			id, project_process_id, person_id, role_id, start_date, end_date, planned_minutes, planned_cost_yen, created_at, updated_at
+			id, project_process_id, person_id, role_id, start_date, end_date, rate_kind, planned_cost_yen, created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedMinutes, in.PlannedCostYen, now(), now())
+		assignmentID, in.ProjectProcessID, in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.RateKind, in.PlannedCostYen, now(), now())
 	if err != nil {
 		return "", mapWriteErr(err)
 	}
@@ -179,9 +183,9 @@ func (s *Store) CreateAssignment(ctx context.Context, in AssignmentWrite) (strin
 func (s *Store) UpdateAssignment(ctx context.Context, assignmentID string, in AssignmentWrite) error {
 	res, err := s.db.Exec(ctx, `
 		UPDATE assignment
-		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, planned_minutes = ?, planned_cost_yen = ?, updated_at = ?
+		SET person_id = ?, role_id = ?, start_date = ?, end_date = ?, rate_kind = ?, planned_cost_yen = ?, updated_at = ?
 		WHERE id = ?`,
-		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.PlannedMinutes, in.PlannedCostYen, now(), assignmentID)
+		in.PersonID, in.RoleID, in.StartDate, in.EndDate, in.RateKind, in.PlannedCostYen, now(), assignmentID)
 	if err != nil {
 		return mapWriteErr(err)
 	}
@@ -197,7 +201,7 @@ func (s *Store) DeleteAssignment(ctx context.Context, assignmentID string) error
 	return missing(res)
 }
 
-// RecalcPlannedCosts は projectID の予定原価を、各アサインの開始日時点の単価で計算し直します。
+// RecalcPlannedCosts は projectID の予定原価を、各アサインの開始日時点の単価と単価種別で計算し直します。
 // updated は更新した件数、missingNames は単価が無くて見送った人の表示名です。
 func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updated int, missingNames []string, err error) {
 	assignments, err := s.ListAssignmentsByProject(ctx, projectID)
@@ -205,21 +209,60 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 		return 0, nil, err
 	}
 	for _, a := range assignments {
-		yen, ok, err := s.FindHourly(ctx, a.PersonID, a.RoleID, a.StartDate)
+		rate, ok, err := s.FindRate(ctx, a.PersonID, a.RoleID, a.StartDate)
 		if err != nil {
 			return updated, missingNames, err
 		}
-		if !ok {
-			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName)
+		cost, okCost := plannedCostForKind(a.StartDate, a.EndDate, a.RateKind, rate, ok)
+		if !okCost {
+			missingNames = append(missingNames, a.PersonName+" / "+a.RoleName+"（"+RateKindLabel(a.RateKind)+"）")
 			continue
 		}
-		cost := calc.CostYen(a.PlannedMinutes, yen)
 		if _, err := s.db.Exec(ctx, `UPDATE assignment SET planned_cost_yen = ?, updated_at = ? WHERE id = ?`, cost, now(), a.ID); err != nil {
 			return updated, missingNames, err
 		}
 		updated++
 	}
 	return updated, missingNames, nil
+}
+
+// RateKindOK は kind に合う単価が rate にあるとき true です。0 円も有効です。
+func RateKindOK(kind string, rate Rate, hasRate bool) bool {
+	if !hasRate {
+		return false
+	}
+	switch kind {
+	case RateKindMonthly:
+		return rate.MonthlyYen != nil
+	case RateKindHourly:
+		return rate.HourlyYen != nil
+	default:
+		return false
+	}
+}
+
+// RatePositive は kind に合う単価が設定済みかつ 0 円超のとき true です。
+// 0 円単価（OJT など）はアサイン可能でもキャパには含めません。
+func RatePositive(kind string, rate Rate, hasRate bool) bool {
+	if !RateKindOK(kind, rate, hasRate) {
+		return false
+	}
+	if kind == RateKindMonthly {
+		return *rate.MonthlyYen > 0
+	}
+	return *rate.HourlyYen > 0
+}
+
+// plannedCostForKind は start〜end の予定原価です。kind に合う単価が rate に無いときは false です。
+// 準委任は案件横断の受注金額比按分で求めるため、アサインには 0 を保存します。
+func plannedCostForKind(start, end, kind string, rate Rate, hasRate bool) (int64, bool) {
+	if !RateKindOK(kind, rate, hasRate) {
+		return 0, false
+	}
+	if kind == RateKindMonthly {
+		return 0, true
+	}
+	return 0, true
 }
 
 // ListEntries は assignmentIDs の実績を返します。
@@ -229,7 +272,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 		return nil, nil
 	}
 	query := `
-		SELECT id, assignment_id, work_date, minutes
+		SELECT id, assignment_id, task_id, work_date, minutes
 		FROM time_entry
 		WHERE assignment_id IN (` + placeholders(len(assignmentIDs)) + `)`
 	args := argsOf(assignmentIDs)
@@ -241,7 +284,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 		query += ` AND work_date < ?`
 		args = append(args, until)
 	}
-	query += ` ORDER BY work_date, assignment_id`
+	query += ` ORDER BY work_date, assignment_id, task_id`
 	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -250,8 +293,12 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 	var out []TimeEntry
 	for rows.Next() {
 		var e TimeEntry
-		if err := rows.Scan(&e.ID, &e.AssignmentID, &e.WorkDate, &e.Minutes); err != nil {
+		var taskID sql.NullString
+		if err := rows.Scan(&e.ID, &e.AssignmentID, &taskID, &e.WorkDate, &e.Minutes); err != nil {
 			return nil, err
+		}
+		if taskID.Valid {
+			e.TaskID = taskID.String
 		}
 		out = append(out, e)
 	}
@@ -259,6 +306,7 @@ func (s *Store) ListEntries(ctx context.Context, assignmentIDs []string, from, u
 }
 
 // SaveDay は cells を1つのトランザクションで保存します。分が 0 以下の要素は削除です。
+// 同じアサイン・作業日でも、タスクが違えば別行です。TaskID が空なら task_id IS NULL を対象にします。
 func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -268,17 +316,17 @@ func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 	stamp := now()
 	for _, cell := range cells {
 		if cell.Minutes <= 0 {
-			if _, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ?`, cell.AssignmentID, cell.WorkDate); err != nil {
+			if err := deleteDayCell(ctx, tx, cell); err != nil {
 				return err
 			}
 			continue
 		}
-		var entryID string
-		err := tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ?`, cell.AssignmentID, cell.WorkDate).Scan(&entryID)
+		entryID, err := findDayCellID(ctx, tx, cell)
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO time_entry (id, assignment_id, work_date, minutes, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?)`, newID(), cell.AssignmentID, cell.WorkDate, cell.Minutes, stamp, stamp)
+				INSERT INTO time_entry (id, assignment_id, task_id, work_date, minutes, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				newID(), cell.AssignmentID, nullIfEmpty(cell.TaskID), cell.WorkDate, cell.Minutes, stamp, stamp)
 		} else if err == nil {
 			_, err = tx.Exec(ctx, `UPDATE time_entry SET minutes = ?, updated_at = ? WHERE id = ?`, cell.Minutes, stamp, entryID)
 		}
@@ -287,6 +335,77 @@ func (s *Store) SaveDay(ctx context.Context, cells []DayCell) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// deleteDayCell は cell に対応する実績行を消します。
+func deleteDayCell(ctx context.Context, tx *db.Tx, cell DayCell) error {
+	if cell.TaskID == "" {
+		_, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id IS NULL`,
+			cell.AssignmentID, cell.WorkDate)
+		return err
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id = ?`,
+		cell.AssignmentID, cell.WorkDate, cell.TaskID)
+	return err
+}
+
+// findDayCellID は cell に対応する実績行の ID を返します。無ければ sql.ErrNoRows です。
+func findDayCellID(ctx context.Context, tx *db.Tx, cell DayCell) (string, error) {
+	var entryID string
+	var err error
+	if cell.TaskID == "" {
+		err = tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id IS NULL`,
+			cell.AssignmentID, cell.WorkDate).Scan(&entryID)
+	} else {
+		err = tx.QueryRow(ctx, `SELECT id FROM time_entry WHERE assignment_id = ? AND work_date = ? AND task_id = ?`,
+			cell.AssignmentID, cell.WorkDate, cell.TaskID).Scan(&entryID)
+	}
+	return entryID, err
+}
+
+// nullIfEmpty は value が空なら NULL、そうでなければ value を返します（SQL バインド用）。
+func nullIfEmpty(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
+// ListPersonOpenAssignments は personID の、完了前案件へのアサインを案件・工程順で返します。
+func (s *Store) ListPersonOpenAssignments(ctx context.Context, personID string) ([]Assignment, error) {
+	rows, err := s.db.Query(ctx, assignmentSelect+`
+		WHERE a.person_id = ? AND project.status <> 'closed'
+		ORDER BY project.code, process.sort_order, process.name`, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanAssignments(rows)
+}
+
+// ListAssigneesOnOpenProjects は完了前案件にアサインがある人材を、コード順で返します。
+func (s *Store) ListAssigneesOnOpenProjects(ctx context.Context) ([]OpenAssignee, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT person.id, person.code, person.name
+		FROM person
+		JOIN assignment a ON a.person_id = person.id
+		JOIN project_process pp ON pp.id = a.project_process_id
+		JOIN project ON project.id = pp.project_id
+		WHERE project.status <> 'closed'
+		ORDER BY person.code, person.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []OpenAssignee
+	for rows.Next() {
+		var a OpenAssignee
+		if err := rows.Scan(&a.ID, &a.Code, &a.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }
 
 // ListAssignedProjects は personID がアサインされ、まだ完了していない案件を返します。
@@ -298,6 +417,23 @@ func (s *Store) ListAssignedProjects(ctx context.Context, personID string) ([]Pr
 		JOIN assignment a ON a.project_process_id = pp.id
 		WHERE a.person_id = ? AND p.status <> 'closed'
 		ORDER BY p.code`, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanProjects(rows)
+}
+
+// ListOpenProjectsWithAssignments はアサインがあり、まだ完了していない案件を返します。
+// 管理者が他人の実績を入れるときの一覧に使います。
+func (s *Store) ListOpenProjectsWithAssignments(ctx context.Context) ([]Project, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT p.id, p.code, p.name, p.order_amount, p.start_date, p.end_date, p.status
+		FROM project p
+		JOIN project_process pp ON pp.project_id = p.id
+		JOIN assignment a ON a.project_process_id = pp.id
+		WHERE p.status <> 'closed'
+		ORDER BY p.code`)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +463,96 @@ func (s *Store) LoadBundlesByStatus(ctx context.Context, status string) ([]Bundl
 	return s.loadBundles(ctx, projects)
 }
 
+// LoadBundlesByIDs は projectIDs の予実用 Bundle を、渡した ID の順で返します。
+// 存在しない ID は飛ばします。
+func (s *Store) LoadBundlesByIDs(ctx context.Context, projectIDs []string) ([]Bundle, error) {
+	if len(projectIDs) == 0 {
+		return nil, nil
+	}
+	var projects []Project
+	for _, id := range projectIDs {
+		project, err := s.GetProject(ctx, id)
+		if errors.Is(err, ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, project)
+	}
+	return s.loadBundles(ctx, projects)
+}
+
+// ExpandMonthlyPeers は seeds にいる準委任人材が他案件にも入っているとき、その案件の Bundle を足して返します。
+// 準委任の受注金額比按分の母数用です。seeds に無い案件だけ追加し、seeds の後ろに続けます。
+func (s *Store) ExpandMonthlyPeers(ctx context.Context, seeds []Bundle) ([]Bundle, error) {
+	personSeen := map[string]struct{}{}
+	var personIDs []string
+	projectSeen := map[string]struct{}{}
+	for _, b := range seeds {
+		projectSeen[b.Project.ID] = struct{}{}
+		for _, a := range b.Assignments {
+			if a.RateKind != RateKindMonthly {
+				continue
+			}
+			if _, ok := personSeen[a.PersonID]; ok {
+				continue
+			}
+			personSeen[a.PersonID] = struct{}{}
+			personIDs = append(personIDs, a.PersonID)
+		}
+	}
+	if len(personIDs) == 0 {
+		return seeds, nil
+	}
+	peerIDs, err := s.projectIDsWithMonthlyPeople(ctx, personIDs)
+	if err != nil {
+		return nil, err
+	}
+	var extra []string
+	for _, id := range peerIDs {
+		if _, ok := projectSeen[id]; ok {
+			continue
+		}
+		projectSeen[id] = struct{}{}
+		extra = append(extra, id)
+	}
+	if len(extra) == 0 {
+		return seeds, nil
+	}
+	more, err := s.LoadBundlesByIDs(ctx, extra)
+	if err != nil {
+		return nil, err
+	}
+	return append(append([]Bundle{}, seeds...), more...), nil
+}
+
+// projectIDsWithMonthlyPeople は personIDs が準委任で入っている案件 ID を返します。
+func (s *Store) projectIDsWithMonthlyPeople(ctx context.Context, personIDs []string) ([]string, error) {
+	if len(personIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT pp.project_id
+		FROM assignment a
+		JOIN project_process pp ON pp.id = a.project_process_id
+		WHERE a.rate_kind = ? AND a.person_id IN (`+placeholders(len(personIDs))+`)`,
+		append([]any{RateKindMonthly}, argsOf(personIDs)...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // loadBundles は projects の並びに合わせて、工程、アサイン、実績、単価を読みます。
 func (s *Store) loadBundles(ctx context.Context, projects []Project) ([]Bundle, error) {
 	out := make([]Bundle, len(projects))
@@ -350,6 +576,13 @@ func (s *Store) loadBundles(ctx context.Context, projects []Project) ([]Bundle, 
 		out[index[line.ProjectID]].Lines = append(out[index[line.ProjectID]].Lines, line)
 		lineIDs = append(lineIDs, line.ID)
 		lineProject[line.ID] = line.ProjectID
+	}
+	tasks, err := s.ListTasksForProjects(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, task := range tasks {
+		out[index[task.ProjectID]].Tasks = append(out[index[task.ProjectID]].Tasks, task)
 	}
 	assignments, err := s.assignmentsForLines(ctx, lineIDs)
 	if err != nil {
@@ -406,6 +639,11 @@ func (s *Store) linesForProjects(ctx context.Context, projectIDs []string) ([]Pr
 	return scanLines(rows)
 }
 
+// AssignmentsForLines は lineIDs（工程明細の ID）に属するアサインを返します。
+func (s *Store) AssignmentsForLines(ctx context.Context, lineIDs []string) ([]Assignment, error) {
+	return s.assignmentsForLines(ctx, lineIDs)
+}
+
 // assignmentsForLines は lineIDs（工程明細の ID）に属するアサインを返します。
 func (s *Store) assignmentsForLines(ctx context.Context, lineIDs []string) ([]Assignment, error) {
 	if len(lineIDs) == 0 {
@@ -425,7 +663,7 @@ func (s *Store) ratesForPeople(ctx context.Context, personIDs []string) ([]Rate,
 		return nil, nil
 	}
 	rows, err := s.db.Query(ctx, `
-		SELECT id, person_id, role_id, '', from_date, hourly_yen
+		SELECT id, person_id, role_id, '', from_date, hourly_yen, monthly_yen
 		FROM person_rate
 		WHERE person_id IN (`+placeholders(len(personIDs))+`)`, argsOf(personIDs)...)
 	if err != nil {
@@ -438,15 +676,18 @@ func (s *Store) ratesForPeople(ctx context.Context, personIDs []string) ([]Rate,
 const projectSelect = `SELECT id, code, name, order_amount, start_date, end_date, status FROM project`
 
 const lineSelect = `
-	SELECT pp.id, pp.project_id, pp.process_id, process.name, pp.start_date, pp.end_date, pp.planned_minutes, pp.budget_yen, process.sort_order
+	SELECT pp.id, pp.project_id, pp.process_id, process.name, process.color, pp.start_date, pp.end_date, pp.planned_minutes, pp.budget_yen, process.sort_order
 	FROM project_process pp
 	JOIN process ON process.id = pp.process_id`
 
 const assignmentSelect = `
-	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code, person.name,
-		a.role_id, role.name, a.start_date, a.end_date, a.planned_minutes, a.planned_cost_yen
+	SELECT a.id, a.project_process_id, pp.project_id, project.code, project.name, process.name,
+		a.person_id, person.code,
+		CASE WHEN person.name_kana = '' THEN person.name ELSE person.name || ' ' || person.name_kana END,
+		a.role_id, role.name, a.start_date, a.end_date, a.rate_kind, a.planned_cost_yen
 	FROM assignment a
 	JOIN project_process pp ON pp.id = a.project_process_id
+	JOIN project ON project.id = pp.project_id
 	JOIN process ON process.id = pp.process_id
 	JOIN person ON person.id = a.person_id
 	JOIN role ON role.id = a.role_id`
@@ -517,7 +758,7 @@ func scanLine(row scanner) (ProcessLine, error) {
 	var line ProcessLine
 	var start, end sql.NullString
 	var budget sql.NullInt64
-	err := row.Scan(&line.ID, &line.ProjectID, &line.ProcessID, &line.ProcessName, &start, &end, &line.PlannedMinutes, &budget, &line.SortOrder)
+	err := row.Scan(&line.ID, &line.ProjectID, &line.ProcessID, &line.ProcessName, &line.ProcessColor, &start, &end, &line.PlannedMinutes, &budget, &line.SortOrder)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProcessLine{}, ErrNotFound
 	}
@@ -554,8 +795,9 @@ func scanAssignments(rows *sql.Rows) ([]Assignment, error) {
 func scanAssignment(row scanner) (Assignment, error) {
 	var a Assignment
 	err := row.Scan(
-		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProcessName, &a.PersonID, &a.PersonCode, &a.PersonName,
-		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.PlannedMinutes, &a.PlannedCostYen)
+		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProjectCode, &a.ProjectName, &a.ProcessName,
+		&a.PersonID, &a.PersonCode, &a.PersonName,
+		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.RateKind, &a.PlannedCostYen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Assignment{}, ErrNotFound
 	}

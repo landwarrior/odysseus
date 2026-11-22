@@ -2,6 +2,7 @@ package report
 
 import (
 	"testing"
+	"time"
 
 	"odysseus/internal/store"
 )
@@ -16,17 +17,17 @@ func TestBuildUsesLatestRateAndGrossMargin(t *testing.T) {
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", PersonCode: "m01", PersonName: "山田",
 			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30",
-			PlannedMinutes: 4800, PlannedCostYen: 400000,
+			RateKind: store.RateKindHourly, PlannedCostYen: 400000,
 		}},
 		Entries: []store.TimeEntry{{
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 480,
 		}},
 		Rates: []store.Rate{
-			{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 3000},
-			{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: 5000},
+			{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(3000)},
+			{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: store.Yen(5000)},
 		},
 	}
-	got := Build(b)
+	got := Build(b, time.Time{})
 	if got.ActualCostYen != 40000 {
 		t.Fatalf("actual cost = %d, want 40000 (latest rate 5000, not 3000)", got.ActualCostYen)
 	}
@@ -53,11 +54,11 @@ func TestBuildLeavesUnsetRateOutOfYen(t *testing.T) {
 		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
 		Assignments: []store.Assignment{{
 			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
-			PlannedMinutes: 480, PlannedCostYen: 40000,
+			RateKind: store.RateKindHourly, PlannedCostYen: 40000,
 		}},
 		Entries: []store.TimeEntry{{ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 60}},
 	}
-	got := Build(b)
+	got := Build(b, time.Time{})
 	if got.ActualKnown {
 		t.Fatal("expected unknown rate")
 	}
@@ -66,10 +67,190 @@ func TestBuildLeavesUnsetRateOutOfYen(t *testing.T) {
 	}
 }
 
+func TestBuildTaskActualAndOverPlan(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 960}},
+		Tasks: []store.Task{
+			{ID: "t1", ProjectProcessID: "l", ProcessName: "製造", Name: "画面", PlannedMinutes: 480},
+			{ID: "t2", ProjectProcessID: "l", ProcessName: "製造", Name: "API", PlannedMinutes: 480},
+		},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			RateKind: store.RateKindHourly, PlannedCostYen: 80000,
+		}},
+		Entries: []store.TimeEntry{
+			{ID: "e1", AssignmentID: "a", TaskID: "t1", WorkDate: "2026-04-01", Minutes: 600},
+			{ID: "e2", AssignmentID: "a", TaskID: "t2", WorkDate: "2026-04-02", Minutes: 120},
+		},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(5000)}},
+	}
+	got := Build(b, time.Time{})
+	if got.ActualMinutes != 720 {
+		t.Fatalf("actual minutes = %d", got.ActualMinutes)
+	}
+	if len(got.Tasks) != 2 {
+		t.Fatalf("tasks = %d", len(got.Tasks))
+	}
+	if !got.Tasks[0].OverPlan || got.Tasks[0].ActualMinutes != 600 {
+		t.Fatalf("task1: %+v", got.Tasks[0])
+	}
+	if got.Tasks[1].OverPlan || got.Tasks[1].ActualMinutes != 120 {
+		t.Fatalf("task2: %+v", got.Tasks[1])
+	}
+	if got.Processes[0].OverPlan {
+		t.Fatalf("process over plan = true, actual=%d planned=%d", got.Processes[0].ActualMinutes, got.Processes[0].PlannedMinutes)
+	}
+}
+
+func TestBuildHourlyDespiteMonthlyRate(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			StartDate: "2026-04-01", EndDate: "2026-04-30",
+			RateKind: store.RateKindHourly, PlannedCostYen: 0,
+		}},
+		Entries: []store.TimeEntry{{
+			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 60,
+		}},
+		Rates: []store.Rate{{
+			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01",
+			HourlyYen: store.Yen(5000), MonthlyYen: store.Yen(400000),
+		}},
+	}
+	got := Build(b, time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
+	if got.ActualCostYen != 5000 {
+		t.Fatalf("hourly actual = %d, want 5000 (not monthly)", got.ActualCostYen)
+	}
+}
+
+func TestBuildZeroHourlyRate(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			StartDate: "2026-04-01", EndDate: "2026-04-30",
+			RateKind: store.RateKindHourly, PlannedCostYen: 0,
+		}},
+		Entries: []store.TimeEntry{{
+			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 120,
+		}},
+		Rates: []store.Rate{{
+			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(0),
+		}},
+	}
+	got := Build(b, time.Time{})
+	if !got.ActualKnown || got.UnsetMinutes != 0 {
+		t.Fatalf("zero rate should be known: %+v", got)
+	}
+	if got.ActualCostYen != 0 {
+		t.Fatalf("actual = %d", got.ActualCostYen)
+	}
+}
+
+func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
+	order := int64(1000000)
+	b := store.Bundle{
+		Project: store.Project{ID: "p", OrderAmount: &order, Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 4800}},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", ProjectID: "p", PersonID: "h", PersonName: "山田",
+			RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-06-30",
+			RateKind: store.RateKindMonthly, PlannedCostYen: 0,
+		}},
+		Entries: []store.TimeEntry{{
+			ID: "e", AssignmentID: "a", WorkDate: "2026-04-10", Minutes: 480,
+		}},
+		Rates: []store.Rate{{
+			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01",
+			HourlyYen: store.Yen(5000), MonthlyYen: store.Yen(100000),
+		}},
+	}
+	got := Build(b, time.Date(2026, 5, 15, 0, 0, 0, 0, time.UTC))
+	if got.ActualCostYen != 200000 {
+		t.Fatalf("monthly actual = %d, want 200000 (Apr+May)", got.ActualCostYen)
+	}
+	if got.ActualMinutes != 480 {
+		t.Fatalf("minutes still counted = %d", got.ActualMinutes)
+	}
+	if got.RemainingCostYen != 100000 {
+		t.Fatalf("remaining = %d", got.RemainingCostYen)
+	}
+	if got.UnsetMinutes != 0 || !got.ActualKnown {
+		t.Fatalf("known: %+v", got)
+	}
+	if got.Processes[0].PlannedCostYen != 0 || got.Processes[0].ActualCostYen != 0 {
+		t.Fatalf("monthly cost must not sit on process: %+v", got.Processes[0])
+	}
+	if len(got.People) != 1 || got.People[0].PlannedCostYen != 300000 {
+		t.Fatalf("people row: %+v", got.People)
+	}
+}
+
+func TestBuildMonthlyNotDoublePerProcess(t *testing.T) {
+	order := int64(1000000)
+	b := store.Bundle{
+		Project: store.Project{ID: "p", OrderAmount: &order, Status: "active"},
+		Lines: []store.ProcessLine{
+			{ID: "l1", ProcessName: "設計", PlannedMinutes: 480},
+			{ID: "l2", ProcessName: "製造", PlannedMinutes: 480},
+		},
+		Assignments: []store.Assignment{
+			{ID: "a1", ProjectProcessID: "l1", ProjectID: "p", PersonID: "h", PersonCode: "m01", PersonName: "山田",
+				RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly},
+			{ID: "a2", ProjectProcessID: "l2", ProjectID: "p", PersonID: "h", PersonCode: "m01", PersonName: "山田",
+				RoleID: "pg", RoleName: "PG", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly},
+		},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(100000)}},
+	}
+	got := Build(b, time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
+	if got.ActualCostYen != 100000 || got.PlannedCostYen != 100000 {
+		t.Fatalf("costs = planned %d actual %d", got.PlannedCostYen, got.ActualCostYen)
+	}
+	if len(got.People) != 1 {
+		t.Fatalf("people rows = %d", len(got.People))
+	}
+}
+
+func TestBuildMonthlyAllocatesByOrderAmount(t *testing.T) {
+	o1, o2 := int64(2000000), int64(1000000)
+	p1 := store.Bundle{
+		Project: store.Project{ID: "p1", OrderAmount: &o1, Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l1", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a1", ProjectProcessID: "l1", ProjectID: "p1", PersonID: "h",
+			RoleID: "pg", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly,
+		}},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(300000)}},
+	}
+	p2 := store.Bundle{
+		Project: store.Project{ID: "p2", OrderAmount: &o2, Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l2", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a2", ProjectProcessID: "l2", ProjectID: "p2", PersonID: "h",
+			RoleID: "pg", StartDate: "2026-04-01", EndDate: "2026-04-30", RateKind: store.RateKindMonthly,
+		}},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", MonthlyYen: store.Yen(300000)}},
+	}
+	peers := []store.Bundle{p1, p2}
+	asOf := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
+	r1 := BuildWithContext(p1, peers, asOf)
+	r2 := BuildWithContext(p2, peers, asOf)
+	if r1.ActualCostYen != 200000 || r2.ActualCostYen != 100000 {
+		t.Fatalf("split r1=%d r2=%d", r1.ActualCostYen, r2.ActualCostYen)
+	}
+	if r1.ActualCostYen+r2.ActualCostYen != 300000 {
+		t.Fatalf("sum = %d", r1.ActualCostYen+r2.ActualCostYen)
+	}
+}
+
 func TestHourlyAtPicksNewestNotCheapest(t *testing.T) {
 	idx := indexRates([]store.Rate{
-		{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 3000},
-		{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: 9000},
+		{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(3000)},
+		{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: store.Yen(9000)},
 	})
 	yen, ok := hourlyAt(idx, "h", "pg", "2026-03-01")
 	if !ok || yen != 9000 {

@@ -4,4 +4,6 @@ localhost.json
 /data/
 /odysseus.exe
 /odysseus
+/tmp/
 *.db
+build-errors.log

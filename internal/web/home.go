@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"time"
 
 	"odysseus/internal/report"
 	"odysseus/internal/store"
@@ -32,8 +33,13 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, err)
 			return
 		}
+		peers, err := s.store.ExpandMonthlyPeers(r.Context(), bundles)
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
 		for _, bundle := range bundles {
-			rep := report.Build(bundle)
+			rep := report.BuildWithContext(bundle, peers, time.Time{})
 			page.Rows = append(page.Rows, homeRow{
 				Project: bundle.Project, Report: rep, OverBudget: reportOverBudget(rep),
 			})

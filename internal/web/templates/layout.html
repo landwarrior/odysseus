@@ -27,6 +27,7 @@
     <a href="/people">人材</a>
     <a href="/roles">役割</a>
     <a href="/processes">工程</a>
+    <a href="/holidays">祝日</a>
     {{end}}
   </nav>
   {{end}}
@@ -59,6 +60,17 @@
 {{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
 {{if .Warn}}<p class="warn">{{.Warn}}</p>{{end}}
 {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+{{end}}
+
+{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ */}}
+{{define "project_actions"}}
+<p class="actions">
+  <a class="button" href="/projects">一覧</a>
+  <a class="button" href="/projects/{{.Project.ID}}">編集</a>
+  <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
+  <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
+  <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
+</p>
 {{end}}
 
 {{define "foot"}}

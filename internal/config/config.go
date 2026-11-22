@@ -15,12 +15,15 @@ import (
 // DataDir は SQLite ファイルとセッション鍵の置き場です。
 // OpenBrowser が真なら起動時にブラウザを開きます。
 // StandardMinutes は 1 人日の分数、SessionKey はログインクッキーの署名鍵です。
+// Dev が真なら HTML/CSS を埋め込みではなく WebDir のファイルから都度読みます。
 type Config struct {
 	HTTPAddr        string
 	Driver          string
 	DSN             string
 	DataDir         string
+	WebDir          string
 	OpenBrowser     bool
+	Dev             bool
 	StandardMinutes int64
 	SessionKey      []byte
 }
@@ -53,7 +56,9 @@ func Load(baseDir string) (Config, error) {
 		Driver:          driver,
 		DSN:             dsn,
 		DataDir:         dataDir,
+		WebDir:          filepath.Join(baseDir, "internal", "web"),
 		OpenBrowser:     env("ODYSSEUS_OPEN_BROWSER", "1") != "0",
+		Dev:             env("ODYSSEUS_DEV", "") == "1",
 		StandardMinutes: stdMin,
 	}, nil
 }

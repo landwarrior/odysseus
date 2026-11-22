@@ -3,19 +3,32 @@ package web
 import (
 	"errors"
 	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
 
 	"odysseus/internal/calc"
 	"odysseus/internal/report"
 	"odysseus/internal/store"
 )
 
-// lineForm は工程明細の入力欄です。時間と予算は、まだ数値に変換する前の文字列です。
+// taskForm は工程下のタスク入力欄です。Days は人日表示です。
+type taskForm struct {
+	ID      string
+	Name    string
+	Remarks string
+	Days    string
+}
+
+// lineForm は工程明細の入力欄です。Days はタスク合計の人日、Budget は円の文字列です。
 type lineForm struct {
 	ProcessID string
 	Start     string
 	End       string
-	Hours     string
+	Days      string
 	Budget    string
+	Tasks     []taskForm
 }
 
 // projectPage は案件の登録と編集です。IsNew が真のときは削除欄を出しません。
@@ -28,33 +41,11 @@ type projectPage struct {
 	Status    string
 }
 
-// projectListPage は案件一覧です。Status が空ならすべての状態を出します。
-type projectListPage struct {
-	base
-	Projects []store.Project
-	Status   string
-}
-
-// handleProjects は案件一覧を出します。クエリ status があれば、その状態だけに絞ります。
-func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
-	status := r.URL.Query().Get("status")
-	if status != "" && !validStatus(status) {
-		status = ""
-	}
-	projects, err := s.store.ListProjects(r.Context(), status)
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	page := projectListPage{base: s.page(w, r, "プロジェクト"), Projects: projects, Status: status}
-	s.render(w, http.StatusOK, "projects", page)
-}
-
 // handleProjectNew は空の案件作成画面を出します。初期状態は進行中です。
 func (s *Server) handleProjectNew(w http.ResponseWriter, r *http.Request) {
 	s.renderProject(w, r, projectPage{
 		base: s.page(w, r, "プロジェクト作成"), IsNew: true,
-		Project: store.Project{Status: "active"}, Lines: []lineForm{{}},
+		Project: store.Project{Status: "active"}, Lines: []lineForm{{Tasks: []taskForm{{}}}},
 	}, http.StatusOK)
 }
 
@@ -74,6 +65,10 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	if err := s.saveProjectTasks(r, id, forms); err != nil {
+		s.fail(w, err)
+		return
+	}
 	s.redirect(w, r, "/projects/"+id, "登録しました。")
 }
 
@@ -83,8 +78,13 @@ func (s *Server) handleProjectEdit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	forms, err := s.lineFormsWithTasks(r, project.ID, lines)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
 	s.renderProject(w, r, projectPage{
-		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: lineForms(lines),
+		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms,
 	}, http.StatusOK)
 }
 
@@ -110,6 +110,10 @@ func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "見つかりません。", http.StatusNotFound)
 			return
 		}
+		s.fail(w, err)
+		return
+	}
+	if err := s.saveProjectTasks(r, id, forms); err != nil {
 		s.fail(w, err)
 		return
 	}
@@ -200,8 +204,10 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 	}
 	seen := map[string]bool{}
 	var lines []store.LineWrite
-	for _, form := range forms {
-		if form.ProcessID == "" && form.Start == "" && form.End == "" && form.Hours == "" && form.Budget == "" {
+	for i := range forms {
+		form := &forms[i]
+		emptyLine := form.ProcessID == "" && form.Start == "" && form.End == "" && form.Budget == "" && !hasNamedTask(form.Tasks)
+		if emptyLine {
 			continue
 		}
 		if form.ProcessID == "" {
@@ -223,21 +229,38 @@ func (s *Server) readProject(r *http.Request, id string) (store.Project, []store
 		le, m := normalizeDate(form.End, false)
 		msg = firstMsg(msg, m)
 		msg = firstMsg(msg, dateOrder(ls, le, process.Name+"の開始日", "終了日"))
-		minutes, m := parseOptionalHours(form.Hours)
-		msg = firstMsg(msg, m)
-		if minutes > 100000*60 {
-			msg = firstMsg(msg, "予定時間が大きすぎます。")
-		}
 		budget, berr := calc.ParseYen(form.Budget)
 		if berr != nil {
 			msg = firstMsg(msg, "予算は 0 以上の整数で入力してください。")
 		}
+		var taskSum int64
+		for _, task := range form.Tasks {
+			if stringsTrim(task.Name) == "" {
+				continue
+			}
+			if m := limitRunes(stringsTrim(task.Name), "タスク名", 128); m != "" {
+				msg = firstMsg(msg, m)
+			}
+			if m := limitRunes(stringsTrim(task.Remarks), "タスク備考", 500); m != "" {
+				msg = firstMsg(msg, m)
+			}
+			taskMinutes, tm := parseOptionalPersonDays(task.Days, s.cfg.StandardMinutes)
+			msg = firstMsg(msg, tm)
+			if taskMinutes > 100000*60 {
+				msg = firstMsg(msg, "タスクの見積工数が大きすぎます。")
+			}
+			taskSum += taskMinutes
+		}
+		if taskSum > 100000*60 {
+			msg = firstMsg(msg, "合計工数が大きすぎます。")
+		}
+		form.Days = calc.FormatPersonDays(taskSum, s.cfg.StandardMinutes)
 		lines = append(lines, store.LineWrite{
-			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: minutes, BudgetYen: budget,
+			ProcessID: form.ProcessID, StartDate: ls, EndDate: le, PlannedMinutes: taskSum, BudgetYen: budget,
 		})
 	}
 	if len(forms) == 0 {
-		forms = []lineForm{{}}
+		forms = []lineForm{{Tasks: []taskForm{{}}}}
 	}
 	return project, lines, forms, msg
 }
@@ -247,7 +270,7 @@ func readLineForms(r *http.Request) []lineForm {
 	ids := r.Form["process_id"]
 	starts := r.Form["line_start"]
 	ends := r.Form["line_end"]
-	hours := r.Form["line_hours"]
+	days := r.Form["line_days"]
 	budgets := r.Form["line_budget"]
 	n := len(ids)
 	if len(starts) > n {
@@ -256,10 +279,43 @@ func readLineForms(r *http.Request) []lineForm {
 	out := make([]lineForm, 0, n)
 	for i := 0; i < n; i++ {
 		out = append(out, lineForm{
-			ProcessID: at(ids, i), Start: at(starts, i), End: at(ends, i), Hours: at(hours, i), Budget: at(budgets, i),
+			ProcessID: at(ids, i), Start: at(starts, i), End: at(ends, i), Days: at(days, i), Budget: at(budgets, i),
+			Tasks: []taskForm{{}},
 		})
 	}
+	attachTasks(out, r)
 	return out
+}
+
+// attachTasks は task_process_id の並びに合わせて、各工程行へタスクを載せます。
+func attachTasks(lines []lineForm, r *http.Request) {
+	processIDs := r.Form["task_process_id"]
+	ids := r.Form["task_id"]
+	names := r.Form["task_name"]
+	remarks := r.Form["task_remarks"]
+	days := r.Form["task_days"]
+	if len(processIDs) == 0 {
+		return
+	}
+	byProcess := map[string][]taskForm{}
+	n := len(processIDs)
+	for i := 0; i < n; i++ {
+		pid := at(processIDs, i)
+		if pid == "" {
+			continue
+		}
+		byProcess[pid] = append(byProcess[pid], taskForm{
+			ID: at(ids, i), Name: at(names, i), Remarks: at(remarks, i), Days: at(days, i),
+		})
+	}
+	for i := range lines {
+		if lines[i].ProcessID == "" {
+			continue
+		}
+		if tasks, ok := byProcess[lines[i].ProcessID]; ok {
+			lines[i].Tasks = tasks
+		}
+	}
 }
 
 // at は values の i 番目を返します。範囲外なら空文字です。
@@ -271,10 +327,11 @@ func at(values []string, i int) string {
 }
 
 // lineForms は lines を入力欄の文字列に戻します。空なら空行を1つ足します。
-func lineForms(lines []store.ProcessLine) []lineForm {
+func (s *Server) lineForms(lines []store.ProcessLine) []lineForm {
 	if len(lines) == 0 {
-		return []lineForm{{}}
+		return []lineForm{{Tasks: []taskForm{{}}}}
 	}
+	std := s.cfg.StandardMinutes
 	out := make([]lineForm, 0, len(lines))
 	for _, line := range lines {
 		budget := ""
@@ -283,10 +340,73 @@ func lineForms(lines []store.ProcessLine) []lineForm {
 		}
 		out = append(out, lineForm{
 			ProcessID: line.ProcessID, Start: line.StartDate, End: line.EndDate,
-			Hours: calc.FormatHours(line.PlannedMinutes), Budget: budget,
+			Days: calc.FormatPersonDays(line.PlannedMinutes, std), Budget: budget,
+			Tasks: []taskForm{{}},
 		})
 	}
 	return out
+}
+
+// lineFormsWithTasks は工程明細に、保存済みタスクを載せて返します。
+func (s *Server) lineFormsWithTasks(r *http.Request, projectID string, lines []store.ProcessLine) ([]lineForm, error) {
+	forms := s.lineForms(lines)
+	tasks, err := s.store.ListTasksByProject(r.Context(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	std := s.cfg.StandardMinutes
+	byProcess := map[string][]taskForm{}
+	for _, task := range tasks {
+		byProcess[task.ProcessID] = append(byProcess[task.ProcessID], taskForm{
+			ID: task.ID, Name: task.Name, Remarks: task.Remarks, Days: calc.FormatPersonDays(task.PlannedMinutes, std),
+		})
+	}
+	for i := range forms {
+		if tasks, ok := byProcess[forms[i].ProcessID]; ok && len(tasks) > 0 {
+			forms[i].Tasks = tasks
+		}
+	}
+	return forms, nil
+}
+
+// saveProjectTasks は forms のタスクを projectID へ保存します。
+func (s *Server) saveProjectTasks(r *http.Request, projectID string, forms []lineForm) error {
+	byProcess := map[string][]store.TaskWrite{}
+	std := s.cfg.StandardMinutes
+	for _, form := range forms {
+		if form.ProcessID == "" {
+			continue
+		}
+		var writes []store.TaskWrite
+		for _, task := range form.Tasks {
+			name := stringsTrim(task.Name)
+			if name == "" {
+				continue
+			}
+			minutes, _ := parseOptionalPersonDays(task.Days, std)
+			writes = append(writes, store.TaskWrite{
+				ID: task.ID, Name: name, Remarks: stringsTrim(task.Remarks), PlannedMinutes: minutes,
+			})
+		}
+		// 工程行にタスク欄があったものだけ置き換える（空ならその工程のタスクを消す）。
+		if len(form.Tasks) > 0 {
+			byProcess[form.ProcessID] = writes
+		}
+	}
+	return s.store.ReplaceTasksByProcess(r.Context(), projectID, byProcess)
+}
+
+func hasNamedTask(tasks []taskForm) bool {
+	for _, task := range tasks {
+		if stringsTrim(task.Name) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func stringsTrim(s string) string {
+	return strings.TrimSpace(s)
 }
 
 // renderProject は page を status で描画します。errs の先頭があれば、それを警告として出します。
@@ -328,28 +448,39 @@ func firstMsg(current, next string) string {
 	return next
 }
 
-// assignPage は案件の人材アサイン画面です。
+// assignPage は案件の人材アサイン画面です。人材ごとに既存アサインをまとめ、追加は人→工程の順です。
 type assignPage struct {
 	base
-	Project store.Project
-	Groups  []assignGroup
-	People  []opt
-	Roles   []opt
+	Project      store.Project
+	Groups       []assignPersonGroup
+	Lines        []assignLineOpt
+	People       []opt
+	Roles        []opt
+	DefaultStart string
+	DefaultEnd   string
 }
 
-// assignGroup は工程1つと、そこへの既存アサインです。
-type assignGroup struct {
-	Line  store.ProcessLine
-	Rows  []assignRow
-	Hours string
+// assignPersonGroup は1人分の既存アサインです。
+type assignPersonGroup struct {
+	PersonID   string
+	PersonCode string
+	PersonName string
+	Rows       []assignRow
 }
 
-// assignRow は既存アサイン1件と、選択肢、予定時間の表示文字列です。
+// assignRow は既存アサイン1件と、役割の選択肢です。人材は見出し側なので行には出しません。
 type assignRow struct {
 	Assignment store.Assignment
-	People     []opt
 	Roles      []opt
-	Hours      string
+}
+
+// assignLineOpt は追加フォームの工程1行です。Days は見積の人日表示です。
+type assignLineOpt struct {
+	ID    string
+	Name  string
+	Start string
+	End   string
+	Days  string
 }
 
 // opt はプルダウンの1件です。ID が送信値、Label が画面の文言です。
@@ -388,44 +519,111 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		s.fail(w, err)
 		return assignPage{}, false
 	}
-	byLine := map[string][]store.Assignment{}
+	byPerson := map[string][]store.Assignment{}
+	var personOrder []string
 	for _, a := range assignments {
-		byLine[a.ProjectProcessID] = append(byLine[a.ProjectProcessID], a)
+		if _, ok := byPerson[a.PersonID]; !ok {
+			personOrder = append(personOrder, a.PersonID)
+		}
+		byPerson[a.PersonID] = append(byPerson[a.PersonID], a)
 	}
+	sort.SliceStable(personOrder, func(i, j int) bool {
+		a, b := byPerson[personOrder[i]][0], byPerson[personOrder[j]][0]
+		if a.PersonCode != b.PersonCode {
+			return a.PersonCode < b.PersonCode
+		}
+		return a.PersonName < b.PersonName
+	})
 	page := assignPage{
 		base: s.page(w, r, "人材アサイン"), Project: project,
 		People: activePersonOpts(people), Roles: activeRoleOpts(roles),
+		DefaultStart: project.StartDate, DefaultEnd: project.EndDate,
 	}
-	for _, line := range lines {
-		group := assignGroup{Line: line, Hours: calc.FormatHours(line.PlannedMinutes)}
-		for _, a := range byLine[line.ID] {
+	for _, personID := range personOrder {
+		list := byPerson[personID]
+		group := assignPersonGroup{
+			PersonID: personID, PersonCode: list[0].PersonCode, PersonName: list[0].PersonName,
+		}
+		for _, a := range list {
 			group.Rows = append(group.Rows, assignRow{
-				Assignment: a, Hours: calc.FormatHours(a.PlannedMinutes),
-				People: personOpts(people, a), Roles: roleOpts(roles, a),
+				Assignment: a, Roles: roleOpts(roles, a),
 			})
 		}
 		page.Groups = append(page.Groups, group)
 	}
+	for _, line := range lines {
+		page.Lines = append(page.Lines, assignLineOpt{
+			ID: line.ID, Name: line.ProcessName, Start: line.StartDate, End: line.EndDate,
+			Days: calc.FormatPersonDays(line.PlannedMinutes, s.cfg.StandardMinutes),
+		})
+	}
 	return page, true
 }
 
-// handleAssignCreate はパスの案件の工程へ、フォームの人材を追加します。
+// handleAssignCreate はフォームの人材を、選んだ工程へまとめて追加します。
 func (s *Server) handleAssignCreate(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
-	write, msg := s.readAssignment(r, projectID, "")
-	if msg != "" {
-		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
+	processIDs := r.Form["project_process_id"]
+	if len(processIDs) == 0 {
+		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "担当する工程を1つ以上選んでください。")
 		return
 	}
-	if _, err := s.store.CreateAssignment(r.Context(), write); err != nil {
-		if errors.Is(err, store.ErrConflict) {
-			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "この工程には、同じ人材が既にいます。")
+	personID := formText(r, "person_id")
+	rateKind := formText(r, "rate_kind")
+	startRaw := r.FormValue("start_date")
+	endRaw := r.FormValue("end_date")
+	seen := map[string]bool{}
+	var writes []store.AssignmentWrite
+	for _, processID := range processIDs {
+		if seen[processID] {
+			continue
+		}
+		seen[processID] = true
+		roleID := formText(r, "role_"+processID)
+		if roleID == "" {
+			roleID = formText(r, "role_id")
+		}
+		write, msg := s.readAssignmentValues(r, projectID, "", personID, processID, roleID, rateKind, startRaw, endRaw)
+		if msg != "" {
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 			return
 		}
+		writes = append(writes, write)
+	}
+	existing, err := s.store.ListAssignmentsByProject(r.Context(), projectID)
+	if err != nil {
 		s.fail(w, err)
 		return
 	}
-	s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました。")
+	taken := map[string]bool{}
+	for _, a := range existing {
+		if a.PersonID == personID {
+			taken[a.ProjectProcessID] = true
+		}
+	}
+	for _, write := range writes {
+		if taken[write.ProjectProcessID] {
+			s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "同じ人材が既に入っている工程があります。")
+			return
+		}
+	}
+	created := 0
+	for _, write := range writes {
+		if _, err := s.store.CreateAssignment(r.Context(), write); err != nil {
+			if errors.Is(err, store.ErrConflict) {
+				s.redirectWarn(w, r, "/projects/"+projectID+"/assign", "同じ人材が既に入っている工程があります。")
+				return
+			}
+			s.fail(w, err)
+			return
+		}
+		created++
+	}
+	if created == 1 {
+		s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました。")
+		return
+	}
+	s.redirect(w, r, "/projects/"+projectID+"/assign", "登録しました（"+strconv.Itoa(created)+" 件）。")
 }
 
 // handleAssignUpdate はパスのアサインをフォームの内容で更新し、予定原価を計算し直します。
@@ -435,7 +633,9 @@ func (s *Server) handleAssignUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	write, msg := s.readAssignment(r, projectID, assignment.ID)
+	write, msg := s.readAssignmentValues(r, projectID, assignment.ID,
+		formText(r, "person_id"), assignment.ProjectProcessID, formText(r, "role_id"),
+		formText(r, "rate_kind"), r.FormValue("start_date"), r.FormValue("end_date"))
 	if msg != "" {
 		s.redirectWarn(w, r, "/projects/"+projectID+"/assign", msg)
 		return
@@ -479,14 +679,14 @@ func (s *Server) ownAssignment(w http.ResponseWriter, r *http.Request) (store.As
 	return assignment, true
 }
 
-// readAssignment は r のフォームをアサイン入力にします。
+// readAssignmentValues はアサイン1件分の入力を検証して返します。
 // projectID は案件、assignmentID は更新対象です。新規なら assignmentID は空です。
 // 開始日時点の単価が無いときはメッセージを返し、予定原価は計算しません。
-func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string) (store.AssignmentWrite, string) {
+func (s *Server) readAssignmentValues(r *http.Request, projectID, assignmentID, personID, processID, roleID, rateKind, startRaw, endRaw string) (store.AssignmentWrite, string) {
 	write := store.AssignmentWrite{
-		ProjectProcessID: formText(r, "project_process_id"),
-		PersonID:         formText(r, "person_id"),
-		RoleID:           formText(r, "role_id"),
+		ProjectProcessID: processID,
+		PersonID:         personID,
+		RoleID:           roleID,
 	}
 	if assignmentID == "" {
 		line, err := s.store.GetProcessLine(r.Context(), write.ProjectProcessID)
@@ -494,20 +694,16 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 			return write, "工程が不正です。"
 		}
 	}
-	start, msg := normalizeDate(r.FormValue("start_date"), true)
+	start, msg := normalizeDate(startRaw, true)
 	if msg != "" {
 		return write, msg
 	}
-	end, msg := normalizeDate(r.FormValue("end_date"), true)
+	end, msg := normalizeDate(endRaw, true)
 	if msg != "" {
 		return write, msg
 	}
 	if m := dateOrder(start, end, "開始日", "終了日"); m != "" {
 		return write, m
-	}
-	minutes, msg := parseRequiredHours(r.FormValue("hours"))
-	if msg != "" {
-		return write, msg
 	}
 	person, err := s.store.GetPerson(r.Context(), write.PersonID)
 	if err != nil {
@@ -547,17 +743,29 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	if !role.Active && assignmentID == "" {
 		return write, "無効な役割は新しく割り当てられません。"
 	}
-	yen, ok, err := s.store.FindHourly(r.Context(), person.ID, role.ID, start)
+	rate, ok, err := s.store.FindRate(r.Context(), person.ID, role.ID, start)
 	if err != nil {
 		return write, "単価の取得に失敗しました。"
 	}
 	if !ok {
-		return write, "この開始日に、その役割の時間単価がありません。"
+		return write, "この開始日に、その役割の単価（時間または月間）がありません。"
+	}
+	switch rateKind {
+	case store.RateKindHourly, store.RateKindMonthly:
+	default:
+		return write, "単価の種類（請負または準委任）を選んでください。"
+	}
+	if !store.RateKindOK(rateKind, rate, true) {
+		if rateKind == store.RateKindMonthly {
+			return write, "この開始日に月間単価がありません。準委任以外を選ぶか、単価を登録してください。"
+		}
+		return write, "この開始日に時間単価がありません。請負以外を選ぶか、単価を登録してください。"
 	}
 	write.StartDate = start
 	write.EndDate = end
-	write.PlannedMinutes = minutes
-	write.PlannedCostYen = calc.CostYen(minutes, yen)
+	write.RateKind = rateKind
+	// 準委任の予定原価は予実で受注金額比按分するため、アサインには保存しない。
+	write.PlannedCostYen = 0
 	return write, ""
 }
 
@@ -606,7 +814,16 @@ func (s *Server) handleForecast(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	page := forecastPage{base: s.page(w, r, "予実"), Project: bundle.Project, Report: report.Build(bundle)}
+	peers, err := s.store.ExpandMonthlyPeers(r.Context(), []store.Bundle{bundle})
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	page := forecastPage{
+		base:    s.page(w, r, "予実"),
+		Project: bundle.Project,
+		Report:  report.BuildWithContext(bundle, peers, time.Time{}),
+	}
 	s.render(w, http.StatusOK, "forecast", page)
 }
 
@@ -615,22 +832,8 @@ func activePersonOpts(people []store.Person) []opt {
 	var out []opt
 	for _, p := range people {
 		if p.Active {
-			out = append(out, opt{ID: p.ID, Label: p.Code + " " + p.Name})
+			out = append(out, opt{ID: p.ID, Label: p.Code + " " + p.FullName()})
 		}
-	}
-	return out
-}
-
-// personOpts は有効な人に加え、current の人が無効でも選択肢に残します。
-func personOpts(people []store.Person, current store.Assignment) []opt {
-	out := activePersonOpts(people)
-	for _, item := range out {
-		if item.ID == current.PersonID {
-			return out
-		}
-	}
-	if current.PersonID != "" {
-		out = append(out, opt{ID: current.PersonID, Label: current.PersonCode + " " + current.PersonName + "（無効）"})
 	}
 	return out
 }
