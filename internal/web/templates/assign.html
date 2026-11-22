@@ -92,7 +92,7 @@
           <label class="field"><input type="date" name="start_date" value="{{.Assignment.StartDate}}" required><span class="field-label">開始</span></label>
           <label class="field"><input type="date" name="end_date" value="{{.Assignment.EndDate}}" required><span class="field-label">終了</span></label>
           <div class="field field-display">
-            <span class="field-value">{{yen .Assignment.PlannedCostYen}}</span>
+            <span class="field-value num">{{yen .Assignment.PlannedCostYen}}</span>
             <span class="field-label">予定原価</span>
           </div>
         </form>

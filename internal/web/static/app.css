@@ -654,6 +654,10 @@ section.danger { border-color: var(--danger-line); }
   max-width: 200px;
   min-width: 160px;
 }
+.assign-row > .field .field-value.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .assign-item .button-pair {
   flex: 0 0 auto;
 }
