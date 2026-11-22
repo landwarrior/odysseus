@@ -44,11 +44,12 @@
       <button type="button" id="actual-mode-button" class="secondary" aria-pressed="false" title="実績表示モードにする">実績</button>
     </div>
     {{if .Detail}}
-    <p class="schedule-toolbar-notes field-help">
-      一覧で立てた工程の旬割当を、タスクへ割り振ります。「残工数」は工程割当 − タスク合計です。0 なら割当完了、マイナスは超過で赤になります。
-      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
-      「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列は実績／見積）。実績の登録は<a href="/time">実績登録</a>から行います。
-    </p>
+    <ul class="schedule-toolbar-notes field-help">
+      <li>一覧で立てた工程の旬割当を、タスクへ割り振ります。</li>
+      <li>「残工数」は工程割当 − タスク合計です。0 なら割当完了、マイナスは超過で赤になります。</li>
+      <li>工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。</li>
+      <li>「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列は実績／見積）。実績の登録は<a href="/time">実績登録</a>から行います。</li>
+    </ul>
     {{else}}
     <ul class="schedule-toolbar-notes field-help">
       <li>工程行の旬セルに工数を入れて、全案件のスケジュールを立てます。差分のプラスは割当不足です。タスクへの割り振りは各案件のスケジュールから行います。</li>
