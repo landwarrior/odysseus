@@ -213,7 +213,19 @@
     });
     table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
       const key = cell.getAttribute("data-period-allocated");
-      cell.textContent = formatSum(totals[key] || 0);
+      const allocated = totals[key] || 0;
+      cell.textContent = formatSum(allocated);
+      const capacity = Number(cell.dataset.capacity || 0);
+      cell.classList.remove("cap-warn", "cap-over");
+      if (capacity <= 0) {
+        if (allocated > 0) {
+          cell.classList.add("cap-over");
+        }
+      } else if (allocated >= capacity) {
+        cell.classList.add("cap-over");
+      } else if (allocated >= capacity * 0.8) {
+        cell.classList.add("cap-warn");
+      }
     });
     const decadeHeads = [...table.querySelectorAll("thead th.decade-head")];
     table.querySelectorAll("tr.project-summary").forEach((row) => {

@@ -69,12 +69,17 @@ type scheduleProjectBlock struct {
 }
 
 // schedulePeriodCol はフッターの旬列です。
+// Capacity は、その旬にアサイン期間が重なるユニーク人数 × 営業日（人日）です。
+// CapClass は割当合計に対する黄（80% 以上）／赤（キャパ以上）です。
 type schedulePeriodCol struct {
 	YM           string
 	Decade       int
 	Current      bool
 	BusinessDays int
+	Headcount    int
+	Capacity     string
 	Allocated    string
+	CapClass     string
 }
 
 // schedulePage はプロジェクト一覧または案件のスケジュールです。
@@ -228,19 +233,17 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, line := range lines {
 		linesByProject[line.ProjectID] = append(linesByProject[line.ProjectID], line)
 	}
+	lineIDs := make([]string, 0, len(lines))
+	for _, line := range lines {
+		lineIDs = append(lineIDs, line.ID)
+	}
+	assigns, err := s.store.AssignmentsForLines(r.Context(), lineIDs)
+	if err != nil {
+		return schedulePage{}, err
+	}
 	assignmentsByLine := map[string][]store.Assignment{}
-	if in.Detail {
-		lineIDs := make([]string, 0, len(lines))
-		for _, line := range lines {
-			lineIDs = append(lineIDs, line.ID)
-		}
-		assigns, err := s.store.AssignmentsForLines(r.Context(), lineIDs)
-		if err != nil {
-			return schedulePage{}, err
-		}
-		for _, a := range assigns {
-			assignmentsByLine[a.ProjectProcessID] = append(assignmentsByLine[a.ProjectProcessID], a)
-		}
+	for _, a := range assigns {
+		assignmentsByLine[a.ProjectProcessID] = append(assignmentsByLine[a.ProjectProcessID], a)
 	}
 
 	periodAllocated := map[string]int64{}
@@ -273,11 +276,18 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, ym := range in.Months {
 		for decade := 1; decade <= 3; decade++ {
 			periodKey := ym + "|" + strconv.Itoa(decade)
+			heads := uniqueAssigneesInDecade(assigns, ym, decade)
+			days := bizDays[periodKey]
+			capMinutes := int64(heads) * int64(days) * std
+			allocated := periodAllocated[periodKey]
 			periods = append(periods, schedulePeriodCol{
 				YM: ym, Decade: decade,
 				Current:      ym == currentYM && decade == currentDec,
-				BusinessDays: bizDays[periodKey],
-				Allocated:    calc.FormatPersonDays(periodAllocated[periodKey], std),
+				BusinessDays: days,
+				Headcount:    heads,
+				Capacity:     calc.FormatPersonDays(capMinutes, std),
+				Allocated:    calc.FormatPersonDays(allocated, std),
+				CapClass:     capacityLoadClass(allocated, capMinutes),
 			})
 		}
 	}
@@ -525,6 +535,21 @@ func (s *Server) scheduleTaskGroups(
 		rowCount += span
 	}
 	return groups, rowCount
+}
+
+// uniqueAssigneesInDecade は、ym の decade 旬にアサイン期間が重なる人材のユニーク人数です。
+// 同じ人が複数工程・複数案件にいても 1 人と数えます。
+func uniqueAssigneesInDecade(assigns []store.Assignment, ym string, decade int) int {
+	seen := map[string]bool{}
+	for _, a := range assigns {
+		if a.PersonID == "" {
+			continue
+		}
+		if schedule.OverlapsDecade(ym, decade, a.StartDate, a.EndDate) {
+			seen[a.PersonID] = true
+		}
+	}
+	return len(seen)
 }
 
 // capacityLoadClass は割当分に対する枠の負荷クラスです。

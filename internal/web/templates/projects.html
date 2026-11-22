@@ -42,11 +42,12 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程の「枠」は、その旬に期間が重なるアサイン人数 × 営業日（人日）の目安です。割当合計が枠の 80% 以上で黄色、枠以上で赤になります（休暇などの余裕を残すためです）。
+      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程の「枠」は、その旬に期間が重なるアサイン人数 × 営業日（人日）の目安です。
       工程に開始日・終了日がある旬と、工数を入れた旬には背景色が付きます。工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
       行は工程です。見積・割当・差分は工程内タスクの合計です。開始日・終了日がある旬と、割当がある旬に背景色が付きます。タスク単位の割当は各案件のスケジュールから行います。
       {{end}}
+      表の下のキャパは、その旬にアサイン期間が重なる人材のユニーク人数 × 営業日（人日）です。同じ人が複数工程・案件にいても 1 人と数えます。割当合計がキャパの 80% 以上で黄色、キャパ以上で赤になります。
       営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。
     </p>
   </section>
@@ -224,9 +225,15 @@
           {{end}}
         </tr>
         <tr>
-          <th class="sticky-col summary-label" colspan="{{if .Detail}}6{{else}}5{{end}}">割当合計（全体・人日）</th>
+          <th class="sticky-col summary-label" colspan="{{if .Detail}}6{{else}}5{{end}}">キャパ（人日）</th>
           {{range .Periods}}
-          <td class="num{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}">{{.Allocated}}</td>
+          <td class="num{{if .Current}} col-current{{end}}" data-period-cap="{{.YM}}-{{.Decade}}"{{if .Headcount}} title="{{.Headcount}}人 × 営業日"{{end}}>{{.Capacity}}</td>
+          {{end}}
+        </tr>
+        <tr>
+          <th class="sticky-col summary-label" colspan="{{if .Detail}}6{{else}}5{{end}}">割当合計（人日）</th>
+          {{range .Periods}}
+          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}" data-capacity="{{.Capacity}}">{{.Allocated}}</td>
           {{end}}
         </tr>
       </tfoot>

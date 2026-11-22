@@ -1,6 +1,28 @@
 package web
 
-import "testing"
+import (
+	"testing"
+
+	"odysseus/internal/store"
+)
+
+func TestUniqueAssigneesInDecade(t *testing.T) {
+	assigns := []store.Assignment{
+		{PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-30"},
+		{PersonID: "a", StartDate: "2026-11-01", EndDate: "2026-11-15"}, // 同一人物・別工程
+		{PersonID: "b", StartDate: "2026-11-01", EndDate: "2026-11-05"},
+		{PersonID: "c", StartDate: "2026-12-01", EndDate: "2026-12-10"}, // 別旬
+	}
+	if got := uniqueAssigneesInDecade(assigns, "2026-11", 1); got != 2 {
+		t.Fatalf("early Nov unique = %d, want 2", got)
+	}
+	if got := uniqueAssigneesInDecade(assigns, "2026-11", 3); got != 1 {
+		t.Fatalf("late Nov unique = %d, want 1 (only a)", got)
+	}
+	if got := uniqueAssigneesInDecade(assigns, "2026-12", 1); got != 1 {
+		t.Fatalf("Dec unique = %d, want 1", got)
+	}
+}
 
 func TestCapacityLoadClass(t *testing.T) {
 	if got := capacityLoadClass(0, 100); got != "" {
