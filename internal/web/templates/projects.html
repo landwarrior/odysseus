@@ -165,12 +165,6 @@
             </tr>
           {{end}}
           {{end}}
-          <tr class="project-summary">
-            <td class="sticky-col col-phase summary-label" colspan="5">割当合計（人日）</td>
-            {{range $block.Allocated}}
-            <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
-            {{end}}
-          </tr>
         {{else}}
           {{if not $block.Rows}}
           <tr>
@@ -224,12 +218,6 @@
           </tr>
           {{end}}
           {{end}}
-          <tr class="project-summary">
-            <td class="sticky-col col-phase summary-label" colspan="4">割当合計（人日）</td>
-            {{range $block.Allocated}}
-            <td class="num{{if .Current}} col-current{{end}}" data-project-allocated="{{$block.Project.ID}}">{{.Days}}</td>
-            {{end}}
-          </tr>
         {{end}}
       </tbody>
       {{end}}

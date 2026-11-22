@@ -1347,7 +1347,6 @@ main.page-schedule {
   background: var(--sticky-bg);
 }
 .schedule-table tfoot .summary-label,
-.schedule-table .project-summary .summary-label,
 .schedule-table tr.phase-capacity .summary-label {
   text-align: right;
   font-weight: 600;
@@ -1377,9 +1376,6 @@ main.page-schedule {
 }
 .schedule-table tbody.project-block:not(:last-of-type) > tr:last-child > * {
   border-bottom: 2px solid var(--project-divider);
-}
-.schedule-table .project-summary .sticky-col {
-  background: var(--sticky-bg);
 }
 .month-head { text-align: center; background: var(--month-head-bg); }
 .decade-head {

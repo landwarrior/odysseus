@@ -53,20 +53,12 @@ type scheduleProcessGroup struct {
 	Capacity  scheduleRow
 }
 
-// scheduleCapCell はプロジェクト単位のキャパまたは割当合計の1マスです。
-type scheduleCapCell struct {
-	Days     string
-	Current  bool
-	CapClass string
-}
-
 // scheduleProjectBlock は案件ごとの行の塊です。
 type scheduleProjectBlock struct {
-	Project   store.Project
-	Rows      []scheduleRow
-	Groups    []scheduleProcessGroup
-	RowCount  int
-	Allocated []scheduleCapCell
+	Project  store.Project
+	Rows     []scheduleRow
+	Groups   []scheduleProcessGroup
+	RowCount int
 }
 
 // schedulePeriodCol はフッターの旬列です。
@@ -265,23 +257,12 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, project := range in.Projects {
 		projectTasks := tasksByProject[project.ID]
 		projectLines := linesByProject[project.ID]
-		projectPeriod := map[string]int64{}
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, std, projectPeriod)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, std)
 		} else {
-			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, std, projectPeriod)
-		}
-
-		for _, ym := range in.Months {
-			for decade := 1; decade <= 3; decade++ {
-				periodKey := ym + "|" + strconv.Itoa(decade)
-				current := ym == currentYM && decade == currentDec
-				block.Allocated = append(block.Allocated, scheduleCapCell{
-					Days: calc.FormatPersonDays(projectPeriod[periodKey], std), Current: current,
-				})
-			}
+			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, std)
 		}
 		blocks = append(blocks, block)
 	}
@@ -339,10 +320,9 @@ func (s *Server) scheduleProcessRows(
 	processAllocMap map[string]int64,
 	processTotals map[string]int64,
 	std int64,
-	projectPeriod map[string]int64,
 ) ([]scheduleRow, int) {
 	if len(lines) == 0 {
-		return nil, 2 // 未登録案内 + 割当合計
+		return nil, 1 // 未登録案内
 	}
 	tasksByLine := map[string][]store.Task{}
 	for _, t := range tasks {
@@ -377,8 +357,6 @@ func (s *Server) scheduleProcessRows(
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				minutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
-				periodKey := ym + "|" + strconv.Itoa(decade)
-				projectPeriod[periodKey] += minutes
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
 					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
@@ -392,7 +370,7 @@ func (s *Server) scheduleProcessRows(
 		}
 		rows = append(rows, row)
 	}
-	return rows, len(rows) + 1
+	return rows, len(rows)
 }
 
 // scheduleTaskGroups は工程ごとのタスク行と工程割当行を作ります（案件スケジュール用）。
@@ -407,17 +385,16 @@ func (s *Server) scheduleTaskGroups(
 	taskTotals map[string]int64,
 	processAllocMap map[string]int64,
 	std int64,
-	projectPeriod map[string]int64,
 ) ([]scheduleProcessGroup, int) {
 	if len(lines) == 0 {
-		return nil, 2
+		return nil, 1
 	}
 	tasksByLine := map[string][]store.Task{}
 	for _, task := range tasks {
 		tasksByLine[task.ProjectProcessID] = append(tasksByLine[task.ProjectProcessID], task)
 	}
 	groups := make([]scheduleProcessGroup, 0, len(lines))
-	rowCount := 1 // プロジェクト割当合計
+	rowCount := 0
 	for _, line := range lines {
 		color := schedule.NormalizeColor(line.ProcessColor)
 		lineTasks := tasksByLine[line.ID]
@@ -444,7 +421,6 @@ func (s *Server) scheduleTaskGroups(
 				for decade := 1; decade <= 3; decade++ {
 					minutes := taskAllocMap[task.ID+"|"+ym+"|"+strconv.Itoa(decade)]
 					periodKey := ym + "|" + strconv.Itoa(decade)
-					projectPeriod[periodKey] += minutes
 					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,

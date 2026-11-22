@@ -205,49 +205,31 @@
   }
 
   function updatePeriodTotals() {
-    const isDetail = table.classList.contains("schedule-detail");
+    if (table.classList.contains("schedule-detail")) {
+      updateCapacityWarnings();
+      return;
+    }
     const processTotals = {};
-    const taskTotals = {};
     table.querySelectorAll(".effort-input").forEach((input) => {
       const key = `${input.dataset.ym}-${input.dataset.decade}`;
       const value = Number(input.value || 0);
-      const n = Number.isNaN(value) ? 0 : value;
-      if (input.dataset.taskId) {
-        taskTotals[key] = (taskTotals[key] || 0) + n;
-      } else {
-        processTotals[key] = (processTotals[key] || 0) + n;
-      }
+      processTotals[key] = (processTotals[key] || 0) + (Number.isNaN(value) ? 0 : value);
     });
-    if (!isDetail) {
-      table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
-        const key = cell.getAttribute("data-period-allocated");
-        const allocated = processTotals[key] || 0;
-        cell.textContent = formatSum(allocated);
-        const capacity = Number(cell.dataset.capacity || 0);
-        cell.classList.remove("cap-warn", "cap-over");
-        if (capacity <= 0) {
-          if (allocated > 0) {
-            cell.classList.add("cap-over");
-          }
-        } else if (allocated >= capacity) {
+    table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
+      const key = cell.getAttribute("data-period-allocated");
+      const allocated = processTotals[key] || 0;
+      cell.textContent = formatSum(allocated);
+      const capacity = Number(cell.dataset.capacity || 0);
+      cell.classList.remove("cap-warn", "cap-over");
+      if (capacity <= 0) {
+        if (allocated > 0) {
           cell.classList.add("cap-over");
-        } else if (allocated >= capacity * 0.8) {
-          cell.classList.add("cap-warn");
         }
-      });
-    }
-    const decadeHeads = [...table.querySelectorAll("thead th.decade-head")];
-    const summaryTotals = isDetail ? taskTotals : processTotals;
-    table.querySelectorAll("tr.project-summary").forEach((row) => {
-      const cells = [...row.querySelectorAll("[data-project-allocated]")];
-      cells.forEach((cell, index) => {
-        const head = decadeHeads[index];
-        if (!head) {
-          return;
-        }
-        const key = `${head.dataset.ym}-${head.dataset.decade}`;
-        cell.textContent = formatSum(summaryTotals[key] || 0);
-      });
+      } else if (allocated >= capacity) {
+        cell.classList.add("cap-over");
+      } else if (allocated >= capacity * 0.8) {
+        cell.classList.add("cap-warn");
+      }
     });
     updateCapacityWarnings();
   }
