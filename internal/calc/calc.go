@@ -18,9 +18,12 @@ var (
 
 // CostYen は minutes（分）と hourlyYen（円/時）から金額を求めます。
 // 計算は minutes × hourlyYen ÷ 60 で、円未満は四捨五入です。
-// どちらかが 0 以下のときは 0 を返します。単価が未設定のときを 0 として渡さないでください。
+// minutes が 0 以下、または hourlyYen が 0 未満のときは 0 です。0 円単価は実績原価 0 になります。
 func CostYen(minutes, hourlyYen int64) int64 {
-	if minutes <= 0 || hourlyYen <= 0 {
+	if minutes <= 0 || hourlyYen < 0 {
+		return 0
+	}
+	if hourlyYen == 0 {
 		return 0
 	}
 	num := minutes * hourlyYen
@@ -32,9 +35,12 @@ func CostYen(minutes, hourlyYen int64) int64 {
 }
 
 // MonthlyCost は startDate〜endDate（YYYY-MM-DD）に掛かる暦月数 × monthlyYen です。
-// 開始月と終了月を含みます。日付が不正、終了が開始より前、単価が 0 以下なら 0 です。
+// 開始月と終了月を含みます。日付が不正、終了が開始より前、単価が 0 未満なら 0 です。0 円単価は 0 です。
 func MonthlyCost(startDate, endDate string, monthlyYen int64) int64 {
-	if monthlyYen <= 0 {
+	if monthlyYen < 0 {
+		return 0
+	}
+	if monthlyYen == 0 {
 		return 0
 	}
 	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
@@ -58,7 +64,10 @@ func AssignmentPlannedCost(startDate, endDate string, monthlyYen int64) int64 {
 // AccruedMonthlyCost は startDate〜endDate のうち、asOfDate までに掛かる暦月分の月間原価です（準委任の実績原価）。
 // asOfDate が開始より前なら 0、終了より後なら期間全体と同じです。
 func AccruedMonthlyCost(startDate, endDate, asOfDate string, monthlyYen int64) int64 {
-	if monthlyYen <= 0 {
+	if monthlyYen < 0 {
+		return 0
+	}
+	if monthlyYen == 0 {
 		return 0
 	}
 	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)

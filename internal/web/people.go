@@ -175,15 +175,8 @@ func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 	if merr != nil {
 		msg = firstMsg(msg, "月間単価（円 / 月）は 0 以上の整数で入力してください。")
 	}
-	var hourlyYen, monthlyYen int64
-	if hourly != nil {
-		hourlyYen = *hourly
-	}
-	if monthly != nil {
-		monthlyYen = *monthly
-	}
-	if hourlyYen == 0 && monthlyYen == 0 {
-		msg = firstMsg(msg, "時間単価か月間単価のどちらかを入力してください。")
+	if hourly == nil && monthly == nil {
+		msg = firstMsg(msg, "時間単価か月間単価のどちらかを入力してください。0 円でも登録できます。")
 	}
 	roleID := formText(r, "role_id")
 	if roleID == "" {
@@ -194,7 +187,7 @@ func (s *Server) handleRateCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.store.InsertRate(r.Context(), store.Rate{
-		PersonID: id, RoleID: roleID, FromDate: date, HourlyYen: hourlyYen, MonthlyYen: monthlyYen,
+		PersonID: id, RoleID: roleID, FromDate: date, HourlyYen: hourly, MonthlyYen: monthly,
 	}); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			s.redirectWarn(w, r, "/people/"+id, "同じ役割と適用開始日の単価が既にあります。")

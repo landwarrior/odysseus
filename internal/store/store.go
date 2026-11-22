@@ -99,15 +99,19 @@ type Process struct {
 
 // Rate は人材と役割の単価です。FromDate 以降、次の単価が現れるまで有効です。
 // HourlyYen は請負向けの円/時、MonthlyYen は準委任向けの円/月です。どちらか一方以上を持ちます。
+// ポインタが nil のときはその種別は未設定、0 は無料（0 円）です。
 type Rate struct {
 	ID         string
 	PersonID   string
 	RoleID     string
 	RoleName   string
 	FromDate   string
-	HourlyYen  int64
-	MonthlyYen int64
+	HourlyYen  *int64
+	MonthlyYen *int64
 }
+
+// Yen は単価の円額へのポインタを返します。
+func Yen(n int64) *int64 { return &n }
 
 // Project は案件です。Status は planning、active、closed のいずれかです。
 // OrderAmount が nil のときは受注金額が未設定です。
@@ -729,7 +733,7 @@ func (s *Store) LatestRoleNames(ctx context.Context, date string) (map[string]st
 		FROM person_rate r
 		JOIN role ON role.id = r.role_id
 		WHERE r.from_date <= ?
-		ORDER BY r.person_id, r.from_date DESC, r.hourly_yen DESC, role.sort_order, role.name`, date)
+		ORDER BY r.person_id, r.from_date DESC, COALESCE(r.hourly_yen, r.monthly_yen, 0) DESC, role.sort_order, role.name`, date)
 	if err != nil {
 		return nil, err
 	}
@@ -769,7 +773,7 @@ func (s *Store) InsertRate(ctx context.Context, rate Rate) (Rate, error) {
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO person_rate (id, person_id, role_id, from_date, hourly_yen, monthly_yen, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, rate.HourlyYen, rate.MonthlyYen, now(), now())
+		rate.ID, rate.PersonID, rate.RoleID, rate.FromDate, nullYen(rate.HourlyYen), nullYen(rate.MonthlyYen), now(), now())
 	if err != nil {
 		return Rate{}, mapWriteErr(err)
 	}
@@ -789,30 +793,33 @@ func (s *Store) DeleteRate(ctx context.Context, personID, rateID string) error {
 // 該当が無いときは false です。
 func (s *Store) FindRate(ctx context.Context, personID, roleID, date string) (Rate, bool, error) {
 	var rate Rate
+	var hourly, monthly sql.NullInt64
 	err := s.db.QueryRow(ctx, `
 		SELECT id, person_id, role_id, '', from_date, hourly_yen, monthly_yen
 		FROM person_rate
 		WHERE person_id = ? AND role_id = ? AND from_date <= ?
 		ORDER BY from_date DESC
 		LIMIT 1`, personID, roleID, date).Scan(
-		&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen, &rate.MonthlyYen)
+		&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &hourly, &monthly)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Rate{}, false, nil
 	}
 	if err != nil {
 		return Rate{}, false, err
 	}
+	rate.HourlyYen = yenPtr(hourly)
+	rate.MonthlyYen = yenPtr(monthly)
 	return rate, true, nil
 }
 
 // FindHourly は personID と roleID について、date 以前で最も新しい時間単価を返します。
-// 該当が無いとき、または時間単価が 0 のときは false です。
+// 該当が無いとき、または時間単価が未設定のときは false です。0 円は有効な単価です。
 func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (int64, bool, error) {
 	rate, ok, err := s.FindRate(ctx, personID, roleID, date)
-	if err != nil || !ok || rate.HourlyYen <= 0 {
+	if err != nil || !ok || rate.HourlyYen == nil {
 		return 0, false, err
 	}
-	return rate.HourlyYen, true, nil
+	return *rate.HourlyYen, true, nil
 }
 
 const personSelect = `SELECT id, code, name, name_kana, is_admin, active, remarks, must_change_password, theme FROM person`
@@ -845,12 +852,32 @@ func scanRates(rows *sql.Rows) ([]Rate, error) {
 	var out []Rate
 	for rows.Next() {
 		var rate Rate
-		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &rate.HourlyYen, &rate.MonthlyYen); err != nil {
+		var hourly, monthly sql.NullInt64
+		if err := rows.Scan(&rate.ID, &rate.PersonID, &rate.RoleID, &rate.RoleName, &rate.FromDate, &hourly, &monthly); err != nil {
 			return nil, err
 		}
+		rate.HourlyYen = yenPtr(hourly)
+		rate.MonthlyYen = yenPtr(monthly)
 		out = append(out, rate)
 	}
 	return out, rows.Err()
+}
+
+// yenPtr は n が有効ならその円額へのポインタを返します。
+func yenPtr(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64
+	return &v
+}
+
+// nullYen は p が nil なら SQL の NULL、そうでなければ円額です。
+func nullYen(p *int64) any {
+	if p == nil {
+		return nil
+	}
+	return *p
 }
 
 // count は query（COUNT を返す SQL）を args で実行し、件数を返します。

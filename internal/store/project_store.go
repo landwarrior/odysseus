@@ -227,16 +227,16 @@ func (s *Store) RecalcPlannedCosts(ctx context.Context, projectID string) (updat
 	return updated, missingNames, nil
 }
 
-// RateKindOK は kind に合う単価が rate にあるとき true です。
+// RateKindOK は kind に合う単価が rate にあるとき true です。0 円も有効です。
 func RateKindOK(kind string, rate Rate, hasRate bool) bool {
 	if !hasRate {
 		return false
 	}
 	switch kind {
 	case RateKindMonthly:
-		return rate.MonthlyYen > 0
+		return rate.MonthlyYen != nil
 	case RateKindHourly:
-		return rate.HourlyYen > 0
+		return rate.HourlyYen != nil
 	default:
 		return false
 	}
@@ -248,7 +248,7 @@ func plannedCostForKind(start, end, kind string, rate Rate, hasRate bool) (int64
 		return 0, false
 	}
 	if kind == RateKindMonthly {
-		return calc.AssignmentPlannedCost(start, end, rate.MonthlyYen), true
+		return calc.AssignmentPlannedCost(start, end, *rate.MonthlyYen), true
 	}
 	return 0, true
 }

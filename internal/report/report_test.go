@@ -23,8 +23,8 @@ func TestBuildUsesLatestRateAndGrossMargin(t *testing.T) {
 			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 480,
 		}},
 		Rates: []store.Rate{
-			{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 3000},
-			{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: 5000},
+			{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(3000)},
+			{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: store.Yen(5000)},
 		},
 	}
 	got := Build(b, time.Time{})
@@ -83,7 +83,7 @@ func TestBuildTaskActualAndOverPlan(t *testing.T) {
 			{ID: "e1", AssignmentID: "a", TaskID: "t1", WorkDate: "2026-04-01", Minutes: 600},
 			{ID: "e2", AssignmentID: "a", TaskID: "t2", WorkDate: "2026-04-02", Minutes: 120},
 		},
-		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 5000}},
+		Rates: []store.Rate{{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(5000)}},
 	}
 	got := Build(b, time.Time{})
 	if got.ActualMinutes != 720 {
@@ -117,12 +117,37 @@ func TestBuildHourlyDespiteMonthlyRate(t *testing.T) {
 		}},
 		Rates: []store.Rate{{
 			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01",
-			HourlyYen: 5000, MonthlyYen: 400000,
+			HourlyYen: store.Yen(5000), MonthlyYen: store.Yen(400000),
 		}},
 	}
 	got := Build(b, time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC))
 	if got.ActualCostYen != 5000 {
 		t.Fatalf("hourly actual = %d, want 5000 (not monthly)", got.ActualCostYen)
+	}
+}
+
+func TestBuildZeroHourlyRate(t *testing.T) {
+	b := store.Bundle{
+		Project: store.Project{ID: "p", Status: "active"},
+		Lines:   []store.ProcessLine{{ID: "l", ProcessName: "製造", PlannedMinutes: 480}},
+		Assignments: []store.Assignment{{
+			ID: "a", ProjectProcessID: "l", PersonID: "h", RoleID: "pg",
+			StartDate: "2026-04-01", EndDate: "2026-04-30",
+			RateKind: store.RateKindHourly, PlannedCostYen: 0,
+		}},
+		Entries: []store.TimeEntry{{
+			ID: "e", AssignmentID: "a", WorkDate: "2026-04-02", Minutes: 120,
+		}},
+		Rates: []store.Rate{{
+			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(0),
+		}},
+	}
+	got := Build(b, time.Time{})
+	if !got.ActualKnown || got.UnsetMinutes != 0 {
+		t.Fatalf("zero rate should be known: %+v", got)
+	}
+	if got.ActualCostYen != 0 {
+		t.Fatalf("actual = %d", got.ActualCostYen)
 	}
 }
 
@@ -141,7 +166,7 @@ func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 		}},
 		Rates: []store.Rate{{
 			PersonID: "h", RoleID: "pg", FromDate: "2026-01-01",
-			HourlyYen: 5000, MonthlyYen: 100000,
+			HourlyYen: store.Yen(5000), MonthlyYen: store.Yen(100000),
 		}},
 	}
 	got := Build(b, time.Date(2026, 5, 15, 0, 0, 0, 0, time.UTC))
@@ -161,8 +186,8 @@ func TestBuildMonthlyActualIgnoresHours(t *testing.T) {
 
 func TestHourlyAtPicksNewestNotCheapest(t *testing.T) {
 	idx := indexRates([]store.Rate{
-		{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: 3000},
-		{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: 9000},
+		{PersonID: "h", RoleID: "pg", FromDate: "2026-01-01", HourlyYen: store.Yen(3000)},
+		{PersonID: "h", RoleID: "pg", FromDate: "2026-02-01", HourlyYen: store.Yen(9000)},
 	})
 	yen, ok := hourlyAt(idx, "h", "pg", "2026-03-01")
 	if !ok || yen != 9000 {

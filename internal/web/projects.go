@@ -680,7 +680,7 @@ func (s *Server) readAssignment(r *http.Request, projectID, assignmentID string)
 	write.EndDate = end
 	write.RateKind = kind
 	if kind == store.RateKindMonthly {
-		write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, rate.MonthlyYen)
+		write.PlannedCostYen = calc.AssignmentPlannedCost(start, end, *rate.MonthlyYen)
 	}
 	return write, ""
 }

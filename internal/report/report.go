@@ -124,10 +124,10 @@ func Build(b store.Bundle, asOf time.Time) Report {
 			}
 			if a.RateKind == store.RateKindMonthly {
 				rate, hasRate := rateAt(idx, a.PersonID, a.RoleID, a.StartDate)
-				if !hasRate || rate.MonthlyYen <= 0 {
+				if !hasRate || rate.MonthlyYen == nil {
 					rep.ActualKnown = false
 				} else {
-					cost := calc.AccruedMonthlyCost(a.StartDate, a.EndDate, asOfDate, rate.MonthlyYen)
+					cost := calc.AccruedMonthlyCost(a.StartDate, a.EndDate, asOfDate, *rate.MonthlyYen)
 					person.ActualCostYen = cost
 					row.ActualCostYen += cost
 					rep.ActualCostYen += cost
@@ -213,11 +213,11 @@ func rateAt(idx map[string][]store.Rate, personID, roleID, date string) (store.R
 }
 
 // hourlyAt は idx から、personID と roleID について date 以前で最も新しい時間単価を返します。
-// 該当が無いとき、または時間単価が 0 のときは false です。
+// 該当が無いとき、または時間単価が未設定のときは false です。0 円は有効です。
 func hourlyAt(idx map[string][]store.Rate, personID, roleID, date string) (int64, bool) {
 	r, ok := rateAt(idx, personID, roleID, date)
-	if !ok || r.HourlyYen <= 0 {
+	if !ok || r.HourlyYen == nil {
 		return 0, false
 	}
-	return r.HourlyYen, true
+	return *r.HourlyYen, true
 }
