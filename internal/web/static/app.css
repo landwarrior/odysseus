@@ -648,10 +648,11 @@ section.danger { border-color: var(--danger-line); }
 }
 /* 工程行と同様、フォームの子を行の flex に直接参加させる */
 .assign-row { display: contents; }
-.assign-item > .field {
+/* display:contents なので DOM 上は .assign-row の子。幅はここで固定する */
+.assign-row > .field {
   flex: 1 1 160px;
   max-width: 200px;
-  min-width: min(100%, 160px);
+  min-width: 160px;
 }
 .assign-item .button-pair {
   flex: 0 0 auto;
@@ -660,7 +661,7 @@ section.danger { border-color: var(--danger-line); }
 .assign-create-meta > .field {
   flex: 1 1 160px;
   max-width: 200px;
-  min-width: min(100%, 160px);
+  min-width: 160px;
 }
 .assign-create h3 { margin: 0; }
 .assign-process-list {
@@ -696,7 +697,7 @@ section.danger { border-color: var(--danger-line); }
 .assign-process-pick > .field {
   flex: 1 1 160px;
   max-width: 200px;
-  min-width: min(100%, 160px);
+  min-width: 160px;
 }
 .assign-create > button {
   justify-self: start;
