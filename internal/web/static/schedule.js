@@ -41,9 +41,13 @@
     if (actualMode) {
       const estimate = input.dataset.estimate;
       input.setAttribute("aria-label", estimate ? `実績工数（割当 ${estimate}）` : "実績工数");
-      if (!input.hasAttribute("readonly")) {
+      if (!input.readOnly) {
         input.dataset.wasEditable = "1";
         input.readOnly = true;
+      }
+      input.tabIndex = -1;
+      if (document.activeElement === input) {
+        input.blur();
       }
     } else {
       const isProcess = Boolean(input.dataset.projectProcessId);
@@ -52,8 +56,44 @@
         input.readOnly = false;
         delete input.dataset.wasEditable;
       }
+      input.tabIndex = input.readOnly ? -1 : 0;
     }
     syncEffortStyle(input);
+  }
+
+  // 残工数行を隠すと rowspan が余るので、実績モードでは工程・案件の行数を詰める。
+  function adjustActualModeRowspans(enabled) {
+    table.querySelectorAll("tbody.project-block").forEach((block) => {
+      const remainCount = block.querySelectorAll("tr.phase-capacity").length;
+      if (remainCount === 0) {
+        return;
+      }
+      const project = block.querySelector("th.col-project[rowspan]");
+      if (project) {
+        if (enabled) {
+          if (!project.dataset.fullRowspan) {
+            project.dataset.fullRowspan = project.getAttribute("rowspan") || "1";
+          }
+          const full = Number(project.dataset.fullRowspan) || 1;
+          project.setAttribute("rowspan", String(Math.max(1, full - remainCount)));
+        } else if (project.dataset.fullRowspan) {
+          project.setAttribute("rowspan", project.dataset.fullRowspan);
+          delete project.dataset.fullRowspan;
+        }
+      }
+      block.querySelectorAll("td.col-phase[rowspan]").forEach((cell) => {
+        if (enabled) {
+          if (!cell.dataset.fullRowspan) {
+            cell.dataset.fullRowspan = cell.getAttribute("rowspan") || "1";
+          }
+          const full = Number(cell.dataset.fullRowspan) || 1;
+          cell.setAttribute("rowspan", String(Math.max(1, full - 1)));
+        } else if (cell.dataset.fullRowspan) {
+          cell.setAttribute("rowspan", cell.dataset.fullRowspan);
+          delete cell.dataset.fullRowspan;
+        }
+      });
+    });
   }
 
   function setActualMode(enabled) {
@@ -63,6 +103,10 @@
       actualModeButton.setAttribute("aria-pressed", enabled ? "true" : "false");
       actualModeButton.title = enabled ? "割当表示モードに戻る" : "実績表示モードにする";
     }
+    if (enabled) {
+      clearActiveRow();
+    }
+    adjustActualModeRowspans(enabled);
     inputs.forEach((input) => {
       applyInputForMode(input);
     });
@@ -72,6 +116,7 @@
     table.querySelectorAll(".sum-fraction").forEach((el) => {
       el.setAttribute("aria-hidden", enabled ? "false" : "true");
     });
+    syncStickyOffsets();
   }
 
   function syncStickyOffsets() {

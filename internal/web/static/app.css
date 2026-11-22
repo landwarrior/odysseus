@@ -1558,8 +1558,8 @@ main.page-schedule {
 .schedule-table.actual-mode .phase-cell .effort-input {
   position: relative;
   z-index: 1;
-}
-.schedule-table.actual-mode .phase-cell .effort-input[readonly] {
+  pointer-events: none;
+  caret-color: transparent;
   cursor: default;
   opacity: 1;
 }
