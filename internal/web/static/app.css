@@ -360,6 +360,8 @@ label.field > .field-label,
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+  /* 未入力で枠内にあるときも、入力欄と同じ色にする（透明だと画面背景が見える） */
+  background: var(--field);
   transition: top 0.12s ease, transform 0.12s ease, font-size 0.12s ease, color 0.12s ease, background-color 0.12s ease;
 }
 label.field:focus-within > .field-label,
@@ -446,13 +448,12 @@ label.field > textarea {
   font-weight: 600;
   line-height: 1.4;
 }
-.field.field-display > .field-label {
-  background: var(--bg);
-}
 input:read-only,
 textarea:read-only {
   background: var(--bg);
 }
+/* 表示専用・読み取り専用は、枠内でも値と同じ背景にする */
+.field.field-display > .field-label,
 label.field:has(:read-only) > .field-label {
   background: var(--bg);
 }
