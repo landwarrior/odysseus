@@ -20,45 +20,41 @@
     return number.toFixed(1);
   }
 
-  function syncEffortStyle(input) {
-    const cell = input.closest(".phase-cell");
-    if (!cell) {
+  function syncEffortStyle(fieldOrInput) {
+    const field = fieldOrInput.classList?.contains("effort-field")
+      ? fieldOrInput
+      : fieldOrInput.closest(".effort-field");
+    const cell = field?.closest(".phase-cell");
+    if (!field || !cell) {
       return;
     }
-    const estimate = input.dataset.estimate || "";
-    const actual = input.dataset.actual || "";
+    const input = field.querySelector(".effort-input");
+    const plan = field.querySelector(".effort-plan");
+    const display = field.querySelector(".effort-display");
+    const label = field.querySelector(".effort-float-label");
+    const estimate = input?.dataset.estimate || plan?.textContent || "";
+    const actual = input?.dataset.actual || display?.textContent || "";
     cell.classList.toggle("active", cellIsActive(cell, estimate && Number(estimate) > 0));
     cell.classList.toggle("has-actual", Number(actual || 0) > 0);
-    const label = cell.querySelector(".effort-float-label");
     if (label) {
       label.textContent = estimate;
     }
+    if (display && input) {
+      display.textContent = actual;
+    }
   }
 
-  function applyInputForMode(input) {
-    const next = actualMode ? input.dataset.actual || "" : input.dataset.estimate || "";
-    input.value = next;
-    if (actualMode) {
-      const estimate = input.dataset.estimate;
-      input.setAttribute("aria-label", estimate ? `実績工数（割当 ${estimate}）` : "実績工数");
-      if (!input.readOnly) {
-        input.dataset.wasEditable = "1";
-        input.readOnly = true;
-      }
-      input.tabIndex = -1;
-      if (document.activeElement === input) {
+  function applyFieldForMode(field) {
+    const input = field.querySelector(".effort-input");
+    if (input) {
+      const estimate = input.dataset.estimate || "";
+      input.value = estimate;
+      input.disabled = actualMode;
+      if (actualMode && document.activeElement === input) {
         input.blur();
       }
-    } else {
-      const isProcess = Boolean(input.dataset.projectProcessId);
-      input.setAttribute("aria-label", isProcess ? "工程割当工数" : "割当工数");
-      if (input.dataset.wasEditable === "1") {
-        input.readOnly = false;
-        delete input.dataset.wasEditable;
-      }
-      input.tabIndex = input.readOnly ? -1 : 0;
     }
-    syncEffortStyle(input);
+    syncEffortStyle(field);
   }
 
   // 残工数行を隠すと rowspan が余るので、実績モードでは工程・案件の行数を詰める。
@@ -107,8 +103,8 @@
       clearActiveRow();
     }
     adjustActualModeRowspans(enabled);
-    inputs.forEach((input) => {
-      applyInputForMode(input);
+    table.querySelectorAll(".effort-field").forEach((field) => {
+      applyFieldForMode(field);
     });
     table.querySelectorAll(".sum-single").forEach((el) => {
       el.setAttribute("aria-hidden", enabled ? "true" : "false");
@@ -157,9 +153,12 @@
   }
 
   function effortGrid() {
+    if (actualMode) {
+      return [];
+    }
     return [...table.querySelectorAll("tbody tr")]
-      .filter((row) => row.querySelector(".effort-input:not([readonly])"))
-      .map((row) => [...row.querySelectorAll(".effort-input:not([readonly])")]);
+      .filter((row) => row.querySelector(".effort-input"))
+      .map((row) => [...row.querySelectorAll(".effort-input")]);
   }
 
   function effortPosition(grid, input) {
@@ -381,7 +380,12 @@
     const allocatedCell = table.querySelector(`[data-phase-allocated="${rowId}"]`);
     const diffCell = table.querySelector(`[data-phase-diff="${rowId}"]`);
     if (allocatedCell) {
-      allocatedCell.textContent = allocated;
+      const single = allocatedCell.querySelector(".sum-single");
+      if (single) {
+        single.textContent = allocated;
+      } else {
+        allocatedCell.textContent = allocated;
+      }
     }
     if (diffCell) {
       diffCell.textContent = diff;
@@ -394,7 +398,7 @@
   }
 
   function saveAllocation(input) {
-    if (actualMode || input.readOnly) {
+    if (actualMode) {
       return Promise.resolve();
     }
     const body = new URLSearchParams();
@@ -418,14 +422,7 @@
       const effort = data.effort === "0.0" ? "" : data.effort;
       input.value = effort;
       input.dataset.estimate = effort;
-      const cell = input.closest(".phase-cell");
-      if (cell) {
-        const label = cell.querySelector(".effort-float-label");
-        if (label) {
-          label.textContent = effort;
-        }
-        cell.classList.toggle("active", cellIsActive(cell, effort));
-      }
+      syncEffortStyle(input);
       const rowId = data.task_id || data.project_process_id || "";
       applyRowMeta(rowId, data.allocated, data.diff, data.diff_sign);
       updateProcessRemainders(input.dataset.processId || "");
@@ -436,7 +433,7 @@
   }
 
   function queueSave(input) {
-    if (actualMode || input.readOnly) {
+    if (actualMode) {
       return;
     }
     window.clearTimeout(saveTimer);
@@ -446,18 +443,30 @@
   }
 
   inputs.forEach((input) => {
-    input.addEventListener("keydown", handleEffortKeydown);
-    input.addEventListener("focus", () => setActiveRow(input));
+    input.addEventListener("keydown", (event) => {
+      if (actualMode) {
+        event.preventDefault();
+        return;
+      }
+      handleEffortKeydown(event);
+    });
+    input.addEventListener("focus", () => {
+      if (actualMode) {
+        input.blur();
+        return;
+      }
+      setActiveRow(input);
+    });
     input.addEventListener("blur", () => clearActiveRow());
     input.addEventListener("change", () => {
-      if (actualMode || input.readOnly) {
+      if (actualMode) {
         return;
       }
       window.clearTimeout(saveTimer);
       saveAllocation(input);
     });
     input.addEventListener("input", () => {
-      if (actualMode || input.readOnly) {
+      if (actualMode) {
         return;
       }
       const cell = input.closest(".phase-cell");
