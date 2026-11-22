@@ -14,16 +14,15 @@ import (
 )
 
 // scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
-// Headcount と CapClass は工程の枠行用です。CapClass は cap-warn（枠の 80% 以上）か cap-over（枠以上）です。
+// CapClass は案件スケジュールの残工数行で、マイナスのとき cap-over（赤）です。
 type scheduleCell struct {
-	YM        string
-	Decade    int
-	Minutes   int64
-	Days      string
-	InRange   bool
-	Current   bool
-	Headcount int
-	CapClass  string
+	YM       string
+	Decade   int
+	Minutes  int64
+	Days     string
+	InRange  bool
+	Current  bool
+	CapClass string
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
@@ -43,14 +42,14 @@ type scheduleRow struct {
 }
 
 // scheduleProcessGroup は案件スケジュールの工程とそのタスク行です。
-// Capacity は一覧で立てた工程の旬割当（タスク割当の目安）です。
+// Remain は工程の旬割当からタスク合計を引いた残工数です。
 type scheduleProcessGroup struct {
 	ProcessID string
 	Process   string
 	Color     string
 	RowSpan   int
 	Tasks     []scheduleRow
-	Capacity  scheduleRow
+	Remain    scheduleRow
 }
 
 // scheduleProjectBlock は案件ごとの行の塊です。
@@ -373,8 +372,8 @@ func (s *Server) scheduleProcessRows(
 	return rows, len(rows)
 }
 
-// scheduleTaskGroups は工程ごとのタスク行と工程割当行を作ります（案件スケジュール用）。
-// タスクのない工程は編集不可の1行です。工程割当は一覧で立てた旬割当で、タスク割当の目安です。
+// scheduleTaskGroups は工程ごとのタスク行と残工数行を作ります（案件スケジュール用）。
+// タスクのない工程は編集不可の1行です。残工数は一覧の工程割当 − タスク合計です。
 func (s *Server) scheduleTaskGroups(
 	lines []store.ProcessLine,
 	tasks []store.Task,
@@ -461,26 +460,30 @@ func (s *Server) scheduleTaskGroups(
 			}
 			taskRows = append(taskRows, row)
 		}
-		capacity := scheduleRow{
+		remain := scheduleRow{
 			RowID:     line.ID,
 			ProcessID: line.ID,
 			Process:   line.ProcessName,
-			Name:      "工程割当",
+			Name:      "残工数",
 			Color:     color,
 		}
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
 				procMinutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
+				taskMinutes := periodMinutes[periodKey]
+				remainT := calc.PersonDayTenths(procMinutes, std) - calc.PersonDayTenths(taskMinutes, std)
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: procMinutes,
-					Current:  ym == currentYM && decade == currentDec,
-					CapClass: capacityLoadClass(periodMinutes[periodKey], procMinutes),
+					Current: ym == currentYM && decade == currentDec,
 				}
-				if procMinutes > 0 {
-					cell.Days = calc.FormatPersonDays(procMinutes, std)
+				if procMinutes > 0 || taskMinutes > 0 {
+					cell.Days = calc.FormatPersonDayTenths(remainT)
 				}
-				capacity.Cells = append(capacity.Cells, cell)
+				if remainT < 0 {
+					cell.CapClass = "cap-over"
+				}
+				remain.Cells = append(remain.Cells, cell)
 			}
 		}
 		span := len(taskRows) + 1
@@ -490,7 +493,7 @@ func (s *Server) scheduleTaskGroups(
 			Color:     color,
 			RowSpan:   span,
 			Tasks:     taskRows,
-			Capacity:  capacity,
+			Remain:    remain,
 		})
 		rowCount += span
 	}

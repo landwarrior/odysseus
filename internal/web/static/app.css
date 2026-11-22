@@ -1361,9 +1361,6 @@ main.page-schedule {
 .schedule-table tr.phase-capacity .phase-cell {
   color: var(--ink);
 }
-.schedule-table tr.phase-capacity .phase-cell.cap-warn {
-  color: var(--cap-warn-text);
-}
 .schedule-table tr.phase-capacity .phase-cell.cap-over {
   color: var(--danger);
 }

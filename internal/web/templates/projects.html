@@ -42,7 +42,7 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      一覧で立てた工程の旬割当を、タスクへ割り振ります。「工程割当」行がその旬の目安です。タスク合計が工程割当を超えると黄／赤になります。
+      一覧で立てた工程の旬割当を、タスクへ割り振ります。「残工数」は工程割当 − タスク合計です。0 なら割当完了、マイナスは超過で赤になります。
       工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
       工程行の旬セルに工数を入れて、全案件のスケジュールを立てます。差分のプラスは割当不足です。タスクへの割り振りは各案件のスケジュールから行います。
@@ -153,14 +153,14 @@
               {{end}}
             </tr>
             {{end}}
-            {{$cap := $group.Capacity}}
+            {{$remain := $group.Remain}}
             <tr class="phase-capacity" data-process-id="{{$group.ProcessID}}">
-              <td class="sticky-col col-task summary-label" title="一覧で立てた工程の旬割当">工程割当</td>
+              <td class="sticky-col col-task summary-label" title="一覧の工程割当 − タスク合計">残工数</td>
               <td class="sticky-col col-meta1"></td>
               <td class="sticky-col col-meta2"></td>
               <td class="sticky-col col-meta3"></td>
-              {{range $cap.Cells}}
-              <td class="phase-cell num {{.CapClass}}{{if .Current}} col-current{{end}}" data-process-cap="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}" data-capacity="{{if .Days}}{{.Days}}{{else}}0{{end}}" title="一覧の工程割当">{{if .Days}}{{.Days}}{{end}}</td>
+              {{range $remain.Cells}}
+              <td class="phase-cell num {{.CapClass}}{{if .Current}} col-current{{end}}" data-process-remain="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}" data-process-budget="{{pdays .Minutes}}" title="一覧の工程割当 − タスク合計">{{.Days}}</td>
               {{end}}
             </tr>
           {{end}}

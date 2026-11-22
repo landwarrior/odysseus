@@ -206,7 +206,7 @@
 
   function updatePeriodTotals() {
     if (table.classList.contains("schedule-detail")) {
-      updateCapacityWarnings();
+      updateProcessRemainders();
       return;
     }
     const processTotals = {};
@@ -231,15 +231,14 @@
         cell.classList.add("cap-warn");
       }
     });
-    updateCapacityWarnings();
   }
 
-  function updateCapacityWarnings(processId) {
+  function updateProcessRemainders(processId) {
     const selector = processId
-      ? `[data-process-cap^="${processId}|"]`
-      : "[data-process-cap]";
+      ? `[data-process-remain^="${processId}|"]`
+      : "[data-process-remain]";
     table.querySelectorAll(selector).forEach((cell) => {
-      const key = cell.getAttribute("data-process-cap") || "";
+      const key = cell.getAttribute("data-process-remain") || "";
       const parts = key.split("|");
       if (parts.length < 3) {
         return;
@@ -252,17 +251,15 @@
         const value = Number(input.value || 0);
         allocated += Number.isNaN(value) ? 0 : value;
       });
-      const capacity = Number(cell.dataset.capacity || 0);
-      cell.classList.remove("cap-warn", "cap-over");
-      if (capacity <= 0) {
-        if (allocated > 0) {
-          cell.classList.add("cap-over");
-        }
-      } else if (allocated >= capacity) {
-        cell.classList.add("cap-over");
-      } else if (allocated >= capacity * 0.8) {
-        cell.classList.add("cap-warn");
+      const budget = Number(cell.dataset.processBudget || 0);
+      const remain = Math.round((budget - allocated) * 10) / 10;
+      if (budget === 0 && allocated === 0) {
+        cell.textContent = "";
+        cell.classList.remove("cap-over");
+        return;
       }
+      cell.textContent = formatSum(remain);
+      cell.classList.toggle("cap-over", remain < 0);
     });
   }
 
@@ -320,7 +317,7 @@
       }
       const rowId = data.task_id || data.project_process_id || "";
       applyRowMeta(rowId, data.allocated, data.diff, data.diff_sign);
-      updateCapacityWarnings(input.dataset.processId || input.dataset.projectProcessId || "");
+      updateProcessRemainders(input.dataset.processId || "");
       updatePeriodTotals();
     }).catch((err) => {
       window.alert(err.message || "保存に失敗しました");
@@ -347,13 +344,13 @@
       if (cell) {
         cell.classList.toggle("active", cellIsActive(cell, input.value && Number(input.value) > 0));
       }
-      updateCapacityWarnings(input.dataset.processId || "");
+      updateProcessRemainders(input.dataset.processId || "");
       queueSave(input);
     });
   });
 
   syncStickyOffsets();
-  updateCapacityWarnings();
+  updateProcessRemainders();
   window.addEventListener("resize", syncStickyOffsets);
   requestAnimationFrame(() => {
     syncStickyOffsets();
