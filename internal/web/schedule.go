@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -42,7 +43,7 @@ type scheduleRow struct {
 }
 
 // scheduleProcessGroup は案件スケジュールの工程とそのタスク行です。
-// Capacity はアサイン人数×営業日の枠（目安）です。
+// Capacity は一覧で立てた工程の旬割当（タスク割当の目安）です。
 type scheduleProcessGroup struct {
 	ProcessID string
 	Process   string
@@ -198,11 +199,23 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for i, t := range tasks {
 		taskIDs[i] = t.ID
 	}
-	allocs, err := s.store.ListAllocationsByTasks(r.Context(), taskIDs)
+	taskAllocs, err := s.store.ListAllocationsByTasks(r.Context(), taskIDs)
 	if err != nil {
 		return schedulePage{}, err
 	}
-	totals, err := s.store.AllocationTotalsByTask(r.Context(), taskIDs)
+	taskTotals, err := s.store.AllocationTotalsByTask(r.Context(), taskIDs)
+	if err != nil {
+		return schedulePage{}, err
+	}
+	lineIDs := make([]string, 0, len(lines))
+	for _, line := range lines {
+		lineIDs = append(lineIDs, line.ID)
+	}
+	processAllocs, err := s.store.ListAllocationsByProcesses(r.Context(), lineIDs)
+	if err != nil {
+		return schedulePage{}, err
+	}
+	processTotals, err := s.store.AllocationTotalsByProcess(r.Context(), lineIDs)
 	if err != nil {
 		return schedulePage{}, err
 	}
@@ -213,9 +226,15 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	currentYM, currentDec := schedule.CurrentPeriod(time.Time{})
 	std := s.cfg.StandardMinutes
 
-	allocMap := map[string]int64{}
-	for _, a := range allocs {
-		allocMap[a.TaskID+"|"+a.YearMonth+"|"+strconv.Itoa(a.Decade)] = a.PlannedMinutes
+	taskAllocMap := map[string]int64{}
+	for _, a := range taskAllocs {
+		taskAllocMap[a.TaskID+"|"+a.YearMonth+"|"+strconv.Itoa(a.Decade)] = a.PlannedMinutes
+	}
+	processAllocMap := map[string]int64{}
+	periodAllocated := map[string]int64{}
+	for _, a := range processAllocs {
+		processAllocMap[a.ProjectProcessID+"|"+a.YearMonth+"|"+strconv.Itoa(a.Decade)] = a.PlannedMinutes
+		periodAllocated[a.YearMonth+"|"+strconv.Itoa(a.Decade)] += a.PlannedMinutes
 	}
 	bizDays := map[string]int{}
 	for _, ym := range in.Months {
@@ -233,20 +252,11 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	for _, line := range lines {
 		linesByProject[line.ProjectID] = append(linesByProject[line.ProjectID], line)
 	}
-	lineIDs := make([]string, 0, len(lines))
-	for _, line := range lines {
-		lineIDs = append(lineIDs, line.ID)
-	}
 	assigns, err := s.store.AssignmentsForLines(r.Context(), lineIDs)
 	if err != nil {
 		return schedulePage{}, err
 	}
-	assignmentsByLine := map[string][]store.Assignment{}
-	for _, a := range assigns {
-		assignmentsByLine[a.ProjectProcessID] = append(assignmentsByLine[a.ProjectProcessID], a)
-	}
 
-	periodAllocated := map[string]int64{}
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
 	for _, project := range in.Projects {
 		projectTasks := tasksByProject[project.ID]
@@ -255,9 +265,9 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, assignmentsByLine, in.Months, currentYM, currentDec, allocMap, totals, std, bizDays, projectPeriod, periodAllocated)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, std, projectPeriod)
 		} else {
-			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, allocMap, totals, std, projectPeriod, periodAllocated)
+			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, std, projectPeriod)
 		}
 
 		for _, ym := range in.Months {
@@ -315,18 +325,17 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	}, nil
 }
 
-// scheduleProcessRows は工程ごとの集約行を作ります（一覧用・編集不可）。
+// scheduleProcessRows は工程ごとの行を作ります（一覧用・編集可）。
 func (s *Server) scheduleProcessRows(
 	lines []store.ProcessLine,
 	tasks []store.Task,
 	months []string,
 	currentYM string,
 	currentDec int,
-	allocMap map[string]int64,
-	totals map[string]int64,
+	processAllocMap map[string]int64,
+	processTotals map[string]int64,
 	std int64,
 	projectPeriod map[string]int64,
-	periodAllocated map[string]int64,
 ) ([]scheduleRow, int) {
 	if len(lines) == 0 {
 		return nil, 2 // 未登録案内 + 割当合計
@@ -338,17 +347,17 @@ func (s *Server) scheduleProcessRows(
 	rows := make([]scheduleRow, 0, len(lines))
 	for _, line := range lines {
 		lineTasks := tasksByLine[line.ID]
-		var est, allocated int64
+		var est int64
 		color := schedule.NormalizeColor(line.ProcessColor)
 		if len(lineTasks) == 0 {
 			est = line.PlannedMinutes
 		} else {
 			for _, t := range lineTasks {
 				est += t.PlannedMinutes
-				allocated += totals[t.ID]
 				color = schedule.NormalizeColor(t.ProcessColor)
 			}
 		}
+		allocated := processTotals[line.ID]
 		diff := est - allocated
 		diffClass := ""
 		if diff > 0 {
@@ -358,22 +367,19 @@ func (s *Server) scheduleProcessRows(
 		}
 		row := scheduleRow{
 			RowID:     line.ID,
+			ProcessID: line.ID,
 			Process:   line.ProcessName,
 			Color:     color,
 			Estimate:  calc.FormatPersonDays(est, std),
 			Allocated: calc.FormatPersonDays(allocated, std),
 			Diff:      calc.FormatPersonDays(diff, std),
 			DiffClass: diffClass,
-			Editable:  false,
+			Editable:  true,
 		}
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
-				var minutes int64
-				for _, t := range lineTasks {
-					minutes += allocMap[t.ID+"|"+ym+"|"+strconv.Itoa(decade)]
-				}
+				minutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
 				periodKey := ym + "|" + strconv.Itoa(decade)
-				periodAllocated[periodKey] += minutes
 				projectPeriod[periodKey] += minutes
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
@@ -391,41 +397,37 @@ func (s *Server) scheduleProcessRows(
 	return rows, len(rows) + 1
 }
 
-// scheduleTaskGroups は工程ごとのタスク行と枠行を作ります（案件スケジュール用）。
-// タスクのない工程（開始・終了だけなど）は編集不可の1行として出します。
-// 枠は、その旬に期間が重なるアサイン人数 × 営業日（人日）です。
+// scheduleTaskGroups は工程ごとのタスク行と工程割当行を作ります（案件スケジュール用）。
+// タスクのない工程は編集不可の1行です。工程割当は一覧で立てた旬割当で、タスク割当の目安です。
 func (s *Server) scheduleTaskGroups(
 	lines []store.ProcessLine,
 	tasks []store.Task,
-	assignmentsByLine map[string][]store.Assignment,
 	months []string,
 	currentYM string,
 	currentDec int,
-	allocMap map[string]int64,
-	totals map[string]int64,
+	taskAllocMap map[string]int64,
+	taskTotals map[string]int64,
+	processAllocMap map[string]int64,
 	std int64,
-	bizDays map[string]int,
 	projectPeriod map[string]int64,
-	periodAllocated map[string]int64,
 ) ([]scheduleProcessGroup, int) {
 	if len(lines) == 0 {
 		return nil, 2
 	}
-	tasksByProcess := map[string][]store.Task{}
+	tasksByLine := map[string][]store.Task{}
 	for _, task := range tasks {
-		tasksByProcess[task.ProcessID] = append(tasksByProcess[task.ProcessID], task)
+		tasksByLine[task.ProjectProcessID] = append(tasksByLine[task.ProjectProcessID], task)
 	}
 	groups := make([]scheduleProcessGroup, 0, len(lines))
 	rowCount := 1 // プロジェクト割当合計
 	for _, line := range lines {
 		color := schedule.NormalizeColor(line.ProcessColor)
-		lineTasks := tasksByProcess[line.ProcessID]
-		lineAssigns := assignmentsByLine[line.ID]
+		lineTasks := tasksByLine[line.ID]
 		taskRows := make([]scheduleRow, 0, len(lineTasks))
 		periodMinutes := map[string]int64{}
 		for _, task := range lineTasks {
 			est := task.PlannedMinutes
-			allocated := totals[task.ID]
+			allocated := taskTotals[task.ID]
 			diff := est - allocated
 			diffClass := ""
 			if diff > 0 {
@@ -435,7 +437,7 @@ func (s *Server) scheduleTaskGroups(
 			}
 			row := scheduleRow{
 				RowID:     task.ID,
-				ProcessID: line.ProcessID,
+				ProcessID: line.ID,
 				Process:   line.ProcessName,
 				Name:      task.Name,
 				Remarks:   task.Remarks,
@@ -448,10 +450,8 @@ func (s *Server) scheduleTaskGroups(
 			}
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
-					allocKey := task.ID + "|" + ym + "|" + strconv.Itoa(decade)
-					minutes := allocMap[allocKey]
+					minutes := taskAllocMap[task.ID+"|"+ym+"|"+strconv.Itoa(decade)]
 					periodKey := ym + "|" + strconv.Itoa(decade)
-					periodAllocated[periodKey] += minutes
 					projectPeriod[periodKey] += minutes
 					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
@@ -471,7 +471,7 @@ func (s *Server) scheduleTaskGroups(
 			est := line.PlannedMinutes
 			row := scheduleRow{
 				RowID:     line.ID,
-				ProcessID: line.ProcessID,
+				ProcessID: line.ID,
 				Process:   line.ProcessName,
 				Name:      "—",
 				Color:     color,
@@ -495,37 +495,30 @@ func (s *Server) scheduleTaskGroups(
 			taskRows = append(taskRows, row)
 		}
 		capacity := scheduleRow{
-			RowID:     line.ProcessID,
-			ProcessID: line.ProcessID,
+			RowID:     line.ID,
+			ProcessID: line.ID,
 			Process:   line.ProcessName,
-			Name:      "枠",
+			Name:      "工程割当",
 			Color:     color,
 		}
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
-				heads := 0
-				for _, a := range lineAssigns {
-					if schedule.OverlapsDecade(ym, decade, a.StartDate, a.EndDate) {
-						heads++
-					}
-				}
-				capMinutes := int64(heads) * int64(bizDays[periodKey]) * std
+				procMinutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
 				cell := scheduleCell{
-					YM: ym, Decade: decade, Minutes: capMinutes,
-					Headcount: heads,
-					Current:   ym == currentYM && decade == currentDec,
-					CapClass:  capacityLoadClass(periodMinutes[periodKey], capMinutes),
+					YM: ym, Decade: decade, Minutes: procMinutes,
+					Current:  ym == currentYM && decade == currentDec,
+					CapClass: capacityLoadClass(periodMinutes[periodKey], procMinutes),
 				}
-				if capMinutes > 0 {
-					cell.Days = calc.FormatPersonDays(capMinutes, std)
+				if procMinutes > 0 {
+					cell.Days = calc.FormatPersonDays(procMinutes, std)
 				}
 				capacity.Cells = append(capacity.Cells, cell)
 			}
 		}
 		span := len(taskRows) + 1
 		groups = append(groups, scheduleProcessGroup{
-			ProcessID: line.ProcessID,
+			ProcessID: line.ID,
 			Process:   line.ProcessName,
 			Color:     color,
 			RowSpan:   span,
@@ -571,8 +564,10 @@ func capacityLoadClass(allocated, capacity int64) string {
 }
 
 // handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分を JSON で返します。
+// task_id があればタスク割当、project_process_id があれば工程割当です。
 func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 	taskID := formText(r, "task_id")
+	processID := formText(r, "project_process_id")
 	ym, err := schedule.NormalizeYM(r.FormValue("year_month"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -592,36 +587,99 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	task, err := s.store.GetTask(r.Context(), taskID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "タスクが見つかりません。", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	if err := s.store.UpsertTaskAllocation(r.Context(), task.ID, ym, decade, minutes); err != nil {
-		s.fail(w, err)
-		return
-	}
-	totals, err := s.store.AllocationTotalsByTask(r.Context(), []string{task.ID})
-	if err != nil {
-		s.fail(w, err)
-		return
-	}
-	allocated := totals[task.ID]
-	diff := task.PlannedMinutes - allocated
 	std := s.cfg.StandardMinutes
+	if taskID != "" {
+		task, err := s.store.GetTask(r.Context(), taskID)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "タスクが見つかりません。", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		if err := s.store.UpsertTaskAllocation(r.Context(), task.ID, ym, decade, minutes); err != nil {
+			s.fail(w, err)
+			return
+		}
+		totals, err := s.store.AllocationTotalsByTask(r.Context(), []string{task.ID})
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		allocated := totals[task.ID]
+		diff := task.PlannedMinutes - allocated
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"kind":      "task",
+			"task_id":   task.ID,
+			"effort":    calc.FormatPersonDays(minutes, std),
+			"estimate":  calc.FormatPersonDays(task.PlannedMinutes, std),
+			"allocated": calc.FormatPersonDays(allocated, std),
+			"diff":      calc.FormatPersonDays(diff, std),
+			"diff_sign": diff,
+		})
+		return
+	}
+	if processID == "" {
+		http.Error(w, "割当対象が不正です。", http.StatusBadRequest)
+		return
+	}
+	line, err := s.store.GetProcessLine(r.Context(), processID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "工程が見つかりません。", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if err := s.store.UpsertProcessAllocation(r.Context(), line.ID, ym, decade, minutes); err != nil {
+		s.fail(w, err)
+		return
+	}
+	est, err := s.processEstimateMinutes(r.Context(), line)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	totals, err := s.store.AllocationTotalsByProcess(r.Context(), []string{line.ID})
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	allocated := totals[line.ID]
+	diff := est - allocated
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"task_id":   task.ID,
-		"effort":    calc.FormatPersonDays(minutes, std),
-		"estimate":  calc.FormatPersonDays(task.PlannedMinutes, std),
-		"allocated": calc.FormatPersonDays(allocated, std),
-		"diff":      calc.FormatPersonDays(diff, std),
-		"diff_sign": diff,
+		"kind":               "process",
+		"project_process_id": line.ID,
+		"effort":             calc.FormatPersonDays(minutes, std),
+		"estimate":           calc.FormatPersonDays(est, std),
+		"allocated":          calc.FormatPersonDays(allocated, std),
+		"diff":               calc.FormatPersonDays(diff, std),
+		"diff_sign":          diff,
 	})
+}
+
+// processEstimateMinutes は工程明細の見積分です。タスクがあればその合計、無ければ工程の予定分です。
+func (s *Server) processEstimateMinutes(ctx context.Context, line store.ProcessLine) (int64, error) {
+	tasks, err := s.store.ListTasksByProject(ctx, line.ProjectID)
+	if err != nil {
+		return 0, err
+	}
+	var sum int64
+	var n int
+	for _, t := range tasks {
+		if t.ProjectProcessID == line.ID {
+			sum += t.PlannedMinutes
+			n++
+		}
+	}
+	if n == 0 {
+		return line.PlannedMinutes, nil
+	}
+	return sum, nil
 }
 
 // scheduleRange は表示期間の from/to と月一覧を返します。

@@ -137,6 +137,91 @@ func (s *Store) ReplaceTasksByProcess(ctx context.Context, projectID string, tas
 	return tx.Commit()
 }
 
+// ListAllocationsByProcesses は projectProcessIDs の工程旬割当をすべて返します。
+func (s *Store) ListAllocationsByProcesses(ctx context.Context, projectProcessIDs []string) ([]ProcessAllocation, error) {
+	if len(projectProcessIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT project_process_id, year_month, decade, planned_minutes
+		FROM process_allocation
+		WHERE project_process_id IN (`+placeholders(len(projectProcessIDs))+`)`, argsOf(projectProcessIDs)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ProcessAllocation
+	for rows.Next() {
+		var a ProcessAllocation
+		if err := rows.Scan(&a.ProjectProcessID, &a.YearMonth, &a.Decade, &a.PlannedMinutes); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// AllocationTotalsByProcess は各工程明細の割当合計（全期間）を返します。
+func (s *Store) AllocationTotalsByProcess(ctx context.Context, projectProcessIDs []string) (map[string]int64, error) {
+	out := map[string]int64{}
+	if len(projectProcessIDs) == 0 {
+		return out, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT project_process_id, COALESCE(SUM(planned_minutes), 0)
+		FROM process_allocation
+		WHERE project_process_id IN (`+placeholders(len(projectProcessIDs))+`)
+		GROUP BY project_process_id`, argsOf(projectProcessIDs)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var minutes int64
+		if err := rows.Scan(&id, &minutes); err != nil {
+			return nil, err
+		}
+		out[id] = minutes
+	}
+	return out, rows.Err()
+}
+
+// UpsertProcessAllocation は projectProcessID の yearMonth/decade に minutes を保存します。
+// minutes が 0 以下なら行を削除します。
+func (s *Store) UpsertProcessAllocation(ctx context.Context, projectProcessID, yearMonth string, decade int, minutes int64) error {
+	if decade < 1 || decade > 3 {
+		return ErrConflict
+	}
+	stamp := now()
+	if minutes <= 0 {
+		_, err := s.db.Exec(ctx, `
+			DELETE FROM process_allocation WHERE project_process_id = ? AND year_month = ? AND decade = ?`,
+			projectProcessID, yearMonth, decade)
+		return err
+	}
+	var existing string
+	err := s.db.QueryRow(ctx, `
+		SELECT project_process_id FROM process_allocation
+		WHERE project_process_id = ? AND year_month = ? AND decade = ?`,
+		projectProcessID, yearMonth, decade).Scan(&existing)
+	if errorsIsNoRows(err) {
+		_, err = s.db.Exec(ctx, `
+			INSERT INTO process_allocation (project_process_id, year_month, decade, planned_minutes, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			projectProcessID, yearMonth, decade, minutes, stamp, stamp)
+		return mapWriteErr(err)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(ctx, `
+		UPDATE process_allocation SET planned_minutes = ?, updated_at = ?
+		WHERE project_process_id = ? AND year_month = ? AND decade = ?`,
+		minutes, stamp, projectProcessID, yearMonth, decade)
+	return mapWriteErr(err)
+}
+
 // ListAllocationsByTasks は taskIDs の旬割当をすべて返します。
 func (s *Store) ListAllocationsByTasks(ctx context.Context, taskIDs []string) ([]TaskAllocation, error) {
 	if len(taskIDs) == 0 {

@@ -42,12 +42,12 @@
     </form>
     <p class="schedule-toolbar-notes field-help">
       {{if .Detail}}
-      タスク行で旬に工数を割り当てます。差分のプラスは割当不足です。工程の「枠」は、その旬に期間が重なるアサイン人数 × 営業日（人日）の目安です。
-      工程に開始日・終了日がある旬と、工数を入れた旬には背景色が付きます。工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
+      一覧で立てた工程の旬割当を、タスクへ割り振ります。「工程割当」行がその旬の目安です。タスク合計が工程割当を超えると黄／赤になります。
+      工数は人日（0.1 刻み）で、セルは矢印キーで移動できます。
       {{else}}
-      行は工程です。見積・割当・差分は工程内タスクの合計です。開始日・終了日がある旬と、割当がある旬に背景色が付きます。タスク単位の割当は各案件のスケジュールから行います。
+      工程行の旬セルに工数を入れて、全案件のスケジュールを立てます。差分のプラスは割当不足です。タスクへの割り振りは各案件のスケジュールから行います。
       {{end}}
-      表の下のキャパは、その旬にアサイン期間が重なる人材のユニーク人数 × 営業日（人日）です。同じ人が複数工程・案件にいても 1 人と数えます。割当合計がキャパの 80% 以上で黄色、キャパ以上で赤になります。
+      表の下のキャパは、その旬にアサイン期間が重なる人材のユニーク人数 × 営業日（人日）です。同じ人が複数工程・案件にいても 1 人と数えます。割当合計（工程の旬割当）がキャパの 80% 以上で黄色、キャパ以上で赤になります。
       営業日は土日と<a href="/holidays">祝日・休業日</a>を除いた日数です。
     </p>
   </section>
@@ -155,12 +155,12 @@
             {{end}}
             {{$cap := $group.Capacity}}
             <tr class="phase-capacity" data-process-id="{{$group.ProcessID}}">
-              <td class="sticky-col col-task summary-label" title="その旬に重なるアサイン人数 × 営業日">枠</td>
-              <td class="sticky-col col-meta1"><span class="field-help">人数×</span></td>
-              <td class="sticky-col col-meta2"><span class="field-help">営業日</span></td>
+              <td class="sticky-col col-task summary-label" title="一覧で立てた工程の旬割当">工程割当</td>
+              <td class="sticky-col col-meta1"></td>
+              <td class="sticky-col col-meta2"></td>
               <td class="sticky-col col-meta3"></td>
               {{range $cap.Cells}}
-              <td class="phase-cell num {{.CapClass}}{{if .Current}} col-current{{end}}" data-process-cap="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}" data-capacity="{{if .Days}}{{.Days}}{{else}}0{{end}}"{{if .Headcount}} title="{{.Headcount}}人 × 営業日"{{end}}>{{if .Days}}{{.Days}}{{end}}</td>
+              <td class="phase-cell num {{.CapClass}}{{if .Current}} col-current{{end}}" data-process-cap="{{$group.ProcessID}}|{{.YM}}|{{.Decade}}" data-capacity="{{if .Days}}{{.Days}}{{else}}0{{end}}" title="一覧の工程割当">{{if .Days}}{{.Days}}{{end}}</td>
               {{end}}
             </tr>
           {{end}}
@@ -187,7 +187,7 @@
           </tr>
           {{else}}
           {{range $i, $row := $block.Rows}}
-          <tr>
+          <tr{{if $row.Editable}} data-process-id="{{$row.RowID}}"{{end}}>
             {{if eq $i 0}}
             <th class="sticky-col col-project" rowspan="{{$block.RowCount}}">
               <div class="project-name"><a href="/projects/{{$block.Project.ID}}">{{$block.Project.Name}}</a></div>
@@ -199,11 +199,27 @@
             </th>
             {{end}}
             <td class="sticky-col col-phase">{{$row.Process}}</td>
-            <td class="sticky-col col-meta1 num">{{$row.Estimate}}</td>
-            <td class="sticky-col col-meta2 num">{{$row.Allocated}}</td>
-            <td class="sticky-col col-meta3 num {{$row.DiffClass}}">{{$row.Diff}}</td>
+            <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
+            <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>{{$row.Allocated}}</td>
+            <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
             {{range $row.Cells}}
-            <td class="phase-cell color-{{$row.Color}} {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}">{{if .Days}}{{.Days}}{{end}}</td>
+            <td class="phase-cell color-{{$row.Color}} {{if or .Days .InRange}}active{{end}}{{if .Current}} col-current{{end}}"{{if .InRange}} data-in-range="1"{{end}}>
+              {{if $row.Editable}}
+              <label class="effort-field">
+                <input
+                  class="effort-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value="{{.Days}}"
+                  aria-label="工程割当工数"
+                  data-project-process-id="{{$row.RowID}}"
+                  data-ym="{{.YM}}"
+                  data-decade="{{.Decade}}"
+                >
+              </label>
+              {{else}}{{if .Days}}{{.Days}}{{end}}{{end}}
+            </td>
             {{end}}
           </tr>
           {{end}}

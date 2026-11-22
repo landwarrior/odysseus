@@ -180,6 +180,14 @@ type TaskAllocation struct {
 	PlannedMinutes int64
 }
 
+// ProcessAllocation は工程明細の旬への工数割当です（一覧スケジュールで編集します）。
+type ProcessAllocation struct {
+	ProjectProcessID string
+	YearMonth        string
+	Decade           int
+	PlannedMinutes   int64
+}
+
 // アサインの単価種別です。人材単価に時間・月間の両方があるとき、案件ごとにどちらで原価を見るかを選びます。
 const (
 	RateKindHourly  = "hourly"  // 請負（円/時）

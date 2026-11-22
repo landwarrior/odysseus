@@ -205,29 +205,39 @@
   }
 
   function updatePeriodTotals() {
-    const totals = {};
+    const isDetail = table.classList.contains("schedule-detail");
+    const processTotals = {};
+    const taskTotals = {};
     table.querySelectorAll(".effort-input").forEach((input) => {
       const key = `${input.dataset.ym}-${input.dataset.decade}`;
       const value = Number(input.value || 0);
-      totals[key] = (totals[key] || 0) + (Number.isNaN(value) ? 0 : value);
-    });
-    table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
-      const key = cell.getAttribute("data-period-allocated");
-      const allocated = totals[key] || 0;
-      cell.textContent = formatSum(allocated);
-      const capacity = Number(cell.dataset.capacity || 0);
-      cell.classList.remove("cap-warn", "cap-over");
-      if (capacity <= 0) {
-        if (allocated > 0) {
-          cell.classList.add("cap-over");
-        }
-      } else if (allocated >= capacity) {
-        cell.classList.add("cap-over");
-      } else if (allocated >= capacity * 0.8) {
-        cell.classList.add("cap-warn");
+      const n = Number.isNaN(value) ? 0 : value;
+      if (input.dataset.taskId) {
+        taskTotals[key] = (taskTotals[key] || 0) + n;
+      } else {
+        processTotals[key] = (processTotals[key] || 0) + n;
       }
     });
+    if (!isDetail) {
+      table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
+        const key = cell.getAttribute("data-period-allocated");
+        const allocated = processTotals[key] || 0;
+        cell.textContent = formatSum(allocated);
+        const capacity = Number(cell.dataset.capacity || 0);
+        cell.classList.remove("cap-warn", "cap-over");
+        if (capacity <= 0) {
+          if (allocated > 0) {
+            cell.classList.add("cap-over");
+          }
+        } else if (allocated >= capacity) {
+          cell.classList.add("cap-over");
+        } else if (allocated >= capacity * 0.8) {
+          cell.classList.add("cap-warn");
+        }
+      });
+    }
     const decadeHeads = [...table.querySelectorAll("thead th.decade-head")];
+    const summaryTotals = isDetail ? taskTotals : processTotals;
     table.querySelectorAll("tr.project-summary").forEach((row) => {
       const cells = [...row.querySelectorAll("[data-project-allocated]")];
       cells.forEach((cell, index) => {
@@ -236,7 +246,7 @@
           return;
         }
         const key = `${head.dataset.ym}-${head.dataset.decade}`;
-        cell.textContent = formatSum(totals[key] || 0);
+        cell.textContent = formatSum(summaryTotals[key] || 0);
       });
     });
     updateCapacityWarnings();
@@ -286,9 +296,9 @@
     }
   }
 
-  function applyTaskMeta(taskId, allocated, diff, diffSign) {
-    const allocatedCell = table.querySelector(`[data-phase-allocated="${taskId}"]`);
-    const diffCell = table.querySelector(`[data-phase-diff="${taskId}"]`);
+  function applyRowMeta(rowId, allocated, diff, diffSign) {
+    const allocatedCell = table.querySelector(`[data-phase-allocated="${rowId}"]`);
+    const diffCell = table.querySelector(`[data-phase-diff="${rowId}"]`);
     if (allocatedCell) {
       allocatedCell.textContent = allocated;
     }
@@ -306,6 +316,7 @@
     const body = new URLSearchParams();
     body.set("csrf", csrf);
     body.set("task_id", input.dataset.taskId || "");
+    body.set("project_process_id", input.dataset.projectProcessId || "");
     body.set("year_month", input.dataset.ym || "");
     body.set("decade", input.dataset.decade || "");
     body.set("effort", input.value || "");
@@ -321,13 +332,13 @@
       return res.json();
     }).then((data) => {
       input.value = data.effort === "0.0" ? "" : data.effort;
-      input.dataset.estimate = input.value;
       const cell = input.closest(".phase-cell");
       if (cell) {
         cell.classList.toggle("active", cellIsActive(cell, input.value));
       }
-      applyTaskMeta(data.task_id, data.allocated, data.diff, data.diff_sign);
-      updateCapacityWarnings(input.dataset.processId || "");
+      const rowId = data.task_id || data.project_process_id || "";
+      applyRowMeta(rowId, data.allocated, data.diff, data.diff_sign);
+      updateCapacityWarnings(input.dataset.processId || input.dataset.projectProcessId || "");
       updatePeriodTotals();
     }).catch((err) => {
       window.alert(err.message || "保存に失敗しました");
