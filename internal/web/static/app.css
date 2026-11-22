@@ -83,6 +83,8 @@ body {
   font-family: var(--font-ui);
   font-size: 1rem;
   line-height: 1.5;
+  /* Noto は詰まりやすいが、非 Noto 端末で開きすぎないよう 0.05rem */
+  letter-spacing: 0.05rem;
 }
 
 a { color: var(--accent); }
