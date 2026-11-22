@@ -1166,6 +1166,7 @@ label.process-name.field input {
   --project-divider: #8a8a8a;
   --cap-warn-bg: #fef3c7;
   --cap-warn-text: #92400e;
+  --hatch: rgba(15, 23, 42, 0.12);
 }
 html[data-theme="dark"] {
   --phase-cyan-bg: #1f3d42;
@@ -1188,6 +1189,7 @@ html[data-theme="dark"] {
   --project-divider: #707070;
   --cap-warn-bg: #5b4a16;
   --cap-warn-text: #fde68a;
+  --hatch: rgba(255, 255, 255, 0.14);
 }
 main.page-schedule {
   max-width: none;
@@ -1198,6 +1200,17 @@ main.page-schedule {
   display: grid;
   gap: 0.75rem 1.25rem;
   margin: 0 0 1rem;
+}
+.schedule-toolbar-main {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+#actual-mode-button[aria-pressed="true"] {
+  background: var(--button-bg);
+  color: var(--button-text);
+  border-color: var(--button-border);
 }
 .schedule-toolbar-notes { margin: 0; }
 .field-help {
@@ -1408,6 +1421,9 @@ main.page-schedule {
   min-width: 0;
   margin: 0;
 }
+.effort-float-label {
+  display: none;
+}
 .phase-cell.color-cyan.active {
   background: var(--phase-cyan-bg);
   color: var(--phase-cyan-text);
@@ -1471,6 +1487,102 @@ main.page-schedule {
   font-weight: 700;
   color: var(--ink);
   box-shadow: inset 3px 0 0 var(--ink);
+}
+.schedule-table.actual-mode td.col-phase.actual-over,
+.schedule-table.actual-mode td.col-task.actual-over {
+  color: var(--danger);
+  font-weight: 600;
+}
+.schedule-table.actual-mode tbody tr.row-editing td.col-phase.actual-over,
+.schedule-table.actual-mode tbody tr.row-editing td.col-task.actual-over {
+  color: var(--danger);
+}
+.schedule-table.actual-mode td.phase-cell:has(.effort-field) {
+  padding-top: 0.7rem;
+}
+.schedule-table.actual-mode .effort-float-label:not(:empty) {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0.28rem;
+  z-index: 2;
+  transform: translateY(-50%);
+  padding: 0 0.18rem;
+  background: var(--surface, var(--sticky-bg));
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+.schedule-table.actual-mode .phase-cell.color-cyan.active .effort-float-label {
+  background: var(--phase-cyan-bg);
+  color: var(--phase-cyan-text);
+}
+.schedule-table.actual-mode .phase-cell.color-orange.active .effort-float-label {
+  background: var(--phase-orange-bg);
+  color: var(--phase-orange-text);
+}
+.schedule-table.actual-mode .phase-cell.color-green.active .effort-float-label {
+  background: var(--phase-green-bg);
+  color: var(--phase-green-text);
+}
+.schedule-table.actual-mode .phase-cell.color-lavender.active .effort-float-label {
+  background: var(--phase-lavender-bg);
+  color: var(--phase-lavender-text);
+}
+.schedule-table.actual-mode .phase-cell.color-rose.active .effort-float-label {
+  background: var(--phase-rose-bg);
+  color: var(--phase-rose-text);
+}
+.schedule-table.actual-mode .phase-cell.color-yellow.active .effort-float-label {
+  background: var(--phase-yellow-bg);
+  color: var(--phase-yellow-text);
+}
+.schedule-table.actual-mode .phase-cell.has-actual {
+  position: relative;
+}
+.schedule-table.actual-mode .phase-cell.has-actual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 9px,
+    var(--hatch) 9px 10px
+  );
+}
+.schedule-table.actual-mode .phase-cell .effort-input {
+  position: relative;
+  z-index: 1;
+}
+.schedule-table.actual-mode .phase-cell .effort-input[readonly] {
+  cursor: default;
+  opacity: 1;
+}
+.sum-fraction {
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 2.5rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.sum-line {
+  border-top: 1px solid currentColor;
+  margin: 0.05rem 0;
+}
+.schedule-table.actual-mode .sum-single {
+  display: none;
+}
+.schedule-table.actual-mode .sum-fraction {
+  display: inline-flex;
+}
+.schedule-table.actual-mode tr.phase-capacity {
+  display: none;
 }
 .schedule-table tbody.project-block:has(tr.row-editing) .col-project a {
   font-weight: 700;

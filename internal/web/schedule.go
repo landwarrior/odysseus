@@ -15,30 +15,38 @@ import (
 
 // scheduleCell は旬1マスです。InRange は工程の開始〜終了に掛かるとき true です。
 // CapClass は案件スケジュールの残工数行で、マイナスのとき cap-over（赤）です。
+// ActualDays は time_entry を旬に集めた実績（人日表示）です。
 type scheduleCell struct {
-	YM       string
-	Decade   int
-	Minutes  int64
-	Days     string
-	InRange  bool
-	Current  bool
-	CapClass string
+	YM         string
+	Decade     int
+	Minutes    int64
+	Days       string
+	ActualDays string
+	HasActual  bool
+	InRange    bool
+	Current    bool
+	CapClass   string
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
+// Actual は行の実績合計（人日）。ActualOver は実績が見積を超えたとき true です。
 type scheduleRow struct {
-	RowID     string
-	ProcessID string
-	Process   string
-	Name      string
-	Remarks   string
-	Color     string
-	Estimate  string
-	Allocated string
-	Diff      string
-	DiffClass string
-	Editable  bool
-	Cells     []scheduleCell
+	RowID       string
+	ProcessID   string
+	Process     string
+	Name        string
+	Remarks     string
+	Color       string
+	Estimate    string
+	Allocated   string
+	Actual      string
+	Diff        string
+	DiffClass   string
+	ActualDiff  string
+	ActualClass string
+	ActualOver  bool
+	Editable    bool
+	Cells       []scheduleCell
 }
 
 // scheduleProcessGroup は案件スケジュールの工程とそのタスク行です。
@@ -251,6 +259,10 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	if err != nil {
 		return schedulePage{}, err
 	}
+	processActualMap, taskActualMap, processActualTotals, taskActualTotals, err := s.scheduleActualMaps(r.Context(), assigns, in.From, in.To)
+	if err != nil {
+		return schedulePage{}, err
+	}
 
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
 	for _, project := range in.Projects {
@@ -259,9 +271,9 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, std)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, taskActualMap, taskActualTotals, processActualMap, processActualTotals, std)
 		} else {
-			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, std)
+			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, processActualMap, processActualTotals, std)
 		}
 		blocks = append(blocks, block)
 	}
@@ -309,6 +321,73 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	}, nil
 }
 
+// scheduleActualMaps は表示期間の実績を、工程／タスク × 旬と行合計にまとめます。
+func (s *Server) scheduleActualMaps(ctx context.Context, assigns []store.Assignment, fromYM, toYM string) (
+	processCells, taskCells, processTotals, taskTotals map[string]int64, err error,
+) {
+	processCells = map[string]int64{}
+	taskCells = map[string]int64{}
+	processTotals = map[string]int64{}
+	taskTotals = map[string]int64{}
+	if len(assigns) == 0 {
+		return processCells, taskCells, processTotals, taskTotals, nil
+	}
+	ids := make([]string, len(assigns))
+	lineOf := map[string]string{}
+	for i, a := range assigns {
+		ids[i] = a.ID
+		lineOf[a.ID] = a.ProjectProcessID
+	}
+	fromDay := fromYM + "-01"
+	end, err := time.Parse("2006-01", toYM)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	until := end.AddDate(0, 1, 0).Format("2006-01-02")
+	entries, err := s.store.ListEntries(ctx, ids, fromDay, until)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	for _, e := range entries {
+		day, err := time.Parse("2006-01-02", e.WorkDate)
+		if err != nil {
+			continue
+		}
+		ym := schedule.FormatYM(day.Year(), int(day.Month()))
+		decade := schedule.DecadeOf(day)
+		periodKey := ym + "|" + strconv.Itoa(decade)
+		lineID := lineOf[e.AssignmentID]
+		if lineID != "" {
+			processCells[lineID+"|"+periodKey] += e.Minutes
+			processTotals[lineID] += e.Minutes
+		}
+		if e.TaskID != "" {
+			taskCells[e.TaskID+"|"+periodKey] += e.Minutes
+			taskTotals[e.TaskID] += e.Minutes
+		}
+	}
+	return processCells, taskCells, processTotals, taskTotals, nil
+}
+
+// attachActualMeta は行の実績合計と、見積との差分表示を付けます。
+func attachActualMeta(row *scheduleRow, estimateMinutes, actualMinutes, std int64) {
+	estStr, actualStr, diffStr, diffClass, diffSign := personDayRowMeta(estimateMinutes, actualMinutes, std)
+	row.Actual = actualStr
+	row.ActualDiff = diffStr
+	row.ActualClass = diffClass
+	row.ActualOver = diffSign < 0
+	_ = estStr
+}
+
+// fillCellActual はセルに旬の実績表示を付けます。
+func fillCellActual(cell *scheduleCell, actualMinutes, std int64) {
+	if actualMinutes <= 0 {
+		return
+	}
+	cell.HasActual = true
+	cell.ActualDays = calc.FormatPersonDays(actualMinutes, std)
+}
+
 // scheduleProcessRows は工程ごとの行を作ります（一覧用・編集可）。
 func (s *Server) scheduleProcessRows(
 	lines []store.ProcessLine,
@@ -318,6 +397,8 @@ func (s *Server) scheduleProcessRows(
 	currentDec int,
 	processAllocMap map[string]int64,
 	processTotals map[string]int64,
+	processActualMap map[string]int64,
+	processActualTotals map[string]int64,
 	std int64,
 ) ([]scheduleRow, int) {
 	if len(lines) == 0 {
@@ -353,9 +434,11 @@ func (s *Server) scheduleProcessRows(
 			DiffClass: diffClass,
 			Editable:  true,
 		}
+		attachActualMeta(&row, est, processActualTotals[line.ID], std)
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
-				minutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
+				periodKey := ym + "|" + strconv.Itoa(decade)
+				minutes := processAllocMap[line.ID+"|"+periodKey]
 				cell := scheduleCell{
 					YM: ym, Decade: decade, Minutes: minutes,
 					InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
@@ -364,6 +447,7 @@ func (s *Server) scheduleProcessRows(
 				if minutes > 0 {
 					cell.Days = calc.FormatPersonDays(minutes, std)
 				}
+				fillCellActual(&cell, processActualMap[line.ID+"|"+periodKey], std)
 				row.Cells = append(row.Cells, cell)
 			}
 		}
@@ -383,6 +467,10 @@ func (s *Server) scheduleTaskGroups(
 	taskAllocMap map[string]int64,
 	taskTotals map[string]int64,
 	processAllocMap map[string]int64,
+	taskActualMap map[string]int64,
+	taskActualTotals map[string]int64,
+	processActualMap map[string]int64,
+	processActualTotals map[string]int64,
 	std int64,
 ) ([]scheduleProcessGroup, int) {
 	if len(lines) == 0 {
@@ -416,10 +504,11 @@ func (s *Server) scheduleTaskGroups(
 				DiffClass: diffClass,
 				Editable:  true,
 			}
+			attachActualMeta(&row, est, taskActualTotals[task.ID], std)
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
-					minutes := taskAllocMap[task.ID+"|"+ym+"|"+strconv.Itoa(decade)]
 					periodKey := ym + "|" + strconv.Itoa(decade)
+					minutes := taskAllocMap[task.ID+"|"+periodKey]
 					periodMinutes[periodKey] += minutes
 					cell := scheduleCell{
 						YM: ym, Decade: decade, Minutes: minutes,
@@ -429,6 +518,7 @@ func (s *Server) scheduleTaskGroups(
 					if minutes > 0 {
 						cell.Days = calc.FormatPersonDays(minutes, std)
 					}
+					fillCellActual(&cell, taskActualMap[task.ID+"|"+periodKey], std)
 					row.Cells = append(row.Cells, cell)
 				}
 			}
@@ -449,13 +539,17 @@ func (s *Server) scheduleTaskGroups(
 				DiffClass: diffClass,
 				Editable:  false,
 			}
+			attachActualMeta(&row, est, processActualTotals[line.ID], std)
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
-					row.Cells = append(row.Cells, scheduleCell{
+					periodKey := ym + "|" + strconv.Itoa(decade)
+					cell := scheduleCell{
 						YM: ym, Decade: decade,
 						InRange: schedule.OverlapsDecade(ym, decade, line.StartDate, line.EndDate),
 						Current: ym == currentYM && decade == currentDec,
-					})
+					}
+					fillCellActual(&cell, processActualMap[line.ID+"|"+periodKey], std)
+					row.Cells = append(row.Cells, cell)
 				}
 			}
 			taskRows = append(taskRows, row)
@@ -470,7 +564,7 @@ func (s *Server) scheduleTaskGroups(
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
-				procMinutes := processAllocMap[line.ID+"|"+ym+"|"+strconv.Itoa(decade)]
+				procMinutes := processAllocMap[line.ID+"|"+periodKey]
 				taskMinutes := periodMinutes[periodKey]
 				remainT := calc.PersonDayTenths(procMinutes, std) - calc.PersonDayTenths(taskMinutes, std)
 				cell := scheduleCell{

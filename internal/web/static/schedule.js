@@ -5,6 +5,9 @@
     return;
   }
   const csrf = root.getAttribute("data-csrf") || "";
+  const actualModeButton = document.getElementById("actual-mode-button");
+  const inputs = table.querySelectorAll(".effort-input");
+  let actualMode = false;
   let saveTimer = null;
   let activeRow = null;
   let activeColEls = [];
@@ -15,6 +18,60 @@
       return "0.0";
     }
     return number.toFixed(1);
+  }
+
+  function syncEffortStyle(input) {
+    const cell = input.closest(".phase-cell");
+    if (!cell) {
+      return;
+    }
+    const estimate = input.dataset.estimate || "";
+    const actual = input.dataset.actual || "";
+    cell.classList.toggle("active", cellIsActive(cell, estimate && Number(estimate) > 0));
+    cell.classList.toggle("has-actual", Number(actual || 0) > 0);
+    const label = cell.querySelector(".effort-float-label");
+    if (label) {
+      label.textContent = estimate;
+    }
+  }
+
+  function applyInputForMode(input) {
+    const next = actualMode ? input.dataset.actual || "" : input.dataset.estimate || "";
+    input.value = next;
+    if (actualMode) {
+      const estimate = input.dataset.estimate;
+      input.setAttribute("aria-label", estimate ? `実績工数（割当 ${estimate}）` : "実績工数");
+      if (!input.hasAttribute("readonly")) {
+        input.dataset.wasEditable = "1";
+        input.readOnly = true;
+      }
+    } else {
+      const isProcess = Boolean(input.dataset.projectProcessId);
+      input.setAttribute("aria-label", isProcess ? "工程割当工数" : "割当工数");
+      if (input.dataset.wasEditable === "1") {
+        input.readOnly = false;
+        delete input.dataset.wasEditable;
+      }
+    }
+    syncEffortStyle(input);
+  }
+
+  function setActualMode(enabled) {
+    actualMode = enabled;
+    table.classList.toggle("actual-mode", enabled);
+    if (actualModeButton) {
+      actualModeButton.setAttribute("aria-pressed", enabled ? "true" : "false");
+      actualModeButton.title = enabled ? "割当表示モードに戻る" : "実績表示モードにする";
+    }
+    inputs.forEach((input) => {
+      applyInputForMode(input);
+    });
+    table.querySelectorAll(".sum-single").forEach((el) => {
+      el.setAttribute("aria-hidden", enabled ? "true" : "false");
+    });
+    table.querySelectorAll(".sum-fraction").forEach((el) => {
+      el.setAttribute("aria-hidden", enabled ? "false" : "true");
+    });
   }
 
   function syncStickyOffsets() {
@@ -56,8 +113,8 @@
 
   function effortGrid() {
     return [...table.querySelectorAll("tbody tr")]
-      .filter((row) => row.querySelector(".effort-input"))
-      .map((row) => [...row.querySelectorAll(".effort-input")]);
+      .filter((row) => row.querySelector(".effort-input:not([readonly])"))
+      .map((row) => [...row.querySelectorAll(".effort-input:not([readonly])")]);
   }
 
   function effortPosition(grid, input) {
@@ -292,6 +349,9 @@
   }
 
   function saveAllocation(input) {
+    if (actualMode || input.readOnly) {
+      return Promise.resolve();
+    }
     const body = new URLSearchParams();
     body.set("csrf", csrf);
     body.set("task_id", input.dataset.taskId || "");
@@ -310,10 +370,16 @@
       }
       return res.json();
     }).then((data) => {
-      input.value = data.effort === "0.0" ? "" : data.effort;
+      const effort = data.effort === "0.0" ? "" : data.effort;
+      input.value = effort;
+      input.dataset.estimate = effort;
       const cell = input.closest(".phase-cell");
       if (cell) {
-        cell.classList.toggle("active", cellIsActive(cell, input.value));
+        const label = cell.querySelector(".effort-float-label");
+        if (label) {
+          label.textContent = effort;
+        }
+        cell.classList.toggle("active", cellIsActive(cell, effort));
       }
       const rowId = data.task_id || data.project_process_id || "";
       applyRowMeta(rowId, data.allocated, data.diff, data.diff_sign);
@@ -325,21 +391,30 @@
   }
 
   function queueSave(input) {
+    if (actualMode || input.readOnly) {
+      return;
+    }
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
       saveAllocation(input);
     }, 400);
   }
 
-  table.querySelectorAll(".effort-input").forEach((input) => {
+  inputs.forEach((input) => {
     input.addEventListener("keydown", handleEffortKeydown);
     input.addEventListener("focus", () => setActiveRow(input));
     input.addEventListener("blur", () => clearActiveRow());
     input.addEventListener("change", () => {
+      if (actualMode || input.readOnly) {
+        return;
+      }
       window.clearTimeout(saveTimer);
       saveAllocation(input);
     });
     input.addEventListener("input", () => {
+      if (actualMode || input.readOnly) {
+        return;
+      }
       const cell = input.closest(".phase-cell");
       if (cell) {
         cell.classList.toggle("active", cellIsActive(cell, input.value && Number(input.value) > 0));
@@ -348,6 +423,12 @@
       queueSave(input);
     });
   });
+
+  if (actualModeButton) {
+    actualModeButton.addEventListener("click", () => {
+      setActualMode(!actualMode);
+    });
+  }
 
   syncStickyOffsets();
   updateProcessRemainders();
