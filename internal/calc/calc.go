@@ -55,6 +55,31 @@ func AssignmentPlannedCost(startDate, endDate string, monthlyYen int64) int64 {
 	return MonthlyCost(startDate, endDate, monthlyYen)
 }
 
+// AccruedMonthlyCost は startDate〜endDate のうち、asOfDate までに掛かる暦月分の月間原価です（準委任の実績原価）。
+// asOfDate が開始より前なら 0、終了より後なら期間全体と同じです。
+func AccruedMonthlyCost(startDate, endDate, asOfDate string, monthlyYen int64) int64 {
+	if monthlyYen <= 0 {
+		return 0
+	}
+	start, err := time.ParseInLocation("2006-01-02", startDate, time.UTC)
+	if err != nil {
+		return 0
+	}
+	end, err := time.ParseInLocation("2006-01-02", endDate, time.UTC)
+	if err != nil || end.Before(start) {
+		return 0
+	}
+	asOf, err := time.ParseInLocation("2006-01-02", asOfDate, time.UTC)
+	if err != nil || asOf.Before(start) {
+		return 0
+	}
+	through := end
+	if asOf.Before(end) {
+		through = asOf
+	}
+	return MonthlyCost(startDate, through.Format("2006-01-02"), monthlyYen)
+}
+
 // RemainingCost は planned（予定原価）から actual（実績原価）を引いた残りです。
 // actual が planned 以上なら 0 を返します。
 func RemainingCost(planned, actual int64) int64 {

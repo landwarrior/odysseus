@@ -2,6 +2,8 @@
 package report
 
 import (
+	"time"
+
 	"odysseus/internal/calc"
 	"odysseus/internal/store"
 	"sort"
@@ -71,7 +73,12 @@ type PersonRow struct {
 }
 
 // Build は b（案件、工程、アサイン、実績、単価）から予実を計算します。データベースには触りません。
-func Build(b store.Bundle) Report {
+// asOf は準委任の実績原価をどこまで計上するかの基準日です。ゼロ値なら実行時点の日付です。
+func Build(b store.Bundle, asOf time.Time) Report {
+	if asOf.IsZero() {
+		asOf = time.Now()
+	}
+	asOfDate := asOf.UTC().Format("2006-01-02")
 	idx := indexRates(b.Rates)
 	entries := map[string][]store.TimeEntry{}
 	for _, e := range b.Entries {
@@ -111,18 +118,28 @@ func Build(b store.Bundle) Report {
 				person.ActualMinutes += e.Minutes
 				row.ActualMinutes += e.Minutes
 				rep.ActualMinutes += e.Minutes
-				yen, ok := hourlyAt(idx, a.PersonID, a.RoleID, e.WorkDate)
-				if !ok {
-					person.UnsetMinutes += e.Minutes
-					row.UnsetMinutes += e.Minutes
-					rep.UnsetMinutes += e.Minutes
-					rep.ActualKnown = false
-					continue
-				}
-				cost := calc.CostYen(e.Minutes, yen)
-				person.ActualCostYen += cost
+			}
+			rate, hasRate := rateAt(idx, a.PersonID, a.RoleID, a.StartDate)
+			if hasRate && rate.MonthlyYen > 0 {
+				cost := calc.AccruedMonthlyCost(a.StartDate, a.EndDate, asOfDate, rate.MonthlyYen)
+				person.ActualCostYen = cost
 				row.ActualCostYen += cost
 				rep.ActualCostYen += cost
+			} else {
+				for _, e := range entries[a.ID] {
+					yen, ok := hourlyAt(idx, a.PersonID, a.RoleID, e.WorkDate)
+					if !ok {
+						person.UnsetMinutes += e.Minutes
+						row.UnsetMinutes += e.Minutes
+						rep.UnsetMinutes += e.Minutes
+						rep.ActualKnown = false
+						continue
+					}
+					cost := calc.CostYen(e.Minutes, yen)
+					person.ActualCostYen += cost
+					row.ActualCostYen += cost
+					rep.ActualCostYen += cost
+				}
 			}
 			person.RemainingCostYen = calc.RemainingCost(person.PlannedCostYen, person.ActualCostYen)
 			rep.RemainingCostYen += person.RemainingCostYen
@@ -178,16 +195,22 @@ func indexRates(rates []store.Rate) map[string][]store.Rate {
 	return m
 }
 
+// rateAt は idx から、personID と roleID について date 以前で最も新しい単価を返します。
+func rateAt(idx map[string][]store.Rate, personID, roleID, date string) (store.Rate, bool) {
+	for _, r := range idx[personID+"\x00"+roleID] {
+		if r.FromDate <= date {
+			return r, true
+		}
+	}
+	return store.Rate{}, false
+}
+
 // hourlyAt は idx から、personID と roleID について date 以前で最も新しい時間単価を返します。
 // 該当が無いとき、または時間単価が 0 のときは false です。
 func hourlyAt(idx map[string][]store.Rate, personID, roleID, date string) (int64, bool) {
-	for _, r := range idx[personID+"\x00"+roleID] {
-		if r.FromDate <= date {
-			if r.HourlyYen <= 0 {
-				return 0, false
-			}
-			return r.HourlyYen, true
-		}
+	r, ok := rateAt(idx, personID, roleID, date)
+	if !ok || r.HourlyYen <= 0 {
+		return 0, false
 	}
-	return 0, false
+	return r.HourlyYen, true
 }

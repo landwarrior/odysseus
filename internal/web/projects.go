@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"odysseus/internal/calc"
 	"odysseus/internal/report"
@@ -714,7 +715,7 @@ func (s *Server) handleForecast(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	page := forecastPage{base: s.page(w, r, "予実"), Project: bundle.Project, Report: report.Build(bundle)}
+	page := forecastPage{base: s.page(w, r, "予実"), Project: bundle.Project, Report: report.Build(bundle, time.Time{})}
 	s.render(w, http.StatusOK, "forecast", page)
 }
 

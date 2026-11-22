@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"time"
 
 	"odysseus/internal/report"
 	"odysseus/internal/store"
@@ -33,7 +34,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, bundle := range bundles {
-			rep := report.Build(bundle)
+			rep := report.Build(bundle, time.Time{})
 			page.Rows = append(page.Rows, homeRow{
 				Project: bundle.Project, Report: rep, OverBudget: reportOverBudget(rep),
 			})

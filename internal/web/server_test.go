@@ -157,7 +157,8 @@ func TestForecastFlow(t *testing.T) {
 	}
 
 	forecast := admin.getBody(t, "/projects/"+project.ID+"/forecast")
-	for _, want := range []string{"¥1,000,000", "¥400,000", "¥60,000", "¥340,000", "¥600,000"} {
+	// 月間単価があるので実績原価は暦月分（4月1ヶ月 = ¥400,000）。時間実績は金額に使わない。
+	for _, want := range []string{"¥1,000,000", "¥400,000", "残予定原価", "¥0", "粗利見込み", "¥600,000"} {
 		if !strings.Contains(forecast, want) {
 			t.Fatalf("forecast missing %s\n%s", want, forecast)
 		}

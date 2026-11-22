@@ -38,6 +38,15 @@ func TestMonthlyAndAssignmentCost(t *testing.T) {
 	if got := AssignmentPlannedCost("2026-04-01", "2026-04-30", 0); got != 0 {
 		t.Fatalf("no monthly = %d", got)
 	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-05-15", 100000); got != 200000 {
+		t.Fatalf("accrued through May = %d", got)
+	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-03-31", 100000); got != 0 {
+		t.Fatalf("before start = %d", got)
+	}
+	if got := AccruedMonthlyCost("2026-04-01", "2026-06-30", "2026-12-01", 100000); got != 300000 {
+		t.Fatalf("after end = %d", got)
+	}
 }
 
 func TestRemainingAndGross(t *testing.T) {
