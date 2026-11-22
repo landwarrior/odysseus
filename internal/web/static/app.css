@@ -385,6 +385,22 @@ label.field > .phase-color-cell,
   min-height: 2.75rem;
   padding: 0.95rem 0.55rem 0.35rem;
 }
+/* OS 標準の select / date 塗りを抑え、ラベルと同じ --field にする */
+label.field > :is(input, select, textarea) {
+  background-color: var(--field);
+  color: var(--ink);
+}
+label.field > select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23666666' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 0.9rem 0.9rem;
+  padding-right: 1.8rem;
+}
+html[data-theme="dark"] label.field > select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%239a9a9a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+}
 label.field > .phase-color-cell {
   display: flex;
   align-items: center;
@@ -423,7 +439,7 @@ label.field > textarea {
   box-sizing: border-box;
   margin: 0;
   color: var(--ink);
-  background: var(--field);
+  background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 6px;
   font-size: 1rem;
@@ -431,7 +447,7 @@ label.field > textarea {
   line-height: 1.4;
 }
 .field.field-display > .field-label {
-  background: var(--field);
+  background: var(--bg);
 }
 input:read-only,
 textarea:read-only {
