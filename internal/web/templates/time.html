@@ -1,91 +1,81 @@
-{{define "time_list"}}
-{{template "head" .}}
-{{template "nav" .}}
-<main>
-  <h1>実績</h1>
-  {{template "alerts" .}}
-  {{if .AsAdmin}}
-  <p>アサインがある、完了前のプロジェクトです。開いて人材を選び、本人の代わりに実績を登録できます。</p>
-  {{else}}
-  <p>自分がアサインされている、完了前のプロジェクトです。</p>
-  {{end}}
-  {{if not .Projects}}<p>入力できるプロジェクトはありません。</p>{{end}}
-  <ul>
-    {{range .Projects}}
-    <li><a href="/time/{{.ID}}">{{.Code}} {{.Name}}</a>（{{status .Status}}）</li>
-    {{end}}
-  </ul>
-</main>
-{{template "foot" .}}
-{{end}}
-
 {{define "time_form"}}
 {{template "head" .}}
 {{template "nav" .}}
-<main>
-  <div class="title-row">
-    <h1>実績登録</h1>
-    <a href="/time">一覧へ</a>
-  </div>
-  <p>{{.Project.Code}} {{.Project.Name}}</p>
+<main class="time-page">
+  <h1>実績登録</h1>
   {{template "alerts" .}}
-  {{if .CanPickPerson}}
-  <form method="get" action="/time/{{.Project.ID}}" class="inline">
-    <input type="hidden" name="month" value="{{.Month}}">
-    <input type="hidden" name="date" value="{{.Date}}">
-    <label class="field">
-      <select name="person" onchange="this.form.submit()">
-        {{range .People}}
-        <option value="{{.ID}}" {{if eq .ID $.PersonID}}selected{{end}}>{{.Code}} {{.Name}}</option>
-        {{end}}
-      </select>
-      <span class="field-label">人材</span>
-    </label>
-  </form>
-  {{else if .ShowPerson}}
-  {{range .People}}{{if eq .ID $.PersonID}}<p class="note">入力対象: {{.Code}} {{.Name}}</p>{{end}}{{end}}
-  {{end}}
-  <p class="filters">
-    <a href="/time/{{.Project.ID}}?month={{.Prev}}&person={{.PersonID}}">前月</a>
-    <strong>{{.Month}}</strong>
-    <a href="/time/{{.Project.ID}}?month={{.Next}}&person={{.PersonID}}">翌月</a>
-  </p>
-  <form method="post" action="/time/{{.Project.ID}}?month={{.Month}}&person={{.PersonID}}" class="stack">
-    <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <input type="hidden" name="person_id" value="{{.PersonID}}">
-    <label class="field"><input type="date" name="work_date" value="{{.Date}}" required><span class="field-label">日付</span></label>
-    <div class="grid">
-      {{range .Columns}}
-      <label class="field">
-        <input name="minutes_{{.Key}}" inputmode="decimal" value="{{index $.Cells .Key}}" placeholder=" ">
-        <span class="field-label">{{.Label}}（{{.StartDate}} 〜 {{.EndDate}}）</span>
+  <p class="note">日付を選び、アサイン中の全案件へその日の実績を一度に登録します。空欄または 0 にすると、その欄の実績を消します。入力できるのは各アサインの期間内です。1 日の合計は 24 時間までです。</p>
+
+  <form method="get" action="/time" class="time-toolbar">
+    <div class="time-toolbar-row">
+      <a class="button secondary" href="/time?date={{.PrevDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">前日</a>
+      <label class="time-static">
+        <span class="time-static-label">日付</span>
+        <input type="date" name="date" value="{{.Date}}" required onchange="this.form.submit()">
       </label>
+      <a class="button secondary" href="/time?date={{.NextDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">翌日</a>
+      {{if .CanPickPerson}}
+      <label class="time-static">
+        <span class="time-static-label">人材</span>
+        <select name="person" onchange="this.form.submit()">
+          {{range .People}}
+          <option value="{{.ID}}" {{if eq .ID $.PersonID}}selected{{end}}>{{.Code}} {{.Name}}</option>
+          {{end}}
+        </select>
+      </label>
+      {{else if .ShowPerson}}
+      {{range .People}}{{if eq .ID $.PersonID}}<p class="note time-person">入力対象: {{.Code}} {{.Name}}</p>{{end}}{{end}}
       {{end}}
     </div>
-    <p class="note">タスクがある工程はタスクごとに入力します。空欄または 0 にすると、その日の実績を消します。入力できるのは、各アサインの期間内です。1 日の合計は 24 時間までです。</p>
-    <button type="submit" class="primary">登録</button>
   </form>
-  <h2>この月の実績</h2>
-  {{if not .Saved}}<p>まだありません。</p>{{end}}
-  {{if .Saved}}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>日付</th>
-          {{range .Columns}}<th>{{.Label}}</th>{{end}}
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Saved}}
-        <tr>
-          <td><a href="{{printf "/time/%s?month=%s&date=%s&person=%s" $.Project.ID $.Month .Date $.PersonID}}">{{.Date}}</a></td>
-          {{range .Hours}}<td class="num">{{if .}}{{.}} 時間{{end}}</td>{{end}}
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
+
+  {{if not .Groups}}
+  <p>この日に入力できる工程はありません。</p>
+  {{else}}
+  <form method="post" action="/time" class="time-entry-form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="person_id" value="{{.PersonID}}">
+    <input type="hidden" name="work_date" value="{{.Date}}">
+    {{range .Groups}}
+    <section class="time-project">
+      <h2>{{.ProjectCode}} {{.ProjectName}}</h2>
+      {{range .Processes}}
+      <div class="time-process">
+        <h3>{{.ProcessName}}</h3>
+        <p class="time-period">アサイン期間: {{.Period}}</p>
+        <div class="time-rows">
+          {{range .Columns}}
+          <div class="time-row{{if not .InRange}} time-row-out{{end}}">
+            <span class="time-row-label">{{.Label}}</span>
+            <label class="time-hours">
+              <span class="visually-hidden">{{.Label}}の時間</span>
+              <input
+                name="minutes_{{.Key}}"
+                inputmode="decimal"
+                value="{{index $.Cells .Key}}"
+                {{if not .InRange}}disabled title="この日はアサイン期間外です"{{end}}
+              >
+              <span class="time-unit">時間</span>
+            </label>
+            {{if not .InRange}}<span class="time-out-note">期間外</span>{{end}}
+          </div>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+    </section>
+    {{end}}
+    <p><button type="submit" class="primary">登録</button></p>
+  </form>
+  {{end}}
+
+  {{if .SavedDates}}
+  <h2>この月に実績がある日</h2>
+  <p class="time-saved-dates">
+    {{range .SavedDates}}
+    <a href="/time?date={{.}}{{if $.PersonID}}&amp;person={{$.PersonID}}{{end}}"{{if eq . $.Date}} class="current"{{end}}>{{.}}</a>
+    {{end}}
+  </p>
   {{end}}
 </main>
 {{template "foot" .}}

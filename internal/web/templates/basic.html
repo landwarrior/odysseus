@@ -102,13 +102,15 @@
   {{else}}
   <h1>ホーム</h1>
   {{template "alerts" .}}
-  <p>実績を入力する案件です。</p>
+  <p>アサイン中の案件の実績は、<a href="/time">実績登録</a>から日付を選んで一度に入力できます。</p>
   {{if not .Assigned}}<p>アサインされている案件はありません。</p>{{end}}
+  {{if .Assigned}}
   <ul>
     {{range .Assigned}}
-    <li><a href="/time/{{.ID}}">{{.Code}} {{.Name}}</a></li>
+    <li>{{.Code}} {{.Name}}</li>
     {{end}}
   </ul>
+  {{end}}
   {{end}}
 </main>
 {{template "foot" .}}

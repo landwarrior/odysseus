@@ -164,9 +164,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /holidays/{date}", s.requireAdmin(s.handleHolidayUpdate))
 	mux.HandleFunc("POST /holidays/{date}/delete", s.requireAdmin(s.handleHolidayDelete))
 
-	mux.HandleFunc("GET /time", s.requireLogin(s.handleTimeList))
-	mux.HandleFunc("GET /time/{projectID}", s.requireLogin(s.handleTimeEdit))
-	mux.HandleFunc("POST /time/{projectID}", s.requireLogin(s.handleTimeSave))
+	mux.HandleFunc("GET /time", s.requireLogin(s.handleTime))
+	mux.HandleFunc("POST /time", s.requireLogin(s.handleTimeSave))
+	mux.HandleFunc("GET /time/{projectID}", s.requireLogin(s.handleTimeProjectRedirect))
 
 	if s.cfg.Dev {
 		staticDir := filepath.Join(s.webDir, "static")

@@ -208,6 +208,8 @@ type Assignment struct {
 	ID               string
 	ProjectProcessID string
 	ProjectID        string
+	ProjectCode      string
+	ProjectName      string
 	ProcessName      string
 	PersonID         string
 	PersonCode       string
@@ -218,6 +220,13 @@ type Assignment struct {
 	EndDate          string
 	RateKind         string
 	PlannedCostYen   int64
+}
+
+// OpenAssignee は完了前案件にアサインされている人材です（実績画面の候補）。
+type OpenAssignee struct {
+	ID   string
+	Code string
+	Name string
 }
 
 // AssignmentWrite はアサインの登録と更新に使う入力です。

@@ -371,6 +371,43 @@ func nullIfEmpty(value string) any {
 	return value
 }
 
+// ListPersonOpenAssignments は personID の、完了前案件へのアサインを案件・工程順で返します。
+func (s *Store) ListPersonOpenAssignments(ctx context.Context, personID string) ([]Assignment, error) {
+	rows, err := s.db.Query(ctx, assignmentSelect+`
+		WHERE a.person_id = ? AND project.status <> 'closed'
+		ORDER BY project.code, process.sort_order, process.name`, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanAssignments(rows)
+}
+
+// ListAssigneesOnOpenProjects は完了前案件にアサインがある人材を、コード順で返します。
+func (s *Store) ListAssigneesOnOpenProjects(ctx context.Context) ([]OpenAssignee, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT person.id, person.code, person.name
+		FROM person
+		JOIN assignment a ON a.person_id = person.id
+		JOIN project_process pp ON pp.id = a.project_process_id
+		JOIN project ON project.id = pp.project_id
+		WHERE project.status <> 'closed'
+		ORDER BY person.code, person.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []OpenAssignee
+	for rows.Next() {
+		var a OpenAssignee
+		if err := rows.Scan(&a.ID, &a.Code, &a.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 // ListAssignedProjects は personID がアサインされ、まだ完了していない案件を返します。
 func (s *Store) ListAssignedProjects(ctx context.Context, personID string) ([]Project, error) {
 	rows, err := s.db.Query(ctx, `
@@ -554,11 +591,13 @@ const lineSelect = `
 	JOIN process ON process.id = pp.process_id`
 
 const assignmentSelect = `
-	SELECT a.id, a.project_process_id, pp.project_id, process.name, a.person_id, person.code,
+	SELECT a.id, a.project_process_id, pp.project_id, project.code, project.name, process.name,
+		a.person_id, person.code,
 		CASE WHEN person.name_kana = '' THEN person.name ELSE person.name || ' ' || person.name_kana END,
 		a.role_id, role.name, a.start_date, a.end_date, a.rate_kind, a.planned_cost_yen
 	FROM assignment a
 	JOIN project_process pp ON pp.id = a.project_process_id
+	JOIN project ON project.id = pp.project_id
 	JOIN process ON process.id = pp.process_id
 	JOIN person ON person.id = a.person_id
 	JOIN role ON role.id = a.role_id`
@@ -666,7 +705,8 @@ func scanAssignments(rows *sql.Rows) ([]Assignment, error) {
 func scanAssignment(row scanner) (Assignment, error) {
 	var a Assignment
 	err := row.Scan(
-		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProcessName, &a.PersonID, &a.PersonCode, &a.PersonName,
+		&a.ID, &a.ProjectProcessID, &a.ProjectID, &a.ProjectCode, &a.ProjectName, &a.ProcessName,
+		&a.PersonID, &a.PersonCode, &a.PersonName,
 		&a.RoleID, &a.RoleName, &a.StartDate, &a.EndDate, &a.RateKind, &a.PlannedCostYen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Assignment{}, ErrNotFound

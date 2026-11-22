@@ -130,24 +130,23 @@ func TestForecastFlow(t *testing.T) {
 		t.Fatalf("tasks: %+v %v", tasks, err)
 	}
 
-	adminTimeList := admin.getBody(t, "/time")
-	if !strings.Contains(adminTimeList, "P1") {
-		t.Fatalf("admin time list missing project:\n%s", adminTimeList)
+	adminTime := admin.getBody(t, "/time?date=2026-04-01&person="+memberID)
+	if !strings.Contains(adminTime, "P1") {
+		t.Fatalf("admin time form missing project:\n%s", adminTime)
 	}
-	adminTime := admin.getBody(t, "/time/"+project.ID+"?month=2026-04&person="+memberID)
-	if !strings.Contains(adminTime, "入力対象: m01 山田") {
+	if !strings.Contains(adminTime, "入力対象: m01 山田") && !strings.Contains(adminTime, "m01 山田") {
 		t.Fatalf("admin time form missing person:\n%s", adminTime)
 	}
-	if !strings.Contains(adminTime, "製造 / 画面") {
+	if !strings.Contains(adminTime, "画面") {
 		t.Fatalf("admin time form missing task column:\n%s", adminTime)
 	}
-	admin.submit(t, "/time/"+project.ID+"?month=2026-04&person="+memberID, url.Values{
+	admin.submit(t, "/time", url.Values{
 		"csrf": {csrfOf(t, adminTime)}, "person_id": {memberID}, "work_date": {"2026-04-01"},
 		"minutes_" + assignments[0].ID + "_" + tasks[0].ID: {"4"},
 	})
 
-	timePage := member.getBody(t, "/time/"+project.ID+"?month=2026-04")
-	member.submit(t, "/time/"+project.ID+"?month=2026-04", url.Values{
+	timePage := member.getBody(t, "/time?date=2026-04-02")
+	member.submit(t, "/time", url.Values{
 		"csrf": {csrfOf(t, timePage)}, "work_date": {"2026-04-02"},
 		"minutes_" + assignments[0].ID + "_" + tasks[1].ID: {"8"},
 	})
