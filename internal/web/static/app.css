@@ -89,7 +89,6 @@ body {
 
 a { color: var(--accent); }
 a:hover { color: var(--link-hover); }
-a.button:hover { color: var(--button-text); }
 a.secondary:hover { color: var(--ink); }
 body, main, p, td, th, .banner, .note { overflow-wrap: anywhere; }
 
@@ -290,6 +289,7 @@ button, .button {
 button:hover:not(:disabled):not(.primary):not(.danger):not(header.top button),
 a.button:hover:not(.primary):not(.danger) {
   background: var(--secondary-hover);
+  color: var(--ink);
 }
 
 button.primary, .button.primary {
@@ -423,7 +423,7 @@ label.field > textarea {
   box-sizing: border-box;
   margin: 0;
   color: var(--ink);
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid var(--line);
   border-radius: 6px;
   font-size: 1rem;
@@ -431,7 +431,7 @@ label.field > textarea {
   line-height: 1.4;
 }
 .field.field-display > .field-label {
-  background: var(--bg);
+  background: var(--field);
 }
 input:read-only,
 textarea:read-only {
