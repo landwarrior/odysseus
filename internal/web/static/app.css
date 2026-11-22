@@ -30,6 +30,8 @@
   --over-bg: #fecaca;
   --check-border: #bdbdbd;
   --shadow: rgba(0, 0, 0, 0.16);
+  /* 英字は Nunito → Roboto → Segoe UI、日本語は Noto Sans JP */
+  --font-ui: "Nunito", "Roboto", "Segoe UI", "Noto Sans JP", sans-serif;
   color-scheme: light;
 }
 
@@ -78,7 +80,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+  font-family: var(--font-ui);
   font-size: 1rem;
   line-height: 1.5;
 }
