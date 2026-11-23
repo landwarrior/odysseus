@@ -34,12 +34,12 @@
     const label = field.querySelector(".effort-float-label");
     const estimate = input?.dataset.estimate || plan?.textContent || "";
     const actual = input?.dataset.actual || display?.textContent || "";
-    const capacity = input?.dataset.capacity || "";
+    const capacity = input?.dataset.capacity || field.dataset.capacity || "";
     cell.classList.toggle("active", cellIsActive(cell, estimate && Number(estimate) > 0));
     cell.classList.toggle("has-actual", Number(actual || 0) > 0);
     if (label) {
       // 一覧の割当モードは工程キャパ、実績モード（と詳細）は割当をラベルに出す。
-      if (!actualMode && input && input.hasAttribute("data-capacity")) {
+      if (!actualMode && capacity) {
         label.textContent = capacity;
       } else {
         label.textContent = estimate;
