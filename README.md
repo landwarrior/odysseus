@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="cmd/odysseus/winres/icon.png" alt="Odysseus" width="160">
+</p>
+
 # Odysseus
 
 人材の予定工数・予定原価と、実績工数・実績原価を突き合わせるシステムです。実行ファイルを起動すると、その PC のブラウザから使えます。データベースの初期値は SQLite です。
