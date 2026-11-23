@@ -111,9 +111,44 @@ func TestForecastFlow(t *testing.T) {
 	if strings.Contains(body, "粗利見込み") {
 		t.Fatal("member home shows money")
 	}
-	status, forbidden := member.get(t, "/projects")
+	status, projectsPage := member.get(t, "/projects")
+	if status != http.StatusOK {
+		t.Fatalf("member projects: %d %s", status, projectsPage)
+	}
+	if !strings.Contains(projectsPage, "予実案件") {
+		t.Fatalf("member should see schedule:\n%s", projectsPage)
+	}
+	if strings.Contains(projectsPage, "effort-input") {
+		t.Fatal("member must not edit schedule cells")
+	}
+	if strings.Contains(projectsPage, "新規作成") || strings.Contains(projectsPage, "/projects/new") {
+		t.Fatal("member must not see project create")
+	}
+	status, schedulePage := member.get(t, "/projects/"+project.ID+"/schedule")
+	if status != http.StatusOK {
+		t.Fatalf("member project schedule: %d %s", status, schedulePage)
+	}
+	if strings.Contains(schedulePage, "effort-input") {
+		t.Fatal("member must not edit project schedule cells")
+	}
+	status, forbidden := member.get(t, "/projects/"+project.ID)
 	if status != http.StatusForbidden || !strings.Contains(forbidden, "管理者権限がありません") {
-		t.Fatalf("member projects: %d %s", status, forbidden)
+		t.Fatalf("member project edit: %d %s", status, forbidden)
+	}
+	allocRes, err := member.http.PostForm(ts.URL+"/projects/allocations", url.Values{
+		"csrf": {csrfOf(t, projectsPage)}, "year_month": {"2026-04"}, "decade": {"1"}, "effort": {"1.0"},
+		"project_process_id": {lines[0].ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allocBody, err := io.ReadAll(allocRes.Body)
+	allocRes.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allocRes.StatusCode != http.StatusForbidden || !strings.Contains(string(allocBody), "管理者権限がありません") {
+		t.Fatalf("member allocation save: %d %s", allocRes.StatusCode, allocBody)
 	}
 	assignments, err := st.ListAssignmentsByProject(ctx, project.ID)
 	if err != nil || len(assignments) != 1 {

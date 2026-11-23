@@ -23,8 +23,8 @@
   <nav id="site-nav" class="site-nav">
     <a href="/">ホーム</a>
     <a href="/time">実績</a>
-    {{if .Me.IsAdmin}}
     <a href="/projects">プロジェクト</a>
+    {{if .Me.IsAdmin}}
     <a href="/people">人材</a>
     <a href="/roles">役割</a>
     <a href="/processes">工程</a>
@@ -63,14 +63,18 @@
 {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 {{end}}
 
-{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ */}}
+{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ。編集・アサイン・予実は管理者のみ */}}
 {{define "project_actions"}}
 <p class="actions">
   <a class="button" href="/projects">一覧</a>
+  {{if .Me.IsAdmin}}
   <a class="button" href="/projects/{{.Project.ID}}">編集</a>
+  {{end}}
   <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
+  {{if .Me.IsAdmin}}
   <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
   <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
+  {{end}}
 </p>
 {{end}}
 

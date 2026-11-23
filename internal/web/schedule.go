@@ -86,9 +86,11 @@ type schedulePeriodCol struct {
 }
 
 // schedulePage はプロジェクト一覧または案件のスケジュールです。
+// CanEdit が偽のときは閲覧のみで、工数セルは入力欄にしません。
 type schedulePage struct {
 	base
 	Detail      bool
+	CanEdit     bool
 	Project     store.Project
 	Status      string
 	From        string
@@ -267,6 +269,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		return schedulePage{}, err
 	}
 
+	canEdit := personFrom(r).IsAdmin
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
 	for _, project := range in.Projects {
 		projectTasks := tasksByProject[project.ID]
@@ -274,9 +277,9 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		block := scheduleProjectBlock{Project: project}
 
 		if in.Detail {
-			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, taskActualMap, taskActualTotals, processActualMap, processActualTotals, std)
+			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, taskActualMap, taskActualTotals, processActualMap, processActualTotals, std, canEdit)
 		} else {
-			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, processActualMap, processActualTotals, assigns, billable, bizDays, std)
+			block.Rows, block.RowCount = s.scheduleProcessRows(projectLines, projectTasks, in.Months, currentYM, currentDec, processAllocMap, processTotals, processActualMap, processActualTotals, assigns, billable, bizDays, std, canEdit)
 		}
 		blocks = append(blocks, block)
 	}
@@ -308,6 +311,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	return schedulePage{
 		base:        s.page(w, r, in.Title),
 		Detail:      in.Detail,
+		CanEdit:     canEdit,
 		Project:     in.Project,
 		Status:      in.Status,
 		From:        in.From,
@@ -391,7 +395,8 @@ func fillCellActual(cell *scheduleCell, actualMinutes, std int64) {
 	cell.ActualDays = calc.FormatPersonDays(actualMinutes, std)
 }
 
-// scheduleProcessRows は工程ごとの行を作ります（一覧用・編集可）。
+// scheduleProcessRows は工程ごとの行を作ります（一覧用）。
+// canEdit が真のときだけ工数セルを編集可にします。
 // 各旬セルに、その工程のアサイン人数ベースのキャパ（CapDays）と負荷色（CapClass）を付けます。
 func (s *Server) scheduleProcessRows(
 	lines []store.ProcessLine,
@@ -407,6 +412,7 @@ func (s *Server) scheduleProcessRows(
 	billable map[string]bool,
 	bizDays map[string]int,
 	std int64,
+	canEdit bool,
 ) ([]scheduleRow, int) {
 	if len(lines) == 0 {
 		return nil, 1 // 未登録案内
@@ -439,7 +445,7 @@ func (s *Server) scheduleProcessRows(
 			Allocated: allocStr,
 			Diff:      diffStr,
 			DiffClass: diffClass,
-			Editable:  true,
+			Editable:  canEdit,
 		}
 		attachActualMeta(&row, est, processActualTotals[line.ID], std)
 		for _, ym := range months {
@@ -472,7 +478,8 @@ func (s *Server) scheduleProcessRows(
 }
 
 // scheduleTaskGroups は工程ごとのタスク行と残工数行を作ります（案件スケジュール用）。
-// タスクのない工程は編集不可の1行です。残工数は一覧の工程割当 − タスク合計です。
+// canEdit が真でタスクがあるときだけ工数セルを編集可にします。タスクのない工程は常に編集不可です。
+// 残工数は一覧の工程割当 − タスク合計です。
 func (s *Server) scheduleTaskGroups(
 	lines []store.ProcessLine,
 	tasks []store.Task,
@@ -487,6 +494,7 @@ func (s *Server) scheduleTaskGroups(
 	processActualMap map[string]int64,
 	processActualTotals map[string]int64,
 	std int64,
+	canEdit bool,
 ) ([]scheduleProcessGroup, int) {
 	if len(lines) == 0 {
 		return nil, 1
@@ -517,7 +525,7 @@ func (s *Server) scheduleTaskGroups(
 				Allocated: allocStr,
 				Diff:      diffStr,
 				DiffClass: diffClass,
-				Editable:  true,
+				Editable:  canEdit,
 			}
 			attachActualMeta(&row, est, taskActualTotals[task.ID], std)
 			for _, ym := range months {
