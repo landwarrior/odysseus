@@ -19,6 +19,14 @@
   go build -trimpath -ldflags "-s -w" -o odysseus.exe ./cmd/odysseus
   ```
 
+- Windows の exe アイコンは `cmd/odysseus/winres/icon.png`。埋め込み用の `*.syso` は `cmd/odysseus` で次を実行して作る（リリース CI でも同じ）。
+
+  ```powershell
+  go-winres make --in winres/winres.json --arch amd64,arm64
+  ```
+
+- ブラウザの favicon は同じ PNG から作る。リポジトリの根で `go run ./tools/genicon`。出力は `internal/web/static/favicon.ico`。
+
 - テストは `go test ./...` を単体で実行する。
 - `CGO_ENABLED` は付けない。`go env` で設定済みで、ここでは `modernc.org/sqlite` と `pgx` の純 Go 実装だけを使う。昔の SQLite ドライバ（`mattn/go-sqlite3`）向けに付けていた指定は不要。
 - CSS と HTML は実行ファイルに埋め込まれる。画面を変えたらビルドし直す。
