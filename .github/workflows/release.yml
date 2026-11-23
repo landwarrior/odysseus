@@ -20,6 +20,13 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Embed Windows icon
+        run: |
+          set -euo pipefail
+          go install github.com/tc-hib/go-winres@v0.3.3
+          go-winres make --in winres/winres.json --arch amd64,arm64
+        working-directory: cmd/odysseus
+
       - name: Build
         run: |
           set -euo pipefail
