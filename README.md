@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="cmd/odysseus/winres/icon.png" alt="Odysseus" width="160">
+  <picture>
+    <img src="cmd/odysseus/winres/icon.png" alt="Odysseus" width="160">
+  </picture>
 </p>
 
 # Odysseus
