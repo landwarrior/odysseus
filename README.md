@@ -122,6 +122,64 @@ Docker で動かすときも、同じ環境変数を使います。
 
 PostgreSQL は接続先を変えるだけで使えます。SQL は共通で、プレースホルダの違いだけを接続層で吸収しています。
 
+## エンタープライズ／本番での注意
+
+既定は「その PC のブラウザから HTTP で使う」想定です。社内サーバやインターネット向けに載せるときは、次を別途整えてください。アプリ本体には本番用のスイッチはまだありません。
+
+### 初期管理者パスワードの扱い
+
+初回起動だけ、初期パスワードを起動ログと `data/initial-admin.txt` に平文で出します（Code scanning の clear-text-logging 指摘の対象）。ローカル導入の便宜用で、本番では次のように扱います。
+
+1. 起動直後に `admin` でログインし、パスワードを変更する（変更すると `initial-admin.txt` は消える）
+2. 起動ログやバックアップにパスワードが残らないよう、ログの保管先と `data` ディレクトリの権限を制限する
+3. 共有のログ基盤へ stdout を流す場合は、初回起動の行を取り込まない／マスキングする
+
+例（Linux でデータ置き場を管理者だけに読む）:
+
+```bash
+mkdir -p /var/lib/odysseus
+chmod 700 /var/lib/odysseus
+export ODYSSEUS_DATA_DIR=/var/lib/odysseus
+export ODYSSEUS_OPEN_BROWSER=0
+./odysseus
+# 起動ログの初期パスワードでログイン → すぐパスワード変更
+# 変更後、initial-admin.txt が消えていることを確認
+ls /var/lib/odysseus
+```
+
+人材に渡す仮パスワードも画面・口頭・別チャネルで一度だけ伝え、本人に初回変更させる運用にしてください。
+
+### Cookie の Secure 属性
+
+セッション（`odysseus_session`）と通知（`odysseus_flash`）の Cookie は `HttpOnly` と `SameSite=Lax` を付けますが、既定が HTTP のため `Secure` は付けていません（Code scanning の cookie-secure-not-set 指摘の対象）。HTTPS で公開するときは、TLS を終端するリバースプロキシの手前に置き、プロキシ側で `Secure` を付与する例があります。
+
+例（nginx で TLS 終端し、下流の Set-Cookie に Secure を足す）:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name odysseus.example.internal;
+    # ssl_certificate / ssl_certificate_key は環境に合わせて設定
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cookie_flags ~ secure samesite=lax httponly;
+    }
+}
+```
+
+Odysseus 側の待受例:
+
+```powershell
+$env:ODYSSEUS_HTTP_ADDR = "127.0.0.1:8080"
+$env:ODYSSEUS_OPEN_BROWSER = "0"
+.\odysseus.exe
+```
+
+待受はループバックだけにし、外からは必ず HTTPS のプロキシ経由にしてください。アプリ単体で HTTPS を終端する機能はありません。
+
 ## テスト
 
 ```powershell
