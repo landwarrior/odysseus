@@ -1626,10 +1626,15 @@ ul.schedule-toolbar-notes {
 .schedule-table.actual-mode .effort-plan {
   display: none !important;
 }
+/* phase-cell は割当も帯も無いとき color: transparent。実績だけあるセルでも数字が見えるようにする */
 .schedule-table.actual-mode .effort-display {
   display: block;
   position: relative;
   z-index: 1;
+  color: var(--ink);
+  font-weight: 700;
+}
+.schedule-table.actual-mode .phase-cell.active .effort-display {
   color: inherit;
   font-weight: inherit;
 }
