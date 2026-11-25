@@ -45,7 +45,7 @@
       <li>工程の旬割当をタスクへ割り振った結果を閲覧できます。工数の変更は管理者のみ行えます。</li>
       <li>「残工数」は工程割当 − タスク合計です。0 なら割当完了、マイナスは超過で赤になります。</li>
       {{end}}
-      <li>「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列は実績／見積）。実績の登録は<a href="/time">実績登録</a>から行います。</li>
+      <li>「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列は実績／割当）。実績の登録は<a href="/time">実績登録</a>から行います。</li>
     </ul>
     {{else}}
     <ul class="schedule-toolbar-notes field-help">
@@ -57,7 +57,7 @@
       <li>セル左上の数字は工程キャパ（その工程にアサインされた人数 × 営業日）です。セルの黄／赤は工程キャパに対する負荷です。</li>
       <li>表下の「キャパ（全体）」は全工程のユニーク人数枠です。同じ人が複数工程・案件にいても全体では 1 人と数えます。単価 0 円（OJT）は含めません。80% 以上で黄、以上で赤です。</li>
       <li>営業日は土日と{{if .Me.IsAdmin}}<a href="/holidays">祝日・休業日</a>{{else}}祝日・休業日{{end}}を除いた日数です。</li>
-      <li>「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列は実績／見積）。</li>
+      <li>「実績」でメンバが入れた実績を表示します（ラベルは割当、セルは実績、割当済列と割当合計は実績／割当）。</li>
     </ul>
     {{end}}
   </section>
@@ -144,10 +144,10 @@
               <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
               <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>
                 <span class="sum-single">{{$row.Allocated}}</span>
-                <span class="sum-fraction" aria-hidden="true" title="分子は実績工数、分母は見積工数">
+                <span class="sum-fraction" aria-hidden="true" title="分子は実績工数、分母は割当工数">
                   <span class="sum-num">{{$row.Actual}}</span>
                   <span class="sum-line" aria-hidden="true"></span>
-                  <span class="sum-den">{{$row.Estimate}}</span>
+                  <span class="sum-den">{{$row.Allocated}}</span>
                 </span>
               </td>
               <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
@@ -242,10 +242,10 @@
             <td class="sticky-col col-meta1 num"{{if $row.Editable}} data-phase-total="{{$row.RowID}}"{{end}}>{{$row.Estimate}}</td>
             <td class="sticky-col col-meta2 num"{{if $row.Editable}} data-phase-allocated="{{$row.RowID}}"{{end}}>
               <span class="sum-single">{{$row.Allocated}}</span>
-              <span class="sum-fraction" aria-hidden="true" title="分子は実績工数、分母は見積工数">
+              <span class="sum-fraction" aria-hidden="true" title="分子は実績工数、分母は割当工数">
                 <span class="sum-num">{{$row.Actual}}</span>
                 <span class="sum-line" aria-hidden="true"></span>
-                <span class="sum-den">{{$row.Estimate}}</span>
+                <span class="sum-den">{{$row.Allocated}}</span>
               </span>
             </td>
             <td class="sticky-col col-meta3 num {{$row.DiffClass}}"{{if $row.Editable}} data-phase-diff="{{$row.RowID}}"{{end}}>{{$row.Diff}}</td>
@@ -303,7 +303,14 @@
         <tr>
           <th class="sticky-col summary-label" colspan="5">割当合計（人日）</th>
           {{range .Periods}}
-          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}" data-capacity="{{.Capacity}}">{{.Allocated}}</td>
+          <td class="num {{.CapClass}}{{if .Current}} col-current{{end}}" data-period-allocated="{{.YM}}-{{.Decade}}" data-capacity="{{.Capacity}}">
+            <span class="sum-single">{{.Allocated}}</span>
+            <span class="sum-fraction" aria-hidden="true" title="分子は実績工数、分母は割当工数">
+              <span class="sum-num">{{.Actual}}</span>
+              <span class="sum-line" aria-hidden="true"></span>
+              <span class="sum-den">{{.Allocated}}</span>
+            </span>
+          </td>
           {{end}}
         </tr>
       </tfoot>
