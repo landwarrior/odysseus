@@ -284,8 +284,9 @@ func GrossMargin(orderAmount, actualCost, remainingCost int64) int64 {
 	return orderAmount - actualCost - remainingCost
 }
 
-// ParseHours は raw（画面の時間。1.5 のような小数可）を分にします。
+// ParseHours は raw（画面の時間。0.1 刻み）を分にします。
 // raw が空なら ErrEmpty、数値でなければ ErrFormat、負なら ErrNegative です。
+// 0.1 時間未満の端数は受け付けません。
 func ParseHours(raw string) (int64, error) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
@@ -301,11 +302,16 @@ func ParseHours(raw string) (int64, error) {
 	if f < 0 {
 		return 0, ErrNegative
 	}
-	return int64(math.Round(f * 60)), nil
+	tenths := math.Round(f * 10)
+	if math.Abs(f*10-tenths) > 1e-9 {
+		return 0, ErrFormat
+	}
+	// 0.1 時間 = 6 分。
+	return int64(tenths) * 6, nil
 }
 
-// FormatHours は minutes（分。負でもよい）を時間の文字列にします。
-// その文字列を ParseHours に渡すと、同じ分に戻ります。
+// FormatHours は minutes（分。負でもよい）を時間の文字列にします（0.1 刻み）。
+// その文字列を ParseHours に渡すと、同じ 0.1 時間刻みの分に戻ります。
 func FormatHours(minutes int64) string {
 	if minutes == 0 {
 		return "0"
@@ -315,23 +321,11 @@ func FormatHours(minutes int64) string {
 		sign = "-"
 		minutes = -minutes
 	}
-	whole := minutes / 60
-	rem := minutes % 60
-	if rem == 0 {
-		return sign + strconv.FormatInt(whole, 10)
+	tenths := (minutes*10 + 30) / 60
+	if tenths%10 == 0 {
+		return sign + strconv.FormatInt(tenths/10, 10)
 	}
-	hundredths := (rem*100 + 30) / 60
-	if hundredths >= 100 {
-		whole++
-		hundredths -= 100
-	}
-	if hundredths == 0 {
-		return fmt.Sprintf("%s%d", sign, whole)
-	}
-	if hundredths%10 == 0 {
-		return fmt.Sprintf("%s%d.%d", sign, whole, hundredths/10)
-	}
-	return fmt.Sprintf("%s%d.%02d", sign, whole, hundredths)
+	return fmt.Sprintf("%s%d.%d", sign, tenths/10, tenths%10)
 }
 
 // PersonDayTenths は minutes を 0.1 人日の個数にし、四捨五入します。

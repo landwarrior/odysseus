@@ -361,7 +361,19 @@
     table.querySelectorAll("[data-period-allocated]").forEach((cell) => {
       const key = cell.getAttribute("data-period-allocated");
       const allocated = processTotals[key] || 0;
-      cell.textContent = formatSum(allocated);
+      const text = formatSum(allocated);
+      const single = cell.querySelector(".sum-single");
+      const den = cell.querySelector(".sum-den");
+      if (single || den) {
+        if (single) {
+          single.textContent = text;
+        }
+        if (den) {
+          den.textContent = text;
+        }
+      } else {
+        cell.textContent = text;
+      }
       const capacity = Number(cell.dataset.capacity || 0);
       cell.classList.remove("cap-warn", "cap-over");
       if (capacity <= 0) {
@@ -423,10 +435,23 @@
     const diffCell = table.querySelector(`[data-phase-diff="${rowId}"]`);
     if (allocatedCell) {
       const single = allocatedCell.querySelector(".sum-single");
-      if (single) {
-        single.textContent = allocated;
+      const den = allocatedCell.querySelector(".sum-den");
+      const num = allocatedCell.querySelector(".sum-num");
+      if (single || den) {
+        if (single) {
+          single.textContent = allocated;
+        }
+        if (den) {
+          den.textContent = allocated;
+        }
       } else {
         allocatedCell.textContent = allocated;
+      }
+      const actual = num ? Number(num.textContent || 0) : 0;
+      const alloc = Number(allocated);
+      const mark = allocatedCell.closest("tr")?.querySelector(".col-phase, .col-task");
+      if (mark) {
+        mark.classList.toggle("actual-over", Number.isFinite(actual) && Number.isFinite(alloc) && actual > alloc);
       }
     }
     if (diffCell) {

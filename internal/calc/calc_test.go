@@ -123,7 +123,8 @@ func TestRemainingAndGross(t *testing.T) {
 }
 
 func TestParseHoursRoundTrip(t *testing.T) {
-	for m := int64(0); m <= 180; m++ {
+	for tenths := int64(0); tenths <= 30; tenths++ {
+		m := tenths * 6
 		got, err := ParseHours(FormatHours(m))
 		if err != nil {
 			t.Fatalf("parse %d (%s): %v", m, FormatHours(m), err)
@@ -131,6 +132,15 @@ func TestParseHoursRoundTrip(t *testing.T) {
 		if got != m {
 			t.Fatalf("round trip %d via %s -> %d", m, FormatHours(m), got)
 		}
+	}
+	if got := FormatHours(8); got != "0.1" {
+		t.Fatalf("snap format 8 = %s", got)
+	}
+	if got, err := ParseHours("0.1"); err != nil || got != 6 {
+		t.Fatalf("parse 0.1 = %d %v", got, err)
+	}
+	if _, err := ParseHours("0.15"); err != ErrFormat {
+		t.Fatalf("reject 0.15: %v", err)
 	}
 	if _, err := ParseHours(""); err != ErrEmpty {
 		t.Fatalf("empty: %v", err)

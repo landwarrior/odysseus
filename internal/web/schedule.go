@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"odysseus/internal/calc"
@@ -32,7 +33,7 @@ type scheduleCell struct {
 }
 
 // scheduleRow はスケジュール表の1行です。一覧は工程、詳細はタスクです。
-// Actual は行の実績合計（人日）。ActualOver は実績が見積を超えたとき true です。
+// Actual は行の実績合計（人日）。ActualOver は実績が割当を超えたとき true です。
 type scheduleRow struct {
 	RowID       string
 	ProcessID   string
@@ -74,6 +75,7 @@ type scheduleProjectBlock struct {
 // schedulePeriodCol はフッターの旬列です。
 // Capacity は、その旬にアサイン期間が重なるユニーク人数 × 営業日（人日）です。
 // 0 円単価のアサインは人数に含めません。CapClass は割当合計に対する黄（80% 以上）／赤（キャパ以上）です。
+// Actual は旬の実績合計（人日）で、実績モードの割当合計分数の分子に使います。
 type schedulePeriodCol struct {
 	YM           string
 	Decade       int
@@ -82,6 +84,7 @@ type schedulePeriodCol struct {
 	Headcount    int
 	Capacity     string
 	Allocated    string
+	Actual       string
 	CapClass     string
 }
 
@@ -284,6 +287,12 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		blocks = append(blocks, block)
 	}
 
+	periodActual := map[string]int64{}
+	for key, minutes := range processActualMap {
+		if i := strings.Index(key, "|"); i >= 0 {
+			periodActual[key[i+1:]] += minutes
+		}
+	}
 	periods := make([]schedulePeriodCol, 0, len(in.Months)*3)
 	for _, ym := range in.Months {
 		for decade := 1; decade <= 3; decade++ {
@@ -299,6 +308,7 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 				Headcount:    heads,
 				Capacity:     calc.FormatPersonDays(capMinutes, std),
 				Allocated:    calc.FormatPersonDays(allocated, std),
+				Actual:       calc.FormatPersonDays(periodActual[periodKey], std),
 				CapClass:     capacityLoadClass(allocated, capMinutes),
 			})
 		}
@@ -376,14 +386,12 @@ func (s *Server) scheduleActualMaps(ctx context.Context, assigns []store.Assignm
 	return processCells, taskCells, processTotals, taskTotals, nil
 }
 
-// attachActualMeta は行の実績合計と、見積との差分表示を付けます。
-func attachActualMeta(row *scheduleRow, estimateMinutes, actualMinutes, std int64) {
-	estStr, actualStr, diffStr, diffClass, diffSign := personDayRowMeta(estimateMinutes, actualMinutes, std)
+// attachActualMeta は行の実績合計と、割当に対する超過判定を付けます。
+// allocatedMinutes は行の割当合計、actualMinutes は実績合計です。
+func attachActualMeta(row *scheduleRow, allocatedMinutes, actualMinutes, std int64) {
+	_, actualStr, _, _, diffSign := personDayRowMeta(allocatedMinutes, actualMinutes, std)
 	row.Actual = actualStr
-	row.ActualDiff = diffStr
-	row.ActualClass = diffClass
 	row.ActualOver = diffSign < 0
-	_ = estStr
 }
 
 // fillCellActual はセルに旬の実績表示を付けます。
@@ -447,7 +455,7 @@ func (s *Server) scheduleProcessRows(
 			DiffClass: diffClass,
 			Editable:  canEdit,
 		}
-		attachActualMeta(&row, est, processActualTotals[line.ID], std)
+		attachActualMeta(&row, allocated, processActualTotals[line.ID], std)
 		for _, ym := range months {
 			for decade := 1; decade <= 3; decade++ {
 				periodKey := ym + "|" + strconv.Itoa(decade)
@@ -527,7 +535,7 @@ func (s *Server) scheduleTaskGroups(
 				DiffClass: diffClass,
 				Editable:  canEdit,
 			}
-			attachActualMeta(&row, est, taskActualTotals[task.ID], std)
+			attachActualMeta(&row, allocated, taskActualTotals[task.ID], std)
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
 					periodKey := ym + "|" + strconv.Itoa(decade)
@@ -562,7 +570,7 @@ func (s *Server) scheduleTaskGroups(
 				DiffClass: diffClass,
 				Editable:  false,
 			}
-			attachActualMeta(&row, est, processActualTotals[line.ID], std)
+			attachActualMeta(&row, 0, processActualTotals[line.ID], std)
 			for _, ym := range months {
 				for decade := 1; decade <= 3; decade++ {
 					periodKey := ym + "|" + strconv.Itoa(decade)

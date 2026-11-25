@@ -4,24 +4,26 @@
 <main class="time-page">
   <h1>実績登録</h1>
   {{template "alerts" .}}
-  <p class="note">日付を選び、アサイン中の全案件へその日の実績を一度に登録します。空欄または 0 にすると、その欄の実績を消します。入力できるのは各アサインの期間内です。1 日の合計は 24 時間までです。</p>
+  <p class="note">日付を選び、アサイン中の全案件へその日の実績を一度に登録します。空欄または 0 にすると、その欄の実績を消します。入力できるのは各アサインの期間内です。時間は 0.1 刻みで、1 日の合計は 24 時間までです。</p>
 
   <form method="get" action="/time" class="time-toolbar">
     <div class="time-toolbar-row">
-      <a class="button secondary" href="/time?date={{.PrevDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">前日</a>
-      <label class="time-static">
-        <span class="time-static-label">日付</span>
-        <input type="date" name="date" value="{{.Date}}" required onchange="this.form.submit()">
-      </label>
-      <a class="button secondary" href="/time?date={{.NextDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">翌日</a>
+      <div class="time-date-group">
+        <a class="button secondary time-date-nav" href="/time?date={{.PrevDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">前日</a>
+        <label class="field time-date-field">
+          <input type="date" name="date" value="{{.Date}}" required onchange="this.form.submit()">
+          <span class="field-label">日付</span>
+        </label>
+        <a class="button secondary time-date-nav" href="/time?date={{.NextDate}}{{if .PersonID}}&amp;person={{.PersonID}}{{end}}">翌日</a>
+      </div>
       {{if .CanPickPerson}}
-      <label class="time-static">
-        <span class="time-static-label">人材</span>
+      <label class="field time-person-field">
         <select name="person" onchange="this.form.submit()">
           {{range .People}}
           <option value="{{.ID}}" {{if eq .ID $.PersonID}}selected{{end}}>{{.Code}} {{.Name}}</option>
           {{end}}
         </select>
+        <span class="field-label">人材</span>
       </label>
       {{else if .ShowPerson}}
       {{range .People}}{{if eq .ID $.PersonID}}<p class="note time-person">入力対象: {{.Code}} {{.Name}}</p>{{end}}{{end}}
@@ -37,36 +39,45 @@
     <input type="hidden" name="person_id" value="{{.PersonID}}">
     <input type="hidden" name="work_date" value="{{.Date}}">
     {{range .Groups}}
-    <section class="time-project">
-      <h2>{{.ProjectCode}} {{.ProjectName}}</h2>
-      {{range .Processes}}
-      <div class="time-process">
-        <h3>{{.ProcessName}}</h3>
-        <p class="time-period">アサイン期間: {{.Period}}</p>
-        <div class="time-rows">
-          {{range .Columns}}
-          <div class="time-row{{if not .InRange}} time-row-out{{end}}">
-            <span class="time-row-label">{{.Label}}</span>
-            <label class="time-hours">
-              <span class="visually-hidden">{{.Label}}の時間</span>
-              <input
-                name="minutes_{{.Key}}"
-                inputmode="decimal"
-                value="{{index $.Cells .Key}}"
-                {{if not .InRange}}disabled title="この日はアサイン期間外です"{{end}}
-              >
-              <span class="time-unit">時間</span>
-            </label>
-            {{if not .InRange}}<span class="time-out-note">期間外</span>{{end}}
+    <details class="time-project">
+      <summary class="time-project-summary">{{.ProjectCode}} {{.ProjectName}}</summary>
+      <div class="time-project-body">
+        {{range .Processes}}
+        <div class="time-process">
+          <h3>{{.ProcessName}}</h3>
+          <p class="time-period">アサイン期間: {{.Period}}</p>
+          <div class="time-rows">
+            {{range .Columns}}
+            <div class="time-row">
+              <span class="time-row-label">{{.Label}}</span>
+              <div class="time-row-side">
+                <label class="time-hours">
+                  <span class="visually-hidden">{{.Label}}の時間</span>
+                  <input
+                    name="minutes_{{.Key}}"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    inputmode="decimal"
+                    value="{{index $.Cells .Key}}"
+                  >
+                  <span class="time-unit">時間</span>
+                </label>
+              </div>
+            </div>
+            {{end}}
           </div>
-          {{end}}
         </div>
+        {{end}}
       </div>
-      {{end}}
-    </section>
+    </details>
     {{end}}
-    <p class="time-submit"><button type="submit" class="primary">登録</button></p>
+    <div class="time-actions">
+      <p class="time-day-total" aria-live="polite">この日の合計: <strong><span data-time-total>{{.DayTotal}}</span></strong> 時間</p>
+      <button type="submit" class="primary">登録</button>
+    </div>
   </form>
+  <script src="/static/time.js"></script>
   {{end}}
 
   {{if .SavedDates}}
