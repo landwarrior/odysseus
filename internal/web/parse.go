@@ -64,14 +64,14 @@ func limitRunes(s, label string, n int) string {
 	return ""
 }
 
-// parseOptionalHours は raw を分にします。空なら 0 と空メッセージです。
+// parseOptionalHours は raw（時間。0.1 刻み）を分にします。空なら 0 と空メッセージです。
 func parseOptionalHours(raw string) (int64, string) {
 	minutes, err := calc.ParseHours(raw)
 	if errors.Is(err, calc.ErrEmpty) {
 		return 0, ""
 	}
 	if err != nil {
-		return 0, "時間は 0 以上の数で入力してください。"
+		return 0, "時間は 0.1 単位で入力してください。"
 	}
 	return minutes, ""
 }

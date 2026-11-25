@@ -56,6 +56,7 @@ type timePage struct {
 	Groups        []timeProjectGroup
 	Columns       []timeColumn
 	Cells         map[string]string
+	DayTotal      string
 	SavedDates    []string
 }
 
@@ -229,12 +230,18 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		}
 	}
 	groups, columns := buildTimeGroups(assignments, tasks, legacy, date)
+	columnKeys := map[string]bool{}
+	for _, column := range columns {
+		columnKeys[column.Key] = true
+	}
 	cells := map[string]string{}
 	savedSet := map[string]bool{}
+	var dayMinutes int64
 	for _, entry := range entries {
 		key := entryKey(entry.AssignmentID, entry.TaskID, entry.TaskID == "" && hasTasksForAssignment(assignments, tasks, entry.AssignmentID))
-		if entry.WorkDate == date {
+		if entry.WorkDate == date && columnKeys[key] {
 			cells[key] = calc.FormatHours(entry.Minutes)
+			dayMinutes += entry.Minutes
 		}
 		savedSet[entry.WorkDate] = true
 	}
@@ -248,7 +255,7 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		base: s.page(w, r, "実績登録"), Date: date, PrevDate: prevDate, NextDate: nextDate,
 		PersonID: personID, People: people,
 		ShowPerson: me.IsAdmin, CanPickPerson: me.IsAdmin && len(people) > 1,
-		Groups: groups, Columns: columns, Cells: cells, SavedDates: savedDates,
+		Groups: groups, Columns: columns, Cells: cells, DayTotal: calc.FormatHours(dayMinutes), SavedDates: savedDates,
 	}
 	return page, columns, true
 }
@@ -279,6 +286,7 @@ func (s *Server) timePeople(w http.ResponseWriter, r *http.Request, me *store.Pe
 }
 
 // buildTimeGroups はアサインとタスクから、案件→工程→入力欄の階層を作ります。
+// 選んだ日がアサイン期間外の工程は出しません。
 func buildTimeGroups(assignments []store.Assignment, tasks []store.Task, legacy map[string]bool, date string) ([]timeProjectGroup, []timeColumn) {
 	byLine := map[string][]store.Task{}
 	for _, task := range tasks {
@@ -288,6 +296,9 @@ func buildTimeGroups(assignments []store.Assignment, tasks []store.Task, legacy 
 	var flat []timeColumn
 	var cur *timeProjectGroup
 	for _, a := range assignments {
+		if date < a.StartDate || date > a.EndDate {
+			continue
+		}
 		if cur == nil || cur.ProjectID != a.ProjectID {
 			groups = append(groups, timeProjectGroup{
 				ProjectID: a.ProjectID, ProjectCode: a.ProjectCode, ProjectName: a.ProjectName,
@@ -296,12 +307,11 @@ func buildTimeGroups(assignments []store.Assignment, tasks []store.Task, legacy 
 		}
 		lineTasks := byLine[a.ProjectProcessID]
 		period := a.StartDate + " 〜 " + a.EndDate
-		inRange := date >= a.StartDate && date <= a.EndDate
 		proc := timeProcessGroup{ProcessName: a.ProcessName, Period: period}
 		if len(lineTasks) == 0 {
 			col := timeColumn{
 				Key: a.ID, AssignmentID: a.ID, Label: a.ProcessName,
-				StartDate: a.StartDate, EndDate: a.EndDate, InRange: inRange,
+				StartDate: a.StartDate, EndDate: a.EndDate, InRange: true,
 			}
 			proc.Columns = append(proc.Columns, col)
 			flat = append(flat, col)
@@ -309,7 +319,7 @@ func buildTimeGroups(assignments []store.Assignment, tasks []store.Task, legacy 
 			for _, task := range lineTasks {
 				col := timeColumn{
 					Key: a.ID + "_" + task.ID, AssignmentID: a.ID, TaskID: task.ID,
-					Label: task.Name, StartDate: a.StartDate, EndDate: a.EndDate, InRange: inRange,
+					Label: task.Name, StartDate: a.StartDate, EndDate: a.EndDate, InRange: true,
 				}
 				proc.Columns = append(proc.Columns, col)
 				flat = append(flat, col)
@@ -317,7 +327,7 @@ func buildTimeGroups(assignments []store.Assignment, tasks []store.Task, legacy 
 			if legacy[a.ID] {
 				col := timeColumn{
 					Key: a.ID + "_legacy", AssignmentID: a.ID, Label: "（未分類）",
-					StartDate: a.StartDate, EndDate: a.EndDate, InRange: inRange,
+					StartDate: a.StartDate, EndDate: a.EndDate, InRange: true,
 				}
 				proc.Columns = append(proc.Columns, col)
 				flat = append(flat, col)

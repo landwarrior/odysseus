@@ -1288,10 +1288,10 @@ ul.schedule-toolbar-notes {
   --sticky-thead-height: 4rem;
 }
 .schedule-table.schedule-detail {
-  --sticky-left-meta1: 480px;
-  --sticky-left-meta2: 555px;
-  --sticky-left-meta3: 625px;
-  --sticky-cols-width: 695px;
+  --sticky-left-meta1: 512px;
+  --sticky-left-meta2: 587px;
+  --sticky-left-meta3: 657px;
+  --sticky-cols-width: 727px;
 }
 .schedule-table th,
 .schedule-table td {
@@ -1322,7 +1322,7 @@ ul.schedule-toolbar-notes {
 }
 .schedule-table col.col-project { width: 192px; }
 .schedule-table col.col-phase { width: 8rem; }
-.schedule-table col.col-task { width: 10rem; }
+.schedule-table col.col-task { width: 12rem; }
 .schedule-table col.col-meta1 { width: 75px; }
 .schedule-table col.col-meta2,
 .schedule-table col.col-meta3 { width: 70px; }
@@ -1334,7 +1334,7 @@ ul.schedule-toolbar-notes {
 }
 .schedule-table .col-project { left: 0; min-width: 192px; }
 .schedule-table .col-phase { left: var(--sticky-left-phase, 192px); min-width: 8rem; }
-.schedule-table .col-task { left: var(--sticky-left-task, 320px); min-width: 10rem; }
+.schedule-table .col-task { left: var(--sticky-left-task, 320px); min-width: 12rem; }
 .schedule-table .col-meta1 { left: var(--sticky-left-meta1, 320px); width: 75px; min-width: 75px; max-width: 75px; text-align: right; box-sizing: border-box; }
 .schedule-table .col-meta2 { left: var(--sticky-left-meta2, 395px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
 .schedule-table .col-meta3 { left: var(--sticky-left-meta3, 465px); width: 70px; min-width: 70px; max-width: 70px; text-align: right; box-sizing: border-box; }
@@ -1362,7 +1362,14 @@ ul.schedule-toolbar-notes {
   font-weight: 400;
 }
 .schedule-table .col-phase:not([colspan]) { max-width: 8rem; }
-.schedule-table .col-task:not([colspan]) { max-width: 10rem; }
+.schedule-table .col-task:not([colspan]) {
+  width: 12rem;
+  min-width: 12rem;
+  max-width: 12rem;
+  white-space: normal;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
 .schedule-table .col-meta1:not([colspan]) {
   width: 75px;
   min-width: 75px;
@@ -1377,16 +1384,17 @@ ul.schedule-toolbar-notes {
   box-sizing: border-box;
 }
 .schedule-table th.col-phase,
-.schedule-table td.col-phase,
-.schedule-table th.col-task,
-.schedule-table td.col-task {
+.schedule-table td.col-phase {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .schedule-table .task-name {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-size: 0.78rem;
+  line-height: 1.25;
 }
 .schedule-table thead .sticky-col { z-index: 4; }
 .schedule-table tfoot .sticky-col {
@@ -1715,111 +1723,216 @@ ul.schedule-toolbar-notes {
 
 main.time-page {
   max-width: min(100%, 1100px);
+  box-sizing: border-box;
 }
 main.time-page .time-toolbar {
-  margin: 1rem 0 1.5rem;
+  margin: 1rem 0 1.25rem;
 }
 main.time-page .time-toolbar-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 12px 16px;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
 }
-main.time-page .time-static {
+main.time-page .time-date-group {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 16px;
+  align-items: stretch;
+  flex: 0 0 auto;
+  min-width: 0;
 }
-main.time-page .time-static-label {
-  color: var(--muted);
-  font-size: 0.92rem;
+main.time-page .time-date-group > * + * {
+  margin-left: -1px;
 }
-main.time-page .time-static input,
-main.time-page .time-static select {
-  font: inherit;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  min-width: 11rem;
+main.time-page .time-date-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
+  white-space: nowrap;
+  position: relative;
+  z-index: 0;
+}
+main.time-page .time-date-nav:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+main.time-page .time-date-nav:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+main.time-page .time-date-nav:hover,
+main.time-page .time-date-nav:focus-visible {
+  z-index: 2;
+}
+main.time-page .time-date-field {
+  width: 8.75rem;
+  flex: 0 0 8.75rem;
+  z-index: 1;
+}
+main.time-page .time-date-field:focus-within {
+  z-index: 3;
+}
+main.time-page .time-date-field > input {
+  border-radius: 0;
+}
+main.time-page .time-person-field {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 16rem;
 }
 main.time-page .time-person {
   margin: 0;
   align-self: center;
+  min-width: 0;
+}
+main.time-page .time-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+  margin: 0.25rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-sizing: border-box;
+}
+main.time-page .time-day-total {
+  flex: 1 1 10rem;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.92rem;
+}
+main.time-page .time-day-total strong {
+  font-size: 1.05rem;
+}
+main.time-page .time-actions > .primary {
+  flex: 1 1 8rem;
+  box-sizing: border-box;
+  min-width: min(100%, 8rem);
+  padding: 0.65rem 1rem;
+  font-size: 1.05rem;
 }
 main.time-page .time-project {
-  margin: 0 0 1.75rem;
-  padding: 1rem 1.1rem 1.1rem;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 0.9rem 0.95rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
 }
-main.time-page .time-project > h2 {
-  margin: 0 0 1rem;
-  font-size: 1.15rem;
+main.time-page .time-project-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.22rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+main.time-page .time-project-summary::-webkit-details-marker {
+  display: none;
+}
+main.time-page .time-project-summary::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.35em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  opacity: 0.7;
+}
+main.time-page .time-project[open] > .time-project-summary::before {
+  margin-top: 0.2em;
+  transform: rotate(45deg);
+}
+main.time-page .time-project[open] > .time-project-summary {
+  margin-bottom: 0.75rem;
+}
+main.time-page .time-project-body {
+  min-width: 0;
 }
 main.time-page .time-process {
-  margin: 0 0 1.1rem;
+  margin: 0 0 0.9rem;
+  min-width: 0;
 }
 main.time-page .time-process:last-child {
   margin-bottom: 0;
 }
 main.time-page .time-process > h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
+  margin: 0 0 0.2rem;
+  font-size: 1.05rem;
+  overflow-wrap: break-word;
 }
 main.time-page .time-period {
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.45rem;
   color: var(--muted);
   font-size: 0.92rem;
 }
 main.time-page .time-rows {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 main.time-page .time-row {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 0.45rem 0.6rem;
+  gap: 6px 10px;
+  padding: 0.28rem 0.5rem;
   border-radius: 6px;
   background: var(--thead-bg, color-mix(in srgb, var(--surface) 88%, var(--ink) 4%));
-}
-main.time-page .time-row-out {
-  opacity: 0.65;
+  min-width: 0;
+  box-sizing: border-box;
 }
 main.time-page .time-row-label {
-  flex: 1 1 auto;
   min-width: 0;
-  font-size: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+main.time-page .time-row-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 main.time-page .time-hours {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 main.time-page .time-hours input {
-  width: 5.5rem;
+  box-sizing: border-box;
+  width: 4.25rem;
+  min-height: 1.7rem;
   font: inherit;
-  padding: 0.35rem 0.5rem;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  padding: 0.15rem 0.35rem;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
   color: var(--ink);
   text-align: right;
 }
-main.time-page .time-unit,
-main.time-page .time-out-note {
+main.time-page .time-unit {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 0.92rem;
+  white-space: nowrap;
 }
 main.time-page .time-saved-dates {
   display: flex;
@@ -1829,13 +1942,12 @@ main.time-page .time-saved-dates {
 main.time-page .time-saved-dates a.current {
   font-weight: 700;
 }
-main.time-page .time-submit {
-  margin: 1.25rem 0 0;
-}
-main.time-page .time-submit .primary {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.75rem 1rem;
-  font-size: 1.05rem;
+@media (max-width: 28rem) {
+  main.time-page .time-toolbar-row {
+    flex-wrap: wrap;
+  }
+  main.time-page .time-person-field {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
