@@ -162,6 +162,11 @@ func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderProject(w, r, page, http.StatusBadRequest, msg)
 		return
 	}
+	managerIDs := r.Form["manager_id"]
+	if msg := s.validateManagerIDs(r, managerIDs); msg != "" {
+		s.renderProject(w, r, page, http.StatusBadRequest, msg)
+		return
+	}
 	if _, err := s.store.SaveProject(r.Context(), project, lines); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			s.renderProject(w, r, page, http.StatusBadRequest, "このプロジェクト番号は既に使われています。")
@@ -181,11 +186,6 @@ func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.saveProjectTasks(r, id, forms); err != nil {
 		s.fail(w, err)
-		return
-	}
-	managerIDs := r.Form["manager_id"]
-	if msg := s.validateManagerIDs(r, managerIDs); msg != "" {
-		s.renderProject(w, r, page, http.StatusBadRequest, msg)
 		return
 	}
 	if err := s.store.ReplaceProjectManagers(r.Context(), id, managerIDs); err != nil {
