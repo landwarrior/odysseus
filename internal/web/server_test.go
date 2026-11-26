@@ -399,6 +399,164 @@ func TestProjectManagerFlow(t *testing.T) {
 	}
 }
 
+// TestManagerProxyDayTotalIncludesHiddenAssignments は、責任者が他人分を代行するとき、
+// 担当外案件に既にある同日の実績も 24 時間上限に含めることを確認します。
+func TestManagerProxyDayTotalIncludesHiddenAssignments(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	database, err := db.Open("sqlite", filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { database.SQL.Close() })
+	if err := db.Migrate(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	st := store.New(database)
+	adminPassword, _, err := st.Seed(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewServer(st, config.Config{
+		DataDir: dir, Driver: "sqlite", StandardMinutes: 480,
+		SessionKey: bytes.Repeat([]byte("k"), 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	admin := newClient(t, ts.URL)
+
+	body := admin.submit(t, "/login", url.Values{"code": {"admin"}, "password": {adminPassword}})
+	body = admin.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {adminPassword},
+		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
+	})
+	body = admin.submit(t, "/people", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"mgr2"}, "name": {"責任"}, "name_kana": {"者"},
+		"password": {"managerpass"}, "active": {"1"}, "is_manager": {"1"},
+	})
+	body = admin.submit(t, "/people", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"m03"}, "name": {"作業"}, "name_kana": {"者"},
+		"password": {"workerpass"}, "active": {"1"},
+	})
+	roles, err := st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pg string
+	for _, role := range roles {
+		if role.Name == "PG" {
+			pg = role.ID
+		}
+	}
+	mgrID := personID(t, st, "mgr2")
+	workerID := personID(t, st, "m03")
+	body = admin.submit(t, "/people/"+mgrID+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"5000"},
+	})
+	body = admin.submit(t, "/people/"+workerID+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"4000"},
+	})
+	processes, err := st.ListProcesses(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var build string
+	for _, process := range processes {
+		if process.Name == "製造" {
+			build = process.ID
+		}
+	}
+	body = admin.submit(t, "/projects", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"HT1"}, "name": {"担当案件"}, "order_amount": {"500000"},
+		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"5.0"},
+		"manager_id": {mgrID},
+	})
+	managed := projectByCode(t, st, "HT1")
+	body = admin.submit(t, "/projects", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"HT2"}, "name": {"他案件"}, "order_amount": {"200000"},
+		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"5.0"},
+	})
+	other := projectByCode(t, st, "HT2")
+	managedLines, err := st.ListProcessLines(ctx, managed.ID)
+	if err != nil || len(managedLines) != 1 {
+		t.Fatalf("managed lines: %+v %v", managedLines, err)
+	}
+	otherLines, err := st.ListProcessLines(ctx, other.ID)
+	if err != nil || len(otherLines) != 1 {
+		t.Fatalf("other lines: %+v %v", otherLines, err)
+	}
+	body = admin.submit(t, "/projects/"+managed.ID+"/assignments", url.Values{
+		"csrf": {csrfOf(t, body)}, "project_process_id": {managedLines[0].ID},
+		"person_id": {workerID}, "role_" + managedLines[0].ID: {pg},
+		"rate_kind": {"hourly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+	})
+	body = admin.submit(t, "/projects/"+other.ID+"/assignments", url.Values{
+		"csrf": {csrfOf(t, body)}, "project_process_id": {otherLines[0].ID},
+		"person_id": {workerID}, "role_" + otherLines[0].ID: {pg},
+		"rate_kind": {"hourly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+	})
+	managedAssigns, err := st.ListAssignmentsByProject(ctx, managed.ID)
+	if err != nil || len(managedAssigns) != 1 {
+		t.Fatalf("managed assigns: %+v %v", managedAssigns, err)
+	}
+	otherAssigns, err := st.ListAssignmentsByProject(ctx, other.ID)
+	if err != nil || len(otherAssigns) != 1 {
+		t.Fatalf("other assigns: %+v %v", otherAssigns, err)
+	}
+	if err := st.SaveDay(ctx, []store.DayCell{{
+		AssignmentID: otherAssigns[0].ID, WorkDate: "2026-04-10", Minutes: 16 * 60,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := newClient(t, ts.URL)
+	body = manager.submit(t, "/login", url.Values{"code": {"mgr2"}, "password": {"managerpass"}})
+	body = manager.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {"managerpass"},
+		"new_password": {"managerpass2"}, "confirm_password": {"managerpass2"},
+	})
+	timePage := manager.getBody(t, "/time?date=2026-04-10&person="+workerID)
+	if !strings.Contains(timePage, "担当案件") {
+		t.Fatalf("manager should see managed project:\n%s", timePage)
+	}
+	if strings.Contains(timePage, "他案件") {
+		t.Fatal("manager must not see unmanaged project columns")
+	}
+	if !strings.Contains(timePage, "data-time-total>16</") {
+		t.Fatalf("day total should include hidden 16h:\n%s", timePage)
+	}
+	res, err := manager.http.PostForm(ts.URL+"/time", url.Values{
+		"csrf": {csrfOf(t, timePage)}, "person_id": {workerID}, "work_date": {"2026-04-10"},
+		"minutes_" + managedAssigns[0].ID: {"9"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	rejectBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 when day exceeds 24h, got %d\n%s", res.StatusCode, rejectBody)
+	}
+	if !strings.Contains(string(rejectBody), "1 日の入力は合計 24 時間までです") {
+		t.Fatalf("missing 24h warning:\n%s", rejectBody)
+	}
+	okPage := manager.submit(t, "/time", url.Values{
+		"csrf": {csrfOf(t, timePage)}, "person_id": {workerID}, "work_date": {"2026-04-10"},
+		"minutes_" + managedAssigns[0].ID: {"8"},
+	})
+	if !strings.Contains(okPage, "登録しました") && !strings.Contains(manager.getBody(t, "/time?date=2026-04-10&person="+workerID), "8") {
+		t.Fatalf("8h on managed + 16h hidden should save:\n%s", okPage)
+	}
+}
+
 type client struct {
 	t    *testing.T
 	base string

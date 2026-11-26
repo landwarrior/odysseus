@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"sort"
@@ -107,7 +108,9 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 	}
 	var cells []store.DayCell
 	var dayTotal int64
+	visible := map[string]bool{}
 	for _, column := range columns {
+		visible[column.AssignmentID] = true
 		raw := r.FormValue("minutes_" + column.Key)
 		var minutes int64
 		if raw != "" {
@@ -134,6 +137,13 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
+	// 代行時は担当案件以外の欄がフォームに出ない。同じ日の他案件実績も 24 時間上限に含める。
+	other, err := s.hiddenDayMinutes(r.Context(), page.PersonID, date, visible)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	dayTotal += other
 	if dayTotal > 24*60 {
 		page.Date = date
 		page.Warn = "1 日の入力は合計 24 時間までです。"
@@ -179,12 +189,12 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		s.redirectWarn(w, r, "/time", "入力できるアサインがありません。")
 		return timePage{}, nil, false
 	}
-	assignments, err := s.store.ListPersonOpenAssignments(r.Context(), personID)
+	allAssignments, err := s.store.ListPersonOpenAssignments(r.Context(), personID)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
 	}
-	assignments, err = s.filterTimeAssignments(r, me, personID, assignments)
+	assignments, err := s.filterTimeAssignments(r, me, personID, allAssignments)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
@@ -220,11 +230,12 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	monthEnd, _ := time.Parse("2006-01-02", monthStart)
 	monthUntil := monthEnd.AddDate(0, 1, 0).Format("2006-01-02")
 
-	ids := make([]string, len(assignments))
-	for i, a := range assignments {
-		ids[i] = a.ID
+	// 画面の入力欄は絞り込み後だが、日次合計と日付リンクは対象者の全完了前アサイン分を使う。
+	allIDs := make([]string, len(allAssignments))
+	for i, a := range allAssignments {
+		allIDs[i] = a.ID
 	}
-	entries, err := s.store.ListEntries(r.Context(), ids, monthStart, monthUntil)
+	entries, err := s.store.ListEntries(r.Context(), allIDs, monthStart, monthUntil)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
@@ -247,6 +258,8 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		key := entryKey(entry.AssignmentID, entry.TaskID, entry.TaskID == "" && hasTasksForAssignment(assignments, tasks, entry.AssignmentID))
 		if entry.WorkDate == date && columnKeys[key] {
 			cells[key] = calc.FormatHours(entry.Minutes)
+		}
+		if entry.WorkDate == date {
 			dayMinutes += entry.Minutes
 		}
 		savedSet[entry.WorkDate] = true
@@ -342,6 +355,39 @@ func (s *Server) filterTimeAssignments(r *http.Request, me *store.Person, person
 		}
 	}
 	return out, nil
+}
+
+// hiddenDayMinutes は、visible に無い完了前アサインについて、date に既にある実績分の合計を返します。
+// 責任者の代行保存で、フォームに出ていない他案件分を 24 時間上限へ加算するために使います。
+func (s *Server) hiddenDayMinutes(ctx context.Context, personID, date string, visible map[string]bool) (int64, error) {
+	assignments, err := s.store.ListPersonOpenAssignments(ctx, personID)
+	if err != nil {
+		return 0, err
+	}
+	var ids []string
+	for _, a := range assignments {
+		if visible[a.ID] {
+			continue
+		}
+		ids = append(ids, a.ID)
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	day, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return 0, err
+	}
+	until := day.AddDate(0, 0, 1).Format("2006-01-02")
+	entries, err := s.store.ListEntries(ctx, ids, date, until)
+	if err != nil {
+		return 0, err
+	}
+	var sum int64
+	for _, entry := range entries {
+		sum += entry.Minutes
+	}
+	return sum, nil
 }
 
 // buildTimeGroups はアサインとタスクから、案件→工程→入力欄の階層を作ります。
