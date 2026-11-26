@@ -530,6 +530,9 @@ func TestManagerProxyDayTotalIncludesHiddenAssignments(t *testing.T) {
 	if !strings.Contains(timePage, "data-time-total>16</") {
 		t.Fatalf("day total should include hidden 16h:\n%s", timePage)
 	}
+	if !strings.Contains(timePage, `data-time-base="16"`) {
+		t.Fatalf("hidden base for JS total missing:\n%s", timePage)
+	}
 	res, err := manager.http.PostForm(ts.URL+"/time", url.Values{
 		"csrf": {csrfOf(t, timePage)}, "person_id": {workerID}, "work_date": {"2026-04-10"},
 		"minutes_" + managedAssigns[0].ID: {"9"},

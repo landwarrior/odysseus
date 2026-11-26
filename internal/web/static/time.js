@@ -26,7 +26,8 @@
   }
 
   function refreshTotal() {
-    let sum = 0;
+    // 代行時など、フォームに出ない同日実績は data-time-base に載せる。
+    let sum = parseHours(form.getAttribute("data-time-base"));
     form.querySelectorAll(".time-hours input").forEach((input) => {
       if (input.disabled) {
         return;

@@ -56,9 +56,10 @@ type timePage struct {
 	CanPickPerson bool
 	Groups        []timeProjectGroup
 	Columns       []timeColumn
-	Cells         map[string]string
-	DayTotal      string
-	SavedDates    []string
+	Cells          map[string]string
+	DayTotal       string
+	HiddenDayTotal string // フォームに出ない同日実績。JS の合計に足す。
+	SavedDates     []string
 }
 
 // handleTime は横断の実績入力画面を出します。
@@ -253,14 +254,16 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	}
 	cells := map[string]string{}
 	savedSet := map[string]bool{}
-	var dayMinutes int64
+	var dayMinutes, hiddenMinutes int64
 	for _, entry := range entries {
 		key := entryKey(entry.AssignmentID, entry.TaskID, entry.TaskID == "" && hasTasksForAssignment(assignments, tasks, entry.AssignmentID))
-		if entry.WorkDate == date && columnKeys[key] {
-			cells[key] = calc.FormatHours(entry.Minutes)
-		}
 		if entry.WorkDate == date {
 			dayMinutes += entry.Minutes
+			if columnKeys[key] {
+				cells[key] = calc.FormatHours(entry.Minutes)
+			} else {
+				hiddenMinutes += entry.Minutes
+			}
 		}
 		savedSet[entry.WorkDate] = true
 	}
@@ -274,7 +277,9 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		base: s.page(w, r, "実績登録"), Date: date, PrevDate: prevDate, NextDate: nextDate,
 		PersonID: personID, People: people,
 		ShowPerson: canProxy || len(people) > 1, CanPickPerson: canProxy && len(people) > 1,
-		Groups: groups, Columns: columns, Cells: cells, DayTotal: calc.FormatHours(dayMinutes), SavedDates: savedDates,
+		Groups: groups, Columns: columns, Cells: cells,
+		DayTotal: calc.FormatHours(dayMinutes), HiddenDayTotal: calc.FormatHours(hiddenMinutes),
+		SavedDates: savedDates,
 	}
 	return page, columns, true
 }
