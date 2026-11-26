@@ -119,6 +119,137 @@ func (s *Store) DeleteProject(ctx context.Context, projectID string) error {
 	return missing(res)
 }
 
+// ListProjectManagerIDs は projectID の責任者（人材 ID）を、コード順で返します。
+func (s *Store) ListProjectManagerIDs(ctx context.Context, projectID string) ([]string, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT pm.person_id
+		FROM project_manager pm
+		JOIN person ON person.id = pm.person_id
+		WHERE pm.project_id = ?
+		ORDER BY person.code, person.name`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// ListManagedProjectIDs は personID が責任者になっている案件 ID を返します。
+func (s *Store) ListManagedProjectIDs(ctx context.Context, personID string) ([]string, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT project_id FROM project_manager WHERE person_id = ? ORDER BY project_id`, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// IsProjectManager は personID が projectID の責任者なら真です。
+func (s *Store) IsProjectManager(ctx context.Context, projectID, personID string) (bool, error) {
+	var n int
+	err := s.db.QueryRow(ctx, `
+		SELECT COUNT(*) FROM project_manager WHERE project_id = ? AND person_id = ?`,
+		projectID, personID).Scan(&n)
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// ReplaceProjectManagers は projectID の責任者を personIDs で置き換えます。
+// 存在しない人材や無効な人材は ErrNotFound です。
+func (s *Store) ReplaceProjectManagers(ctx context.Context, projectID string, personIDs []string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var n int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM project WHERE id = ?`, projectID).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	seen := map[string]bool{}
+	var unique []string
+	for _, id := range personIDs {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		unique = append(unique, id)
+	}
+	for _, id := range unique {
+		var active, manager int
+		err := tx.QueryRow(ctx, `SELECT active, is_manager FROM person WHERE id = ?`, id).Scan(&active, &manager)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if active == 0 || manager == 0 {
+			return ErrNotFound
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM project_manager WHERE project_id = ?`, projectID); err != nil {
+		return err
+	}
+	stamp := now()
+	for _, id := range unique {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO project_manager (project_id, person_id, created_at) VALUES (?, ?, ?)`,
+			projectID, id, stamp); err != nil {
+			return mapWriteErr(err)
+		}
+	}
+	return tx.Commit()
+}
+
+// ListAssigneesOnManagedProjects は personID が責任者の完了前案件にアサインがある人材を返します。
+func (s *Store) ListAssigneesOnManagedProjects(ctx context.Context, personID string) ([]OpenAssignee, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT person.id, person.code, person.name
+		FROM person
+		JOIN assignment a ON a.person_id = person.id
+		JOIN project_process pp ON pp.id = a.project_process_id
+		JOIN project ON project.id = pp.project_id
+		JOIN project_manager pm ON pm.project_id = project.id
+		WHERE pm.person_id = ? AND project.status <> 'closed'
+		ORDER BY person.code, person.name`, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []OpenAssignee
+	for rows.Next() {
+		var a OpenAssignee
+		if err := rows.Scan(&a.ID, &a.Code, &a.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 // ListProcessLines は projectID の工程明細を、工程の並び順で返します。
 func (s *Store) ListProcessLines(ctx context.Context, projectID string) ([]ProcessLine, error) {
 	return listLines(ctx, s.db, projectID)

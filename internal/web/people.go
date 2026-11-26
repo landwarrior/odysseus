@@ -249,6 +249,7 @@ func (s *Server) renderPersonError(w http.ResponseWriter, r *http.Request, id st
 	page.Person.NameKana = in.NameKana
 	page.Person.Remarks = in.Remarks
 	page.Person.IsAdmin = in.IsAdmin
+	page.Person.IsManager = in.IsManager
 	page.Person.Active = in.Active
 	page.Person.ID = id
 	s.render(w, http.StatusBadRequest, "person_form", page)
@@ -260,7 +261,7 @@ func readPerson(r *http.Request, passwordRequired bool) (store.NewPerson, string
 	in := store.NewPerson{
 		Code: formText(r, "code"), Name: formText(r, "name"), NameKana: formText(r, "name_kana"),
 		Password: r.FormValue("password"), Remarks: formText(r, "remarks"),
-		IsAdmin: checkbox(r, "is_admin"), Active: checkbox(r, "active"),
+		IsAdmin: checkbox(r, "is_admin"), IsManager: checkbox(r, "is_manager"), Active: checkbox(r, "active"),
 	}
 	var msg string
 	if in.Code == "" {
@@ -281,7 +282,7 @@ func readPerson(r *http.Request, passwordRequired bool) (store.NewPerson, string
 func postedPerson(in store.NewPerson) store.Person {
 	return store.Person{
 		Code: in.Code, Name: in.Name, NameKana: in.NameKana, Remarks: in.Remarks,
-		IsAdmin: in.IsAdmin, Active: in.Active,
+		IsAdmin: in.IsAdmin, IsManager: in.IsManager, Active: in.Active,
 	}
 }
 

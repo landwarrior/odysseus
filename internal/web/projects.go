@@ -31,14 +31,25 @@ type lineForm struct {
 	Tasks     []taskForm
 }
 
+// managerOpt は案件責任者の候補1人です。Selected が真なら既に責任者です。
+type managerOpt struct {
+	ID       string
+	Label    string
+	Selected bool
+}
+
 // projectPage は案件の登録と編集です。IsNew が真のときは削除欄を出しません。
+// CanManage は共通導線用、CanEditManagers が真のときだけ責任者の割当欄を出します。
 type projectPage struct {
 	base
-	Project   store.Project
-	Lines     []lineForm
-	Processes []store.Process
-	IsNew     bool
-	Status    string
+	Project         store.Project
+	Lines           []lineForm
+	Processes       []store.Process
+	Managers        []managerOpt
+	CanManage       bool
+	CanEditManagers bool
+	IsNew           bool
+	Status          string
 }
 
 // handleProjectNew は空の案件作成画面を出します。初期状態は進行中です。
@@ -50,16 +61,24 @@ func (s *Server) handleProjectNew(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleProjectCreate はフォームの案件と工程を登録し、編集画面へ移します。
+// 作成者が責任者権限を持つときは、自分を案件責任者に必ず含めます。
 func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 	project, lines, forms, msg := s.readProject(r, "")
+	me := personFrom(r)
+	managerIDs := withDefaultManager(r.Form["manager_id"], me)
+	failPage := projectPage{base: s.page(w, r, "プロジェクト作成"), Project: project, Lines: forms, IsNew: true}
 	if msg != "" {
-		s.renderProject(w, r, projectPage{base: s.page(w, r, "プロジェクト作成"), Project: project, Lines: forms, IsNew: true}, http.StatusBadRequest, msg)
+		s.renderProject(w, r, failPage, http.StatusBadRequest, msg)
+		return
+	}
+	if msg := s.validateManagerIDs(r, managerIDs); msg != "" {
+		s.renderProject(w, r, failPage, http.StatusBadRequest, msg)
 		return
 	}
 	id, err := s.store.SaveProject(r.Context(), project, lines)
 	if err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.renderProject(w, r, projectPage{base: s.page(w, r, "プロジェクト作成"), Project: project, Lines: forms, IsNew: true}, http.StatusBadRequest, "このプロジェクト番号は既に使われています。")
+			s.renderProject(w, r, failPage, http.StatusBadRequest, "このプロジェクト番号は既に使われています。")
 			return
 		}
 		s.fail(w, err)
@@ -69,7 +88,51 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	if err := s.store.ReplaceProjectManagers(r.Context(), id, managerIDs); err != nil {
+		s.fail(w, err)
+		return
+	}
 	s.redirect(w, r, "/projects/"+id, "登録しました。")
+}
+
+// withDefaultManager は me が責任者権限を持つとき、ids に me.ID を足して返します。
+func withDefaultManager(ids []string, me *store.Person) []string {
+	if me == nil || !me.IsManager {
+		return ids
+	}
+	for _, id := range ids {
+		if id == me.ID {
+			return ids
+		}
+	}
+	return append(append([]string{}, ids...), me.ID)
+}
+
+// validateManagerIDs は責任者候補が、有効かつ責任者権限を持つか確認します。
+// 問題があればメッセージ、なければ空です。
+func (s *Server) validateManagerIDs(r *http.Request, personIDs []string) string {
+	if len(personIDs) == 0 {
+		return ""
+	}
+	people, err := s.store.ListPeople(r.Context())
+	if err != nil {
+		return "責任者の確認に失敗しました。"
+	}
+	ok := map[string]bool{}
+	for _, p := range people {
+		if p.Active && p.IsManager {
+			ok[p.ID] = true
+		}
+	}
+	for _, id := range personIDs {
+		if id == "" {
+			continue
+		}
+		if !ok[id] {
+			return "責任者に選べない人材が含まれています。"
+		}
+	}
+	return ""
 }
 
 // handleProjectEdit はパスの案件の編集画面を出します。
@@ -84,26 +147,28 @@ func (s *Server) handleProjectEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderProject(w, r, projectPage{
-		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms,
+		base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms, CanManage: true,
 	}, http.StatusOK)
 }
 
 // handleProjectUpdate はパスの案件をフォームの内容で更新します。
+// 責任者の割当は、管理者またはその案件を編集できる責任者が変えられます。
 func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	project, lines, forms, msg := s.readProject(r, id)
+	page := projectPage{base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms, CanManage: true}
 	if msg != "" {
-		s.renderProject(w, r, projectPage{base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms}, http.StatusBadRequest, msg)
+		s.renderProject(w, r, page, http.StatusBadRequest, msg)
 		return
 	}
 	if _, err := s.store.SaveProject(r.Context(), project, lines); err != nil {
 		if errors.Is(err, store.ErrConflict) {
-			s.renderProject(w, r, projectPage{base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms}, http.StatusBadRequest, "このプロジェクト番号は既に使われています。")
+			s.renderProject(w, r, page, http.StatusBadRequest, "このプロジェクト番号は既に使われています。")
 			return
 		}
 		var used *store.InUseError
 		if errors.As(err, &used) {
-			s.renderProject(w, r, projectPage{base: s.page(w, r, "プロジェクト編集"), Project: project, Lines: forms}, http.StatusBadRequest, used.Name+" はアサインがあるため外せません。先にアサインを削除してください。")
+			s.renderProject(w, r, page, http.StatusBadRequest, used.Name+" はアサインがあるため外せません。先にアサインを削除してください。")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {
@@ -114,6 +179,15 @@ func (s *Server) handleProjectUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.saveProjectTasks(r, id, forms); err != nil {
+		s.fail(w, err)
+		return
+	}
+	managerIDs := r.Form["manager_id"]
+	if msg := s.validateManagerIDs(r, managerIDs); msg != "" {
+		s.renderProject(w, r, page, http.StatusBadRequest, msg)
+		return
+	}
+	if err := s.store.ReplaceProjectManagers(r.Context(), id, managerIDs); err != nil {
 		s.fail(w, err)
 		return
 	}
@@ -420,7 +494,71 @@ func (s *Server) renderProject(w http.ResponseWriter, r *http.Request, page proj
 		return
 	}
 	page.Processes = selectableProcesses(processes, page.Lines)
+	me := personFrom(r)
+	if !page.IsNew {
+		page.CanManage = true
+	}
+	page.CanEditManagers = (page.IsNew && canCreateProject(me)) || page.CanManage
+	var formSelected []string
+	if r.Method == http.MethodPost {
+		formSelected = r.Form["manager_id"]
+	}
+	managers, err := s.projectManagerOpts(r, page.Project.ID, page.IsNew, formSelected, me)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	page.Managers = managers
 	s.render(w, status, "project_form", page)
+}
+
+// projectManagerOpts は責任者権限を持つ人材を候補にします。
+// selectedIDs があればそれを優先し、新規作成で未指定なら作成者（責任者権限あり）を選びます。
+// 既に案件責任者で権限を外された人も、選択済みとして残します。
+func (s *Server) projectManagerOpts(r *http.Request, projectID string, isNew bool, selectedIDs []string, me *store.Person) ([]managerOpt, error) {
+	people, err := s.store.ListPeople(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	selected := map[string]bool{}
+	if selectedIDs != nil {
+		for _, id := range selectedIDs {
+			selected[id] = true
+		}
+		if isNew {
+			for _, id := range withDefaultManager(nil, me) {
+				selected[id] = true
+			}
+		}
+	} else if projectID != "" {
+		ids, err := s.store.ListProjectManagerIDs(r.Context(), projectID)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range ids {
+			selected[id] = true
+		}
+	} else if isNew {
+		for _, id := range withDefaultManager(nil, me) {
+			selected[id] = true
+		}
+	}
+	var out []managerOpt
+	for _, p := range people {
+		if !(p.IsManager && p.Active) && !selected[p.ID] {
+			continue
+		}
+		label := p.Code + " " + p.FullName()
+		if !p.IsManager {
+			label += "（権限なし）"
+		} else if !p.Active {
+			label += "（無効）"
+		}
+		out = append(out, managerOpt{
+			ID: p.ID, Label: label, Selected: selected[p.ID],
+		})
+	}
+	return out, nil
 }
 
 // selectableProcesses は all のうち、有効な工程と、lines で既に選ばれている無効な工程を返します。
@@ -452,6 +590,7 @@ func firstMsg(current, next string) string {
 type assignPage struct {
 	base
 	Project      store.Project
+	CanManage    bool
 	Groups       []assignPersonGroup
 	Lines        []assignLineOpt
 	People       []opt
@@ -535,7 +674,7 @@ func (s *Server) prepareAssign(w http.ResponseWriter, r *http.Request) (assignPa
 		return a.PersonName < b.PersonName
 	})
 	page := assignPage{
-		base: s.page(w, r, "人材アサイン"), Project: project,
+		base: s.page(w, r, "人材アサイン"), Project: project, CanManage: true,
 		People: activePersonOpts(people), Roles: activeRoleOpts(roles),
 		DefaultStart: project.StartDate, DefaultEnd: project.EndDate,
 	}
@@ -799,8 +938,9 @@ func (s *Server) handleRecalc(w http.ResponseWriter, r *http.Request) {
 // forecastPage は1案件の予実画面です。
 type forecastPage struct {
 	base
-	Project store.Project
-	Report  report.Report
+	Project   store.Project
+	CanManage bool
+	Report    report.Report
 }
 
 // handleForecast はパスの案件の予実を計算して出します。
@@ -820,9 +960,10 @@ func (s *Server) handleForecast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := forecastPage{
-		base:    s.page(w, r, "予実"),
-		Project: bundle.Project,
-		Report:  report.BuildWithContext(bundle, peers, time.Time{}),
+		base:      s.page(w, r, "予実"),
+		Project:   bundle.Project,
+		CanManage: true,
+		Report:    report.BuildWithContext(bundle, peers, time.Time{}),
 	}
 	s.render(w, http.StatusOK, "forecast", page)
 }

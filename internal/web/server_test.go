@@ -132,7 +132,7 @@ func TestForecastFlow(t *testing.T) {
 		t.Fatal("member must not edit project schedule cells")
 	}
 	status, forbidden := member.get(t, "/projects/"+project.ID)
-	if status != http.StatusForbidden || !strings.Contains(forbidden, "管理者権限がありません") {
+	if status != http.StatusForbidden || !strings.Contains(forbidden, "この案件を編集する権限がありません") {
 		t.Fatalf("member project edit: %d %s", status, forbidden)
 	}
 	allocRes, err := member.http.PostForm(ts.URL+"/projects/allocations", url.Values{
@@ -147,7 +147,7 @@ func TestForecastFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if allocRes.StatusCode != http.StatusForbidden || !strings.Contains(string(allocBody), "管理者権限がありません") {
+	if allocRes.StatusCode != http.StatusForbidden || !strings.Contains(string(allocBody), "この案件を編集する権限がありません") {
 		t.Fatalf("member allocation save: %d %s", allocRes.StatusCode, allocBody)
 	}
 	assignments, err := st.ListAssignmentsByProject(ctx, project.ID)
@@ -202,6 +202,200 @@ func TestForecastFlow(t *testing.T) {
 		if !strings.Contains(home, want) {
 			t.Fatalf("home missing %s:\n%s", want, home)
 		}
+	}
+}
+
+func TestProjectManagerFlow(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	database, err := db.Open("sqlite", filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { database.SQL.Close() })
+	if err := db.Migrate(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	st := store.New(database)
+	adminPassword, _, err := st.Seed(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewServer(st, config.Config{
+		DataDir: dir, Driver: "sqlite", StandardMinutes: 480,
+		SessionKey: bytes.Repeat([]byte("k"), 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	admin := newClient(t, ts.URL)
+
+	body := admin.submit(t, "/login", url.Values{"code": {"admin"}, "password": {adminPassword}})
+	body = admin.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {adminPassword},
+		"new_password": {"adminpass1"}, "confirm_password": {"adminpass1"},
+	})
+	body = admin.submit(t, "/people", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"mgr1"}, "name": {"管理"}, "name_kana": {"次郎"},
+		"password": {"managerpass"}, "active": {"1"}, "is_manager": {"1"},
+	})
+	body = admin.submit(t, "/people", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"m02"}, "name": {"作業"}, "name_kana": {"花子"},
+		"password": {"workerpass"}, "active": {"1"},
+	})
+	roles, err := st.ListRoles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pg string
+	for _, role := range roles {
+		if role.Name == "PG" {
+			pg = role.ID
+		}
+	}
+	mgrID := personID(t, st, "mgr1")
+	workerID := personID(t, st, "m02")
+	body = admin.submit(t, "/people/"+mgrID+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"5000"},
+	})
+	body = admin.submit(t, "/people/"+workerID+"/rates", url.Values{
+		"csrf": {csrfOf(t, body)}, "role_id": {pg}, "from_date": {"2026-04-01"}, "hourly_yen": {"4000"},
+	})
+	processes, err := st.ListProcesses(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var build string
+	for _, process := range processes {
+		if process.Name == "製造" {
+			build = process.ID
+		}
+	}
+	body = admin.submit(t, "/projects", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"PM1"}, "name": {"責任者案件"}, "order_amount": {"800000"},
+		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"5.0"},
+		"manager_id": {mgrID},
+	})
+	project := projectByCode(t, st, "PM1")
+	ok, err := st.IsProjectManager(ctx, project.ID, mgrID)
+	if err != nil || !ok {
+		t.Fatalf("manager not saved: %v %v", ok, err)
+	}
+	body = admin.submit(t, "/projects", url.Values{
+		"csrf": {csrfOf(t, body)}, "code": {"PM2"}, "name": {"別案件"}, "order_amount": {"100000"},
+		"status": {"active"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+		"process_id": {build}, "line_start": {"2026-04-01"}, "line_end": {"2026-04-30"}, "line_days": {"1.0"},
+	})
+	other := projectByCode(t, st, "PM2")
+	lines, err := st.ListProcessLines(ctx, project.ID)
+	if err != nil || len(lines) != 1 {
+		t.Fatalf("lines: %+v %v", lines, err)
+	}
+	body = admin.submit(t, "/projects/"+project.ID+"/assignments", url.Values{
+		"csrf": {csrfOf(t, body)}, "project_process_id": {lines[0].ID},
+		"person_id": {workerID}, "role_" + lines[0].ID: {pg},
+		"rate_kind": {"hourly"}, "start_date": {"2026-04-01"}, "end_date": {"2026-04-30"},
+	})
+
+	manager := newClient(t, ts.URL)
+	body = manager.submit(t, "/login", url.Values{"code": {"mgr1"}, "password": {"managerpass"}})
+	body = manager.submit(t, "/password", url.Values{
+		"csrf": {csrfOf(t, body)}, "current_password": {"managerpass"},
+		"new_password": {"managerpass2"}, "confirm_password": {"managerpass2"},
+	})
+	if !strings.Contains(body, "担当の進行中プロジェクト") || !strings.Contains(body, "責任者案件") {
+		t.Fatalf("manager home:\n%s", body)
+	}
+	if strings.Contains(body, "別案件") {
+		t.Fatal("manager home shows unmanaged project")
+	}
+	status, peoplePage := manager.get(t, "/people")
+	if status != http.StatusForbidden {
+		t.Fatalf("manager people: %d %s", status, peoplePage)
+	}
+	status, editPage := manager.get(t, "/projects/"+project.ID)
+	if status != http.StatusOK || !strings.Contains(editPage, "責任者案件") {
+		t.Fatalf("manager project edit: %d %s", status, editPage)
+	}
+	if !strings.Contains(editPage, `name="manager_id"`) {
+		t.Fatal("manager should edit manager list on owned project")
+	}
+	if strings.Contains(editPage, "m02 作業") {
+		t.Fatal("non-manager person must not appear in manager candidates")
+	}
+	status, otherEdit := manager.get(t, "/projects/"+other.ID)
+	if status != http.StatusForbidden {
+		t.Fatalf("manager other project: %d %s", status, otherEdit)
+	}
+	projectsPage := manager.getBody(t, "/projects")
+	if !strings.Contains(projectsPage, "effort-input") {
+		t.Fatal("manager should edit managed schedule cells")
+	}
+	allocRes, err := manager.http.PostForm(ts.URL+"/projects/allocations", url.Values{
+		"csrf": {csrfOf(t, projectsPage)}, "year_month": {"2026-04"}, "decade": {"1"}, "effort": {"1.0"},
+		"project_process_id": {lines[0].ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allocBody, err := io.ReadAll(allocRes.Body)
+	allocRes.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allocRes.StatusCode != http.StatusOK {
+		t.Fatalf("manager allocation save: %d %s", allocRes.StatusCode, allocBody)
+	}
+	otherLines, err := st.ListProcessLines(ctx, other.ID)
+	if err != nil || len(otherLines) != 1 {
+		t.Fatalf("other lines: %+v %v", otherLines, err)
+	}
+	allocRes, err = manager.http.PostForm(ts.URL+"/projects/allocations", url.Values{
+		"csrf": {csrfOf(t, projectsPage)}, "year_month": {"2026-04"}, "decade": {"1"}, "effort": {"1.0"},
+		"project_process_id": {otherLines[0].ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allocBody, err = io.ReadAll(allocRes.Body)
+	allocRes.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allocRes.StatusCode != http.StatusForbidden {
+		t.Fatalf("manager other allocation: %d %s", allocRes.StatusCode, allocBody)
+	}
+	forecast := manager.getBody(t, "/projects/"+project.ID+"/forecast")
+	if !strings.Contains(forecast, "予実") {
+		t.Fatalf("manager forecast:\n%s", forecast)
+	}
+	timePage := manager.getBody(t, "/time?date=2026-04-01&person="+workerID)
+	if !strings.Contains(timePage, "PM1") && !strings.Contains(timePage, "責任者案件") {
+		t.Fatalf("manager time proxy:\n%s", timePage)
+	}
+	status, newProject := manager.get(t, "/projects/new")
+	if status != http.StatusOK {
+		t.Fatalf("manager project create: %d %s", status, newProject)
+	}
+	if !strings.Contains(newProject, `name="manager_id" value="`+mgrID+`"`) && !strings.Contains(newProject, `value="`+mgrID+`"`) {
+		t.Fatalf("creator should be preselected as manager:\n%s", newProject)
+	}
+	body = manager.submit(t, "/projects", url.Values{
+		"csrf": {csrfOf(t, newProject)}, "code": {"PM3"}, "name": {"自己作成"}, "order_amount": {"200000"},
+		"status": {"active"}, "start_date": {"2026-05-01"}, "end_date": {"2026-05-31"},
+		"process_id": {build}, "line_start": {"2026-05-01"}, "line_end": {"2026-05-31"}, "line_days": {"2.0"},
+	})
+	created := projectByCode(t, st, "PM3")
+	ok, err = st.IsProjectManager(ctx, created.ID, mgrID)
+	if err != nil || !ok {
+		t.Fatalf("creator not auto-registered as manager: %v %v", ok, err)
+	}
+	home := manager.getBody(t, "/")
+	if !strings.Contains(home, "自己作成") {
+		t.Fatalf("manager home missing created project:\n%s", home)
 	}
 }
 

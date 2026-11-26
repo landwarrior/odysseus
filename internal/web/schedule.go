@@ -65,8 +65,10 @@ type scheduleProcessGroup struct {
 }
 
 // scheduleProjectBlock は案件ごとの行の塊です。
+// CanEdit が真のときは、この案件の工数セルと編集・アサイン・予実への導線を出します。
 type scheduleProjectBlock struct {
 	Project  store.Project
+	CanEdit  bool
 	Rows     []scheduleRow
 	Groups   []scheduleProcessGroup
 	RowCount int
@@ -89,11 +91,15 @@ type schedulePeriodCol struct {
 }
 
 // schedulePage はプロジェクト一覧または案件のスケジュールです。
-// CanEdit が偽のときは閲覧のみで、工数セルは入力欄にしません。
+// CanEdit が偽のときは閲覧のみの説明を出します。工数セルの可否は各 Block.CanEdit です。
+// CanCreate が真のときだけ新規作成への導線を出します（管理者または責任者権限）。
+// CanManage は案件詳細の共通導線（編集・アサイン・予実）用です。
 type schedulePage struct {
 	base
 	Detail      bool
 	CanEdit     bool
+	CanCreate   bool
+	CanManage   bool
 	Project     store.Project
 	Status      string
 	From        string
@@ -272,12 +278,27 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 		return schedulePage{}, err
 	}
 
-	canEdit := personFrom(r).IsAdmin
+	me := personFrom(r)
+	managed := map[string]bool{}
+	if me != nil && !me.IsAdmin {
+		ids, err := s.store.ListManagedProjectIDs(r.Context(), me.ID)
+		if err != nil {
+			return schedulePage{}, err
+		}
+		for _, id := range ids {
+			managed[id] = true
+		}
+	}
+	pageCanEdit := false
 	blocks := make([]scheduleProjectBlock, 0, len(in.Projects))
 	for _, project := range in.Projects {
+		canEdit := me != nil && (me.IsAdmin || managed[project.ID])
+		if canEdit {
+			pageCanEdit = true
+		}
 		projectTasks := tasksByProject[project.ID]
 		projectLines := linesByProject[project.ID]
-		block := scheduleProjectBlock{Project: project}
+		block := scheduleProjectBlock{Project: project, CanEdit: canEdit}
 
 		if in.Detail {
 			block.Groups, block.RowCount = s.scheduleTaskGroups(projectLines, projectTasks, in.Months, currentYM, currentDec, taskAllocMap, taskTotals, processAllocMap, taskActualMap, taskActualTotals, processActualMap, processActualTotals, std, canEdit)
@@ -318,10 +339,21 @@ func (s *Server) buildSchedulePage(w http.ResponseWriter, r *http.Request, in sc
 	if in.Detail {
 		stickyCols = 6
 	}
+	canCreate := canCreateProject(me)
+	canManage := false
+	if in.Detail && in.Project.ID != "" {
+		ok, err := s.canManageProject(r.Context(), me, in.Project.ID)
+		if err != nil {
+			return schedulePage{}, err
+		}
+		canManage = ok
+	}
 	return schedulePage{
 		base:        s.page(w, r, in.Title),
 		Detail:      in.Detail,
-		CanEdit:     canEdit,
+		CanEdit:     pageCanEdit,
+		CanCreate:   canCreate,
+		CanManage:   canManage,
 		Project:     in.Project,
 		Status:      in.Status,
 		From:        in.From,
@@ -689,6 +721,7 @@ func capacityLoadClass(allocated, capacity int64) string {
 
 // handleAllocationSave は旬セルの割当を保存し、更新後の見積・割当・差分を JSON で返します。
 // task_id があればタスク割当、project_process_id があれば工程割当です。
+// 管理者または対象案件の責任者だけが保存できます。
 func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 	taskID := formText(r, "task_id")
 	processID := formText(r, "project_process_id")
@@ -712,6 +745,7 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	std := s.cfg.StandardMinutes
+	me := personFrom(r)
 	if taskID != "" {
 		task, err := s.store.GetTask(r.Context(), taskID)
 		if errors.Is(err, store.ErrNotFound) {
@@ -720,6 +754,15 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			s.fail(w, err)
+			return
+		}
+		ok, err := s.canManageProject(r.Context(), me, task.ProjectID)
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		if !ok {
+			http.Error(w, "この案件を編集する権限がありません。", http.StatusForbidden)
 			return
 		}
 		if err := s.store.UpsertTaskAllocation(r.Context(), task.ID, ym, decade, minutes); err != nil {
@@ -756,6 +799,15 @@ func (s *Server) handleAllocationSave(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		s.fail(w, err)
+		return
+	}
+	ok, err := s.canManageProject(r.Context(), me, line.ProjectID)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	if !ok {
+		http.Error(w, "この案件を編集する権限がありません。", http.StatusForbidden)
 		return
 	}
 	if err := s.store.UpsertProcessAllocation(r.Context(), line.ID, ym, decade, minutes); err != nil {

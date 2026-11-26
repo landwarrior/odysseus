@@ -45,14 +45,21 @@
 {{template "head" .}}
 {{template "nav" .}}
 <main>
-  {{if .Me.IsAdmin}}
+  {{if or .Me.IsAdmin .Me.IsManager .Rows}}
   <div class="title-row">
     <h1>ホーム</h1>
+    {{if or .Me.IsAdmin .Me.IsManager}}
     <a class="button" href="/projects/new">新規作成</a>
+    {{end}}
   </div>
   {{template "alerts" .}}
+  {{if .Me.IsAdmin}}
   <h2>進行中のプロジェクト{{if .Rows}}（{{len .Rows}} 件）{{end}}</h2>
   <p class="note">状態が進行中の案件をすべて表示しています。自分の実績は「実績」から入力します。計画中や完了はプロジェクト一覧で絞り込めます。</p>
+  {{else}}
+  <h2>担当の進行中プロジェクト{{if .Rows}}（{{len .Rows}} 件）{{end}}</h2>
+  <p class="note">あなたが責任者の進行中案件です。編集・アサイン・予実・スケジュール割当ができます。案件の新規作成もできます。マスタは管理者のみです。</p>
+  {{end}}
   {{if not .Rows}}<p>進行中のプロジェクトはありません。</p>{{end}}
   {{if .Rows}}
   <div class="table-wrap">
@@ -99,10 +106,19 @@
   </div>
   <p class="note">※ は単価未設定の実績があり、その分を金額に含めていません。赤い行は予算超過の工程があります。</p>
   {{end}}
+  {{if and (not .Me.IsAdmin) .Assigned}}
+  <h2>アサイン中の案件</h2>
+  <p class="note">自分の実績は<a href="/time">実績登録</a>から日付を選んで入力できます。全案件のスケジュールは<a href="/projects">プロジェクト</a>から閲覧できます。</p>
+  <ul>
+    {{range .Assigned}}
+    <li>{{.Code}} {{.Name}}</li>
+    {{end}}
+  </ul>
+  {{end}}
   {{else}}
   <h1>ホーム</h1>
   {{template "alerts" .}}
-  <p>アサイン中の案件の実績は、<a href="/time">実績登録</a>から日付を選んで一度に入力できます。全案件のスケジュールは<a href="/projects">プロジェクト</a>から閲覧できます（工数の変更は管理者のみ）。</p>
+  <p>アサイン中の案件の実績は、<a href="/time">実績登録</a>から日付を選んで一度に入力できます。全案件のスケジュールは<a href="/projects">プロジェクト</a>から閲覧できます（工数の変更は管理者または案件の責任者のみ）。</p>
   {{if not .Assigned}}<p>アサインされている案件はありません。</p>{{end}}
   {{if .Assigned}}
   <ul>
