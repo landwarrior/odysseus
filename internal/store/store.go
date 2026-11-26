@@ -412,6 +412,7 @@ func (s *Store) InsertPerson(ctx context.Context, in NewPerson) (Person, error) 
 
 // UpdatePerson は personID の人材を in の内容に更新します。
 // in.Password が空ならパスワードは変えません。最後の管理者を外すと ErrLastAdmin です。
+// 責任者権限を外すと、その人の案件責任者登録もすべて消します。無効にするだけでは消しません。
 func (s *Store) UpdatePerson(ctx context.Context, personID string, in NewPerson) error {
 	current, err := s.GetPerson(ctx, personID)
 	if err != nil {
@@ -426,9 +427,14 @@ func (s *Store) UpdatePerson(ctx context.Context, personID string, in NewPerson)
 			return ErrLastAdmin
 		}
 	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	stamp := now()
 	if in.Password == "" {
-		_, err = s.db.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 			UPDATE person
 			SET code = ?, name = ?, name_kana = ?, is_admin = ?, is_manager = ?, active = ?, remarks = ?, updated_at = ?
 			WHERE id = ?`,
@@ -438,14 +444,22 @@ func (s *Store) UpdatePerson(ctx context.Context, personID string, in NewPerson)
 		if hashErr != nil {
 			return hashErr
 		}
-		_, err = s.db.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 			UPDATE person
 			SET code = ?, name = ?, name_kana = ?, is_admin = ?, is_manager = ?, active = ?, remarks = ?,
 				password_hash = ?, must_change_password = 1, updated_at = ?
 			WHERE id = ?`,
 			in.Code, in.Name, in.NameKana, bint(in.IsAdmin), bint(in.IsManager), bint(in.Active), in.Remarks, string(hash), stamp, personID)
 	}
-	return mapWriteErr(err)
+	if err != nil {
+		return mapWriteErr(err)
+	}
+	if !in.IsManager {
+		if _, err := tx.Exec(ctx, `DELETE FROM project_manager WHERE person_id = ?`, personID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // UpdateTheme は personID の画面テーマを theme（light または dark）に変えます。

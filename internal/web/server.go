@@ -273,13 +273,16 @@ func (s *Server) requireProjectEditor(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // canManageProject は me が projectID を管理者として扱えるとき真です。
-// グローバル管理者か、その案件の責任者なら真です。
+// グローバル管理者か、責任者権限を持ちその案件の責任者なら真です。
 func (s *Server) canManageProject(ctx context.Context, me *store.Person, projectID string) (bool, error) {
 	if me == nil || projectID == "" {
 		return false, nil
 	}
 	if me.IsAdmin {
 		return true, nil
+	}
+	if !me.IsManager {
+		return false, nil
 	}
 	return s.store.IsProjectManager(ctx, projectID, me.ID)
 }

@@ -174,7 +174,7 @@ func (s *Store) IsProjectManager(ctx context.Context, projectID, personID string
 }
 
 // ReplaceProjectManagers は projectID の責任者を personIDs で置き換えます。
-// 存在しない人材や無効な人材は ErrNotFound です。
+// 存在しない人材や責任者権限のない人材は ErrNotFound です。無効でも権限があれば残せます。
 func (s *Store) ReplaceProjectManagers(ctx context.Context, projectID string, personIDs []string) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -198,15 +198,15 @@ func (s *Store) ReplaceProjectManagers(ctx context.Context, projectID string, pe
 		unique = append(unique, id)
 	}
 	for _, id := range unique {
-		var active, manager int
-		err := tx.QueryRow(ctx, `SELECT active, is_manager FROM person WHERE id = ?`, id).Scan(&active, &manager)
+		var manager int
+		err := tx.QueryRow(ctx, `SELECT is_manager FROM person WHERE id = ?`, id).Scan(&manager)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
 		}
-		if active == 0 || manager == 0 {
+		if manager == 0 {
 			return ErrNotFound
 		}
 	}

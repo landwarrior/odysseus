@@ -108,7 +108,8 @@ func withDefaultManager(ids []string, me *store.Person) []string {
 	return append(append([]string{}, ids...), me.ID)
 }
 
-// validateManagerIDs は責任者候補が、有効かつ責任者権限を持つか確認します。
+// validateManagerIDs は責任者候補が責任者権限を持つか確認します。
+// 無効な人材でも権限があれば可です（一時無効のあと復帰できるように登録を残すため）。
 // 問題があればメッセージ、なければ空です。
 func (s *Server) validateManagerIDs(r *http.Request, personIDs []string) string {
 	if len(personIDs) == 0 {
@@ -120,7 +121,7 @@ func (s *Server) validateManagerIDs(r *http.Request, personIDs []string) string 
 	}
 	ok := map[string]bool{}
 	for _, p := range people {
-		if p.Active && p.IsManager {
+		if p.IsManager {
 			ok[p.ID] = true
 		}
 	}
@@ -514,7 +515,7 @@ func (s *Server) renderProject(w http.ResponseWriter, r *http.Request, page proj
 
 // projectManagerOpts は責任者権限を持つ人材を候補にします。
 // selectedIDs があればそれを優先し、新規作成で未指定なら作成者（責任者権限あり）を選びます。
-// 既に案件責任者で権限を外された人も、選択済みとして残します。
+// 有効な責任者に加え、既に案件責任者で無効な人も「（無効）」付きで残します。
 func (s *Server) projectManagerOpts(r *http.Request, projectID string, isNew bool, selectedIDs []string, me *store.Person) ([]managerOpt, error) {
 	people, err := s.store.ListPeople(r.Context())
 	if err != nil {
@@ -545,13 +546,14 @@ func (s *Server) projectManagerOpts(r *http.Request, projectID string, isNew boo
 	}
 	var out []managerOpt
 	for _, p := range people {
-		if !(p.IsManager && p.Active) && !selected[p.ID] {
+		if !p.IsManager {
+			continue
+		}
+		if !p.Active && !selected[p.ID] {
 			continue
 		}
 		label := p.Code + " " + p.FullName()
-		if !p.IsManager {
-			label += "（権限なし）"
-		} else if !p.Active {
+		if !p.Active {
 			label += "（無効）"
 		}
 		out = append(out, managerOpt{

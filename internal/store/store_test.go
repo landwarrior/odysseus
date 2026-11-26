@@ -237,6 +237,51 @@ func TestMoveProcess(t *testing.T) {
 	}
 }
 
+func TestUpdatePersonClearsProjectManagers(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if _, _, err := st.Seed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	mgr, err := st.InsertPerson(ctx, NewPerson{
+		Code: "mgr1", Name: "責任者", Password: "managerpass", Active: true, IsManager: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectID, err := st.SaveProject(ctx, Project{
+		Code: "PM1", Name: "案件", StartDate: "2026-04-01", EndDate: "2026-04-30", Status: "active",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.ReplaceProjectManagers(ctx, projectID, []string{mgr.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UpdatePerson(ctx, mgr.ID, NewPerson{
+		Code: "mgr1", Name: "責任者", Active: false, IsManager: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ok, err := st.IsProjectManager(ctx, projectID, mgr.ID)
+	if err != nil || !ok {
+		t.Fatalf("inactive should keep manager row: ok=%v err=%v", ok, err)
+	}
+	if err := st.UpdatePerson(ctx, mgr.ID, NewPerson{
+		Code: "mgr1", Name: "責任者", Active: true, IsManager: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ok, err = st.IsProjectManager(ctx, projectID, mgr.ID)
+	if err != nil || ok {
+		t.Fatalf("manager row should be cleared: ok=%v err=%v", ok, err)
+	}
+	ids, err := st.ListManagedProjectIDs(ctx, mgr.ID)
+	if err != nil || len(ids) != 0 {
+		t.Fatalf("managed projects = %v err=%v", ids, err)
+	}
+}
+
 func isInUse(err error) bool {
 	return err != nil && (err == ErrInUse || (func() bool { _, ok := err.(*InUseError); return ok })())
 }
