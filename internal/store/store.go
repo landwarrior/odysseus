@@ -47,6 +47,7 @@ type Person struct {
 	Name               string
 	NameKana           string
 	IsAdmin            bool
+	IsManager          bool
 	Active             bool
 	Remarks            string
 	MustChangePassword bool
@@ -70,13 +71,14 @@ type PersonAuth struct {
 // NewPerson は人材の登録と更新に使う入力です。Password が空の更新では、パスワードを変えません。
 // Name は姓、NameKana は名です。
 type NewPerson struct {
-	Code     string
-	Name     string
-	NameKana string
-	Password string
-	IsAdmin  bool
-	Active   bool
-	Remarks  string
+	Code      string
+	Name      string
+	NameKana  string
+	Password  string
+	IsAdmin   bool
+	IsManager bool
+	Active    bool
+	Remarks   string
 }
 
 // Role は PG や SE などの役割です。SortOrder が小さいほど先に並びます。
@@ -347,10 +349,11 @@ func (s *Store) GetPerson(ctx context.Context, personID string) (Person, error) 
 func (s *Store) GetPersonByCode(ctx context.Context, code string) (PersonAuth, error) {
 	var p PersonAuth
 	var admin, active, must int
+	var manager int
 	err := s.db.QueryRow(ctx, `
-		SELECT id, code, name, name_kana, is_admin, active, remarks, must_change_password, theme, password_hash
+		SELECT id, code, name, name_kana, is_admin, is_manager, active, remarks, must_change_password, theme, password_hash
 		FROM person WHERE code = ?`, code).Scan(
-		&p.ID, &p.Code, &p.Name, &p.NameKana, &admin, &active, &p.Remarks, &must, &p.Theme, &p.PasswordHash)
+		&p.ID, &p.Code, &p.Name, &p.NameKana, &admin, &manager, &active, &p.Remarks, &must, &p.Theme, &p.PasswordHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PersonAuth{}, ErrNotFound
 	}
@@ -358,6 +361,7 @@ func (s *Store) GetPersonByCode(ctx context.Context, code string) (PersonAuth, e
 		return PersonAuth{}, err
 	}
 	p.IsAdmin = admin != 0
+	p.IsManager = manager != 0
 	p.Active = active != 0
 	p.MustChangePassword = must != 0
 	if p.Theme != "dark" {
@@ -393,13 +397,13 @@ func (s *Store) InsertPerson(ctx context.Context, in NewPerson) (Person, error) 
 	}
 	p := Person{
 		ID: id.New(), Code: in.Code, Name: in.Name, NameKana: in.NameKana,
-		IsAdmin: in.IsAdmin, Active: in.Active, Remarks: in.Remarks, MustChangePassword: true, Theme: "light",
+		IsAdmin: in.IsAdmin, IsManager: in.IsManager, Active: in.Active, Remarks: in.Remarks, MustChangePassword: true, Theme: "light",
 	}
 	_, err = s.db.Exec(ctx, `
 		INSERT INTO person (
-			id, code, name, name_kana, password_hash, is_admin, active, remarks, must_change_password, theme, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
-		p.ID, p.Code, p.Name, p.NameKana, string(hash), bint(p.IsAdmin), bint(p.Active), p.Remarks, p.Theme, now(), now())
+			id, code, name, name_kana, password_hash, is_admin, is_manager, active, remarks, must_change_password, theme, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+		p.ID, p.Code, p.Name, p.NameKana, string(hash), bint(p.IsAdmin), bint(p.IsManager), bint(p.Active), p.Remarks, p.Theme, now(), now())
 	if err != nil {
 		return Person{}, mapWriteErr(err)
 	}
@@ -408,6 +412,7 @@ func (s *Store) InsertPerson(ctx context.Context, in NewPerson) (Person, error) 
 
 // UpdatePerson は personID の人材を in の内容に更新します。
 // in.Password が空ならパスワードは変えません。最後の管理者を外すと ErrLastAdmin です。
+// 責任者権限を外すと、その人の案件責任者登録もすべて消します。無効にするだけでは消しません。
 func (s *Store) UpdatePerson(ctx context.Context, personID string, in NewPerson) error {
 	current, err := s.GetPerson(ctx, personID)
 	if err != nil {
@@ -422,26 +427,39 @@ func (s *Store) UpdatePerson(ctx context.Context, personID string, in NewPerson)
 			return ErrLastAdmin
 		}
 	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	stamp := now()
 	if in.Password == "" {
-		_, err = s.db.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 			UPDATE person
-			SET code = ?, name = ?, name_kana = ?, is_admin = ?, active = ?, remarks = ?, updated_at = ?
+			SET code = ?, name = ?, name_kana = ?, is_admin = ?, is_manager = ?, active = ?, remarks = ?, updated_at = ?
 			WHERE id = ?`,
-			in.Code, in.Name, in.NameKana, bint(in.IsAdmin), bint(in.Active), in.Remarks, stamp, personID)
+			in.Code, in.Name, in.NameKana, bint(in.IsAdmin), bint(in.IsManager), bint(in.Active), in.Remarks, stamp, personID)
 	} else {
 		hash, hashErr := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 		if hashErr != nil {
 			return hashErr
 		}
-		_, err = s.db.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 			UPDATE person
-			SET code = ?, name = ?, name_kana = ?, is_admin = ?, active = ?, remarks = ?,
+			SET code = ?, name = ?, name_kana = ?, is_admin = ?, is_manager = ?, active = ?, remarks = ?,
 				password_hash = ?, must_change_password = 1, updated_at = ?
 			WHERE id = ?`,
-			in.Code, in.Name, in.NameKana, bint(in.IsAdmin), bint(in.Active), in.Remarks, string(hash), stamp, personID)
+			in.Code, in.Name, in.NameKana, bint(in.IsAdmin), bint(in.IsManager), bint(in.Active), in.Remarks, string(hash), stamp, personID)
 	}
-	return mapWriteErr(err)
+	if err != nil {
+		return mapWriteErr(err)
+	}
+	if !in.IsManager {
+		if _, err := tx.Exec(ctx, `DELETE FROM project_manager WHERE person_id = ?`, personID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // UpdateTheme は personID の画面テーマを theme（light または dark）に変えます。
@@ -840,7 +858,7 @@ func (s *Store) FindHourly(ctx context.Context, personID, roleID, date string) (
 	return *rate.HourlyYen, true, nil
 }
 
-const personSelect = `SELECT id, code, name, name_kana, is_admin, active, remarks, must_change_password, theme FROM person`
+const personSelect = `SELECT id, code, name, name_kana, is_admin, is_manager, active, remarks, must_change_password, theme FROM person`
 
 // scanner は、1行を列の値へ読み込むものです。*sql.Row と *sql.Rows の両方が満たします。
 type scanner interface{ Scan(dest ...any) error }
@@ -848,8 +866,8 @@ type scanner interface{ Scan(dest ...any) error }
 // scanPerson は row（1行、または結果セットの現在行）を Person に読みます。
 func scanPerson(row scanner) (Person, error) {
 	var p Person
-	var admin, active, must int
-	err := row.Scan(&p.ID, &p.Code, &p.Name, &p.NameKana, &admin, &active, &p.Remarks, &must, &p.Theme)
+	var admin, manager, active, must int
+	err := row.Scan(&p.ID, &p.Code, &p.Name, &p.NameKana, &admin, &manager, &active, &p.Remarks, &must, &p.Theme)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Person{}, ErrNotFound
 	}
@@ -857,6 +875,7 @@ func scanPerson(row scanner) (Person, error) {
 		return Person{}, err
 	}
 	p.IsAdmin = admin != 0
+	p.IsManager = manager != 0
 	p.Active = active != 0
 	p.MustChangePassword = must != 0
 	if p.Theme != "dark" {

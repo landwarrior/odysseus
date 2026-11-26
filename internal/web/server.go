@@ -125,19 +125,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /", s.requireLogin(s.handleHome))
 
 	mux.HandleFunc("GET /projects", s.requireLogin(s.handleProjects))
-	mux.HandleFunc("POST /projects/allocations", s.requireAdmin(s.handleAllocationSave))
-	mux.HandleFunc("GET /projects/new", s.requireAdmin(s.handleProjectNew))
-	mux.HandleFunc("POST /projects", s.requireAdmin(s.handleProjectCreate))
-	mux.HandleFunc("GET /projects/{id}", s.requireAdmin(s.handleProjectEdit))
-	mux.HandleFunc("POST /projects/{id}", s.requireAdmin(s.handleProjectUpdate))
-	mux.HandleFunc("POST /projects/{id}/delete", s.requireAdmin(s.handleProjectDelete))
+	mux.HandleFunc("POST /projects/allocations", s.requireLogin(s.handleAllocationSave))
+	mux.HandleFunc("GET /projects/new", s.requireProjectCreator(s.handleProjectNew))
+	mux.HandleFunc("POST /projects", s.requireProjectCreator(s.handleProjectCreate))
+	mux.HandleFunc("GET /projects/{id}", s.requireProjectEditor(s.handleProjectEdit))
+	mux.HandleFunc("POST /projects/{id}", s.requireProjectEditor(s.handleProjectUpdate))
+	mux.HandleFunc("POST /projects/{id}/delete", s.requireProjectEditor(s.handleProjectDelete))
 	mux.HandleFunc("GET /projects/{id}/schedule", s.requireLogin(s.handleProjectSchedule))
-	mux.HandleFunc("GET /projects/{id}/assign", s.requireAdmin(s.handleAssign))
-	mux.HandleFunc("POST /projects/{id}/assignments", s.requireAdmin(s.handleAssignCreate))
-	mux.HandleFunc("POST /projects/{id}/assignments/{aid}", s.requireAdmin(s.handleAssignUpdate))
-	mux.HandleFunc("POST /projects/{id}/assignments/{aid}/delete", s.requireAdmin(s.handleAssignDelete))
-	mux.HandleFunc("POST /projects/{id}/recalc", s.requireAdmin(s.handleRecalc))
-	mux.HandleFunc("GET /projects/{id}/forecast", s.requireAdmin(s.handleForecast))
+	mux.HandleFunc("GET /projects/{id}/assign", s.requireProjectEditor(s.handleAssign))
+	mux.HandleFunc("POST /projects/{id}/assignments", s.requireProjectEditor(s.handleAssignCreate))
+	mux.HandleFunc("POST /projects/{id}/assignments/{aid}", s.requireProjectEditor(s.handleAssignUpdate))
+	mux.HandleFunc("POST /projects/{id}/assignments/{aid}/delete", s.requireProjectEditor(s.handleAssignDelete))
+	mux.HandleFunc("POST /projects/{id}/recalc", s.requireProjectEditor(s.handleRecalc))
+	mux.HandleFunc("GET /projects/{id}/forecast", s.requireProjectEditor(s.handleForecast))
 
 	mux.HandleFunc("GET /people", s.requireAdmin(s.handlePeople))
 	mux.HandleFunc("GET /people/new", s.requireAdmin(s.handlePersonNew))
@@ -242,6 +242,54 @@ func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	})
+}
+
+// requireProjectCreator は next の前に、管理者または責任者権限があることを確認します。
+func (s *Server) requireProjectCreator(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireLogin(func(w http.ResponseWriter, r *http.Request) {
+		me := personFrom(r)
+		if me == nil || (!me.IsAdmin && !me.IsManager) {
+			http.Error(w, "プロジェクトを作成する権限がありません。", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	})
+}
+
+// requireProjectEditor は next の前に、管理者またはパスの案件の責任者であることを確認します。
+func (s *Server) requireProjectEditor(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireLogin(func(w http.ResponseWriter, r *http.Request) {
+		ok, err := s.canManageProject(r.Context(), personFrom(r), r.PathValue("id"))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		if !ok {
+			http.Error(w, "この案件を編集する権限がありません。", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	})
+}
+
+// canManageProject は me が projectID を管理者として扱えるとき真です。
+// グローバル管理者か、責任者権限を持ちその案件の責任者なら真です。
+func (s *Server) canManageProject(ctx context.Context, me *store.Person, projectID string) (bool, error) {
+	if me == nil || projectID == "" {
+		return false, nil
+	}
+	if me.IsAdmin {
+		return true, nil
+	}
+	if !me.IsManager {
+		return false, nil
+	}
+	return s.store.IsProjectManager(ctx, projectID, me.ID)
+}
+
+// canCreateProject は me が案件を新規作成できるとき真です。
+func canCreateProject(me *store.Person) bool {
+	return me != nil && (me.IsAdmin || me.IsManager)
 }
 
 // personFrom は r に載っているログイン中の利用者を返します。未ログインなら nil です。

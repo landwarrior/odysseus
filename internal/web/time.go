@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"sort"
@@ -55,9 +56,10 @@ type timePage struct {
 	CanPickPerson bool
 	Groups        []timeProjectGroup
 	Columns       []timeColumn
-	Cells         map[string]string
-	DayTotal      string
-	SavedDates    []string
+	Cells          map[string]string
+	DayTotal       string
+	HiddenDayTotal string // フォームに出ない同日実績。JS の合計に足す。
+	SavedDates     []string
 }
 
 // handleTime は横断の実績入力画面を出します。
@@ -107,7 +109,9 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 	}
 	var cells []store.DayCell
 	var dayTotal int64
+	visible := map[string]bool{}
 	for _, column := range columns {
+		visible[column.AssignmentID] = true
 		raw := r.FormValue("minutes_" + column.Key)
 		var minutes int64
 		if raw != "" {
@@ -134,6 +138,13 @@ func (s *Server) handleTimeSave(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
+	// 代行時は担当案件以外の欄がフォームに出ない。同じ日の他案件実績も 24 時間上限に含める。
+	other, err := s.hiddenDayMinutes(r.Context(), page.PersonID, date, visible)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	dayTotal += other
 	if dayTotal > 24*60 {
 		page.Date = date
 		page.Warn = "1 日の入力は合計 24 時間までです。"
@@ -164,10 +175,11 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	if err != nil {
 		return timePage{}, nil, false
 	}
+	canProxy := me.IsAdmin || s.hasManagedProjects(r, me.ID)
 	if len(people) == 0 {
 		page := timePage{
 			base: s.page(w, r, "実績登録"), Date: time.Now().Format("2006-01-02"),
-			ShowPerson: me.IsAdmin,
+			ShowPerson: canProxy,
 		}
 		page.Warn = "入力できるアサインがありません。"
 		s.render(w, http.StatusOK, "time_form", page)
@@ -178,7 +190,12 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 		s.redirectWarn(w, r, "/time", "入力できるアサインがありません。")
 		return timePage{}, nil, false
 	}
-	assignments, err := s.store.ListPersonOpenAssignments(r.Context(), personID)
+	allAssignments, err := s.store.ListPersonOpenAssignments(r.Context(), personID)
+	if err != nil {
+		s.fail(w, err)
+		return timePage{}, nil, false
+	}
+	assignments, err := s.filterTimeAssignments(r, me, personID, allAssignments)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
@@ -186,7 +203,7 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	if len(assignments) == 0 {
 		page := timePage{
 			base: s.page(w, r, "実績登録"), Date: time.Now().Format("2006-01-02"),
-			PersonID: personID, People: people, ShowPerson: me.IsAdmin, CanPickPerson: me.IsAdmin && len(people) > 1,
+			PersonID: personID, People: people, ShowPerson: canProxy, CanPickPerson: canProxy && len(people) > 1,
 		}
 		page.Warn = "入力できるアサインがありません。"
 		s.render(w, http.StatusOK, "time_form", page)
@@ -214,11 +231,12 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	monthEnd, _ := time.Parse("2006-01-02", monthStart)
 	monthUntil := monthEnd.AddDate(0, 1, 0).Format("2006-01-02")
 
-	ids := make([]string, len(assignments))
-	for i, a := range assignments {
-		ids[i] = a.ID
+	// 画面の入力欄は絞り込み後だが、日次合計と日付リンクは対象者の全完了前アサイン分を使う。
+	allIDs := make([]string, len(allAssignments))
+	for i, a := range allAssignments {
+		allIDs[i] = a.ID
 	}
-	entries, err := s.store.ListEntries(r.Context(), ids, monthStart, monthUntil)
+	entries, err := s.store.ListEntries(r.Context(), allIDs, monthStart, monthUntil)
 	if err != nil {
 		s.fail(w, err)
 		return timePage{}, nil, false
@@ -236,12 +254,16 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	}
 	cells := map[string]string{}
 	savedSet := map[string]bool{}
-	var dayMinutes int64
+	var dayMinutes, hiddenMinutes int64
 	for _, entry := range entries {
 		key := entryKey(entry.AssignmentID, entry.TaskID, entry.TaskID == "" && hasTasksForAssignment(assignments, tasks, entry.AssignmentID))
-		if entry.WorkDate == date && columnKeys[key] {
-			cells[key] = calc.FormatHours(entry.Minutes)
+		if entry.WorkDate == date {
 			dayMinutes += entry.Minutes
+			if columnKeys[key] {
+				cells[key] = calc.FormatHours(entry.Minutes)
+			} else {
+				hiddenMinutes += entry.Minutes
+			}
 		}
 		savedSet[entry.WorkDate] = true
 	}
@@ -254,35 +276,123 @@ func (s *Server) timeContext(w http.ResponseWriter, r *http.Request) (timePage, 
 	page := timePage{
 		base: s.page(w, r, "実績登録"), Date: date, PrevDate: prevDate, NextDate: nextDate,
 		PersonID: personID, People: people,
-		ShowPerson: me.IsAdmin, CanPickPerson: me.IsAdmin && len(people) > 1,
-		Groups: groups, Columns: columns, Cells: cells, DayTotal: calc.FormatHours(dayMinutes), SavedDates: savedDates,
+		ShowPerson: canProxy || len(people) > 1, CanPickPerson: canProxy && len(people) > 1,
+		Groups: groups, Columns: columns, Cells: cells,
+		DayTotal: calc.FormatHours(dayMinutes), HiddenDayTotal: calc.FormatHours(hiddenMinutes),
+		SavedDates: savedDates,
 	}
 	return page, columns, true
 }
 
-// timePeople は実績入力の人材候補です。管理者は完了前案件のアサイン人材、メンバーは本人のみです。
+// timePeople は実績入力の人材候補です。
+// 管理者は完了前案件のアサイン人材、責任者は担当案件のアサイン人材（と自分）、メンバーは本人のみです。
 func (s *Server) timePeople(w http.ResponseWriter, r *http.Request, me *store.Person) ([]timePerson, error) {
-	if !me.IsAdmin {
-		assigns, err := s.store.ListPersonOpenAssignments(r.Context(), me.ID)
+	if me.IsAdmin {
+		list, err := s.store.ListAssigneesOnOpenProjects(r.Context())
 		if err != nil {
 			s.fail(w, err)
 			return nil, err
 		}
-		if len(assigns) == 0 {
-			return nil, nil
+		out := make([]timePerson, 0, len(list))
+		for _, a := range list {
+			out = append(out, timePerson{ID: a.ID, Code: a.Code, Name: a.Name})
 		}
-		return []timePerson{{ID: me.ID, Code: me.Code, Name: me.Name}}, nil
+		return out, nil
 	}
-	list, err := s.store.ListAssigneesOnOpenProjects(r.Context())
+
+	byID := map[string]timePerson{}
+	managed, err := s.store.ListAssigneesOnManagedProjects(r.Context(), me.ID)
 	if err != nil {
 		s.fail(w, err)
 		return nil, err
 	}
-	out := make([]timePerson, 0, len(list))
-	for _, a := range list {
-		out = append(out, timePerson{ID: a.ID, Code: a.Code, Name: a.Name})
+	for _, a := range managed {
+		byID[a.ID] = timePerson{ID: a.ID, Code: a.Code, Name: a.Name}
+	}
+	assigns, err := s.store.ListPersonOpenAssignments(r.Context(), me.ID)
+	if err != nil {
+		s.fail(w, err)
+		return nil, err
+	}
+	if len(assigns) > 0 {
+		byID[me.ID] = timePerson{ID: me.ID, Code: me.Code, Name: me.Name}
+	}
+	if len(byID) == 0 {
+		return nil, nil
+	}
+	out := make([]timePerson, 0, len(byID))
+	for _, p := range byID {
+		out = append(out, p)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Code != out[j].Code {
+			return out[i].Code < out[j].Code
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out, nil
+}
+
+// hasManagedProjects は personID がいずれかの案件の責任者なら真です。
+func (s *Server) hasManagedProjects(r *http.Request, personID string) bool {
+	ids, err := s.store.ListManagedProjectIDs(r.Context(), personID)
+	return err == nil && len(ids) > 0
+}
+
+// filterTimeAssignments は、他人分を代行する責任者向けに、担当案件のアサインだけに絞ります。
+// 管理者と本人分はそのまま返します。
+func (s *Server) filterTimeAssignments(r *http.Request, me *store.Person, personID string, assignments []store.Assignment) ([]store.Assignment, error) {
+	if me.IsAdmin || personID == me.ID {
+		return assignments, nil
+	}
+	ids, err := s.store.ListManagedProjectIDs(r.Context(), me.ID)
+	if err != nil {
+		return nil, err
+	}
+	allowed := map[string]bool{}
+	for _, id := range ids {
+		allowed[id] = true
+	}
+	var out []store.Assignment
+	for _, a := range assignments {
+		if allowed[a.ProjectID] {
+			out = append(out, a)
+		}
 	}
 	return out, nil
+}
+
+// hiddenDayMinutes は、visible に無い完了前アサインについて、date に既にある実績分の合計を返します。
+// 責任者の代行保存で、フォームに出ていない他案件分を 24 時間上限へ加算するために使います。
+func (s *Server) hiddenDayMinutes(ctx context.Context, personID, date string, visible map[string]bool) (int64, error) {
+	assignments, err := s.store.ListPersonOpenAssignments(ctx, personID)
+	if err != nil {
+		return 0, err
+	}
+	var ids []string
+	for _, a := range assignments {
+		if visible[a.ID] {
+			continue
+		}
+		ids = append(ids, a.ID)
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	day, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return 0, err
+	}
+	until := day.AddDate(0, 0, 1).Format("2006-01-02")
+	entries, err := s.store.ListEntries(ctx, ids, date, until)
+	if err != nil {
+		return 0, err
+	}
+	var sum int64
+	for _, entry := range entries {
+		sum += entry.Minutes
+	}
+	return sum, nil
 }
 
 // buildTimeGroups はアサインとタスクから、案件→工程→入力欄の階層を作ります。
@@ -383,7 +493,8 @@ func entryKey(assignmentID, taskID string, asLegacy bool) string {
 }
 
 // resolveTimePerson は実績入力の対象人材を決めます。
-// メンバーは本人だけ。管理者はクエリ person またはフォーム person_id を使い、無ければ本人（候補にあれば）、それも無ければ先頭です。
+// 候補 people のうち、クエリ person またはフォーム person_id を使い、無ければ本人（候補にあれば）、それも無ければ先頭です。
+// 候補に載らない人は選べません（管理者・責任者・メンバーの差は timePeople 側で付けます）。
 func resolveTimePerson(me *store.Person, people []timePerson, r *http.Request) (string, bool) {
 	if len(people) == 0 {
 		return "", false
@@ -395,12 +506,6 @@ func resolveTimePerson(me *store.Person, people []timePerson, r *http.Request) (
 			}
 		}
 		return false
-	}
-	if !me.IsAdmin {
-		if !has(me.ID) {
-			return "", false
-		}
-		return me.ID, true
 	}
 	requested := r.URL.Query().Get("person")
 	if r.Method == http.MethodPost {

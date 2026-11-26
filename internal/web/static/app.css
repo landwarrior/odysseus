@@ -1158,6 +1158,23 @@ label.process-name.field input {
 .grid.project-meta > .meta-amount { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
 .grid.project-meta > .meta-status { flex: 1 1 7rem; max-width: 8rem; min-width: min(100%, 7rem); }
 .grid.project-meta > .meta-date { flex: 1 1 9rem; max-width: 10.67rem; min-width: min(100%, 8rem); }
+.project-managers {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.project-managers legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+.project-managers .note { margin: 0.35rem 0 0.6rem; }
+.manager-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
 .project-tasks-heading {
   display: grid;
   gap: 0.2rem;

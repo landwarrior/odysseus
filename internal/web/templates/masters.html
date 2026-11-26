@@ -9,7 +9,7 @@
   {{template "alerts" .}}
   <div class="table-wrap">
     <table>
-      <thead><tr><th>コード</th><th>氏名</th><th>役割</th><th class="mark">管理者</th><th>状態</th><th>備考</th><th></th></tr></thead>
+      <thead><tr><th>コード</th><th>氏名</th><th>役割</th><th class="mark">管理者</th><th class="mark">責任者</th><th>状態</th><th>備考</th><th></th></tr></thead>
       <tbody>
         {{range .People}}
         <tr>
@@ -17,6 +17,7 @@
           <td class="person-fullname">{{.FullName}}</td>
           <td>{{.RoleName}}</td>
           <td class="mark">{{if .IsAdmin}}<span class="mark-check" title="管理者" aria-label="管理者"></span>{{end}}</td>
+          <td class="mark">{{if .IsManager}}<span class="mark-check" title="責任者" aria-label="責任者"></span>{{end}}</td>
           <td>{{if .Active}}有効{{else}}無効{{end}}</td>
           <td class="clip"{{if .Remarks}} title="{{.Remarks}}"{{end}}>{{.Remarks}}</td>
           <td><a class="button" href="/people/{{.ID}}">編集</a></td>
@@ -56,8 +57,10 @@
     </div>
     <div class="inline checks">
       <label class="check"><input type="checkbox" name="is_admin" value="1" {{if .Person.IsAdmin}}checked{{end}}>管理者</label>
+      <label class="check"><input type="checkbox" name="is_manager" value="1" {{if .Person.IsManager}}checked{{end}}>責任者</label>
       <label class="check"><input type="checkbox" name="active" value="1" {{if .Person.Active}}checked{{end}}>有効</label>
     </div>
+    <p class="note">責任者は案件の新規作成ができ、作成した案件の責任者に自動で入ります。案件ごとの責任者候補にも載ります。マスタ（人材・役割・工程・祝日）は管理者のみです。</p>
     <label class="field"><textarea name="remarks" rows="3" placeholder=" ">{{.Person.Remarks}}</textarea><span class="field-label">備考</span></label>
     {{if .IsNew}}<p class="note">単価はこの画面では登録できません。人材を登録したあと、編集画面から登録してください。</p>{{end}}
     <button type="submit" class="primary">登録</button>

@@ -34,7 +34,7 @@
   {{if not .Groups}}
   <p>この日に入力できる工程はありません。</p>
   {{else}}
-  <form method="post" action="/time" class="time-entry-form">
+  <form method="post" action="/time" class="time-entry-form" data-time-base="{{.HiddenDayTotal}}">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <input type="hidden" name="person_id" value="{{.PersonID}}">
     <input type="hidden" name="work_date" value="{{.Date}}">

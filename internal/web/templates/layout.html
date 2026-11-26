@@ -63,15 +63,15 @@
 {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 {{end}}
 
-{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ。編集・アサイン・予実は管理者のみ */}}
+{{/* 案件まわりの共通導線。.Project がある画面から呼ぶ。編集・アサイン・予実は CanManage（管理者または責任者） */}}
 {{define "project_actions"}}
 <p class="actions">
   <a class="button" href="/projects">一覧</a>
-  {{if .Me.IsAdmin}}
+  {{if .CanManage}}
   <a class="button" href="/projects/{{.Project.ID}}">編集</a>
   {{end}}
   <a class="button" href="/projects/{{.Project.ID}}/schedule">スケジュール</a>
-  {{if .Me.IsAdmin}}
+  {{if .CanManage}}
   <a class="button" href="/projects/{{.Project.ID}}/assign">人材アサイン</a>
   <a class="button" href="/projects/{{.Project.ID}}/forecast">予実</a>
   {{end}}
