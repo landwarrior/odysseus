@@ -34,11 +34,11 @@
   {{end}}
   {{if .Me}}
   <details class="user-menu" data-csrf="{{.CSRF}}">
-    <summary class="user-toggle" aria-label="{{.Me.Name}}のメニュー">
+    <summary class="user-toggle" aria-label="{{.Me.FullName}}のメニュー">
       <span class="user-icon" aria-hidden="true"></span>
     </summary>
     <div class="user-panel">
-      <p class="user-name">{{.Me.Name}}</p>
+      <p class="user-name">{{.Me.FullName}}</p>
       <a href="/password">パスワード</a>
       <div class="theme-picker">
         <span class="theme-label">テーマ</span>
