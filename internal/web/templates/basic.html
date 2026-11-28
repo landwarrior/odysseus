@@ -10,8 +10,11 @@
 
 {{define "login"}}
 {{template "head" .}}
-<main class="narrow">
-  <h1>ログイン</h1>
+<main class="narrow login-page">
+  <div class="login-brand">
+    <img class="login-logo" src="/static/logo.png" alt="" width="96" height="96">
+    <p class="login-system">Odysseus</p>
+  </div>
   {{template "alerts" .}}
   {{if .Hint}}<p class="banner">{{.Hint}}</p>{{end}}
   <form method="post" action="/login" class="stack">
