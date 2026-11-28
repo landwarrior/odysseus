@@ -101,6 +101,34 @@ main {
 }
 main.narrow { width: min(100%, 32rem); }
 
+.login-page {
+  display: grid;
+  justify-items: stretch;
+  gap: 0.85rem;
+  padding-top: clamp(1.5rem, 6vw, 3.5rem);
+}
+.login-brand {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+  margin: 0 0 0.35rem;
+}
+.login-logo {
+  display: block;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  box-shadow: 0 0.35rem 1rem var(--shadow);
+}
+.login-system {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-align: center;
+}
+
 header.top {
   position: relative;
   display: grid;
